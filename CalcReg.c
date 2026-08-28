@@ -15,8 +15,9 @@
 #include <stdarg.h>
 #include <stddef.h>
 //for the memoresource
-#include "MemoDB.h"  //You will need to get it from Palm OS SDK
+#include "MemoDB.h" //You will need to get it from Palm OS SDK
 #include "MemoMain.h" //You will need to get it from Palm OS SDK
+
 
 #define printf Printf     //Force Redefinition because it already exists in StdIOPalm.h but doesn't suit here
 #define	ChartRectLeft		30
@@ -24,8 +25,8 @@
 #define	ChartRectWidth		100
 #define	ChartRectHeight		90
 #define MaxDataPoints		ChartRectWidth
-#define VertScale		ChartRectHeight / 100
-#define ProgTextMaxChars 	100
+#define VertScale			ChartRectHeight / 100
+#define ProgTextMaxChars 100
 #define MnemoListSize 100
 #define CodeListSize 1000 // nbr of Codes floactet = octet + float
 
@@ -106,7 +107,11 @@ static int CheckLabelDef(char *InstructionLine, int Size);
 static signed int TestForLabels(char *WholeProg, int index);
 static  int CalcMain(floactet *CodeList);
 static int TraceFunctionOneVariable(floactet *CodeOfOneLine, floactet *CodeList);
+static int TraceFunctionTwoVariable(floactet *CodeOfOneLine, floactet *CodeList);
 static void TracerAxis(int centerx,int centery,int width, int height);//color 0black 1red 2green 3blue
+static void Tracer3DAxis();
+static float Dx(float x, float y, float z);
+static float Dy(float x, float y, float z);
 static int CreateVariablesList(char *progtext); //gives back the number of Accu necessary
 static int CompareVarNames(char* txt, int i1, int i2);
 static int InsertMacros();
@@ -141,6 +146,13 @@ float DimYmin=-5;
 float DimYmax=5;
 float IncX=0.05;
 float StepX=1;
+
+//3D plots
+float zp=15,yp=7,xp=7;//should be proportional to the 3D dimension box
+float Xmin3d=-3,Xmax3d=3,Ymin3d=-3,Ymax3d=3,Zmin3d=-3,Zmax3d=3;
+float Inc3D=0.2;
+
+
 //Drawing Zone Square
 float DrawZoneX=75;
 float DrawZoneY=90;
@@ -151,8 +163,8 @@ float DrawZoneW=85;
 static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListSize
 static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_Fact_";
 //									                        	1	  2     3    4   5    6     7      8
-static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_";
-//																0       1      2       3   4    5    6    7      8       9        10
+static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_box3d_";
+//																0       1      2       3   4    5    6    7      8       9        10               11
 //char blabli[]= { {'hello'},0x1,{'hi'},0x0};
 
 //--------------labels
@@ -239,6 +251,7 @@ int DispBrk=0;
 int BreakActivated=1; //init brk activated, -1 for disabled at start
 int StopProgram=0;
 //----------------------------------
+
 
 int VersionDemo=0; //0=version normale, 1=version demo
 
@@ -687,7 +700,7 @@ static Boolean MainFormHandleEvent(EventPtr event) {
 				if( testProg == 0 ) StrPrintF(ValueStr, "gfxdim -3,3,-10,3,0.1\nx=-3\nTrf(x)= -x + 1\nTrf(x)= -x^2 + 1\n");
 				if( testProg == 1 ) StrPrintF(ValueStr, "gfxdim -3,3,-1,3,0.1\nx=-3\nh=0.0001\nF1(x)=cos(x)\nTrf(x)=(F1(x+h)-F1(x-h))/(2*h)\n");
 				if( testProg == 2 ) StrPrintF(ValueStr, "gfxdim -6,6,-1.2,1.2,0.1\nx=-6\nTrf(x)=sin (x)\nTrf(x)= cos (x) \n");
-				if( testProg == 3 ) StrPrintF(ValueStr, "gfxdim -1,10,-5,5,0.1\nx=0.0001\nTrf(x)=ln (x)\n");
+				if( testProg == 3 ) StrPrintF(ValueStr, "gfxdim -6,5,-5,5,0.2\nbox3d 4,4,4,0.4\nx=4\ny=-3\nTrf(x,y)=2-3*exp(0-(x^2+y^2)/2)*cos(0.5*(x^2+y^2))\n");
 				if( testProg == 4 ) StrPrintF(ValueStr, "gfxdim -3,3,-0.1,0.1,0.05\nx=-3\nTrf(x)=x - ln ( exp (x) ) \n");
 				if( testProg == 5 ) StrPrintF(ValueStr, "gfxdim -3,3,-5,5,0.1\nx=-3\nTrf(x)=ln ( exp (x) )-1 \n");
 				if( testProg == 6 ) StrPrintF(ValueStr, "gfxdim -15,15,0.995,1.005,0.1\nx=-15\nTrf(x)= (cos(x))^2+(sin(x))^2\n");
@@ -1221,10 +1234,19 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 	NbrCodesCopied=FillCodeOfOneLine(CodeList,CodeOfOneLine);//transfert one line 
 	CodeListOffsetSave=CodeListOffset;
 
-	if (CodeOfOneLine[0].code == 11 && CodeOfOneLine[0].value == -1){//Trf(x)=...
+	if (CodeOfOneLine[0].code == 11 && CodeOfOneLine[0].value == -1 && CodeOfOneLine[3].code == 7){//Trf(x)=...
 			if (CodeOfOneLine[2].code != 9 ){ PrintCmd("Error syntaxe Trf(x)\n");goto EndMain;}
 
 			if (TraceFunctionOneVariable(CodeOfOneLine,CodeList) !=0 ) goto EndMain;
+			if (StopProgram==1) goto EndMain;
+			CodeListOffset=CodeListOffsetSave+NbrCodesCopied;
+			OffsetLine=0; ColorGraph++; 
+			goto AlmostEndLoop;
+		}
+	if (CodeOfOneLine[0].code == 11 && CodeOfOneLine[0].value == -1 && CodeOfOneLine[3].code == 10){//Trf(x)=...
+			if (CodeOfOneLine[2].code != 9 && CodeOfOneLine[4].code != 9){ PrintCmd("Error syntaxe Trf(x)\n");goto EndMain;}
+
+			if (TraceFunctionTwoVariable(CodeOfOneLine,CodeList) !=0 ) goto EndMain;
 			if (StopProgram==1) goto EndMain;
 			CodeListOffset=CodeListOffsetSave+NbrCodesCopied;
 			OffsetLine=0; ColorGraph++; 
@@ -1358,6 +1380,31 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 					goto EndMain;
 				}
 		}
+		
+		
+//-------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==11) {//box3d x,y,z,d
+				if (debug > 0 ) printf("box3d\n");
+				OkLine=0;
+				if (CodeOfOneLine[OffsetLine+1].code==1 && CodeOfOneLine[OffsetLine+2].code==10) {
+	 				if (CodeOfOneLine[OffsetLine+3].code==1 && CodeOfOneLine[OffsetLine+4].code==10) {
+						if (CodeOfOneLine[OffsetLine+5].code==1 && CodeOfOneLine[OffsetLine+6].code==10) {
+							if (CodeOfOneLine[OffsetLine+7].code==1 ){
+								Xmax3d=CodeOfOneLine[OffsetLine+1].value;
+								Ymax3d=CodeOfOneLine[OffsetLine+3].value;
+								Zmax3d=CodeOfOneLine[OffsetLine+5].value;
+								Inc3D=CodeOfOneLine[OffsetLine+7].value;
+								Zmin3d=-Zmax3d;
+								Ymin3d=-Ymax3d;
+								Xmin3d=-Xmax3d;								
+								OkLine=1;
+							}
+						}
+					}
+				}
+				if (OkLine!=1) {printf("Error Syntaxe gfxdim:\n");goto EndMain;}
+		}
+		
 //-------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==9) {//gfxdim x1,x2,y1,y2
 				if (debug > 0 ) printf("gfxdim\n");
@@ -1433,6 +1480,63 @@ EndMain:
 }
 
  
+ static int TraceFunctionTwoVariable(floactet *CodeOfOneLine, floactet *CodeList)
+ {
+	int N_AccuX,N_AccuY;
+	float x,y,z;
+	float X0,X1,Y0,Y1;
+	int FunctionStart,Error;
+	float dx,dy;
+			dx=Inc3D;
+			dy=dx;
+			N_AccuX=(int)CodeOfOneLine[2].value;
+			N_AccuY=(int)CodeOfOneLine[4].value;
+			CodeListOffset=CodeListOffset+7;
+			FillCodeOfOneLine(CodeList,CodeOfOneLine);//transfert one line 
+			x=Accu[N_AccuX];
+			y=Accu[N_AccuY];
+			if (X0<Xmin3d || X0>Xmax3d) X0=Xmax3d; //box3d
+			if (Y0<Ymin3d || Y0>Ymax3d) Y0=Ymin3d;
+			FunctionStart=0;
+			if (GridSet == 0){
+			RctSetRectangle(rP,DrawZoneX,DrawZoneY,DrawZoneW,DrawZoneH);
+			WinEraseRectangle(rP,0);
+			Tracer3DAxis();
+			}
+			
+		LoopDrawFunction:
+				
+				ReplaceAccuByValue(CodeOfOneLine);
+				Error = TreatParenthese(CodeOfOneLine);													//parenthese
+				if (Error != 0) {StrPrintF (s,"Parenthese Error = %d \n", Error);PrintCmd(s);goto EndFunctionFX;}
+				if(StopProgram == 1) goto EndFunctionFX;
+				Error = CalculOneLine(CodeOfOneLine); //Calcul
+				if(StopProgram == 1) goto EndFunctionFX;
+				if (Error != 0) {StrPrintF (s,"Error = %d \n", Error);PrintCmd(s);goto EndFunctionFX;}
+				if (CodeOfOneLine[0].code != 1) {PrintCmd("Error finishing function line\n");goto EndFunctionFX;}
+				z=CodeOfOneLine[0].value;
+				FillCodeOfOneLine(CodeList,CodeOfOneLine);//transfert one line 
+				if (FunctionStart==0) {
+					X0=y-x*(xp-y)/zp;
+					Y0=z-x*(yp-z)/zp;
+					FunctionStart=1;
+				}else{
+					X1=y-x*(xp-y)/zp;
+					Y1=z-x*(yp-z)/zp;
+					if (Y0>DimYmin && Y0 < DimYmax && Y1>DimYmin && Y1 < DimYmax) 
+						if (X0>DimXmin && X0 < DimXmax && X1>DimXmin && X1 < DimXmax) 
+							Line(X0,Y0,X1,Y1,ColorGraph);
+							X0=X1;Y0=Y1;
+						}
+				y=y+dy;Accu[N_AccuY]=y;
+				if (y < Ymax3d) goto LoopDrawFunction;
+				y=Ymin3d;x=x-dx;Accu[N_AccuX]=x;Accu[N_AccuY]=y; FunctionStart =0; 
+				if (x > Xmin3d) goto LoopDrawFunction;
+
+		EndFunctionFX:
+			return Error;
+}
+
  
  static int CheckLabelDef(char *InstructionLine,int Size){
 	int i=0;
@@ -2227,6 +2331,48 @@ static void ShowKeyPad(){
 				}
 	}
 	
+
+	
+static void Tracer3DAxis(){
+	RGBColorType MyPenColor,OldPenColor,OldPenColor2;
+	int k;
+	float color=0;
+
+	GridSet=1;
+	HideKeyPad(); //hide the keypad
+	
+	MyPenColor.r = 0;
+	MyPenColor.g = 0; 
+	MyPenColor.b = 0;
+	
+	WinSetForeColorRGB(&MyPenColor,&OldPenColor);
+	
+//	Line(0,0,Dx(Xmax3d,0,0),Dy(Xmax3d,0,0),color);
+//	Line(0,0,Dx(0,Ymax3d,0),Dy(0,Ymax3d,0),color);
+//	Line(0,0,Dx(0,0,Zmax3d),Dy(0,0,Zmax3d),color);
+
+	Line(Dx(Xmin3d,Ymin3d,0),Dy(Xmin3d,Ymin3d,0),Dx(Xmax3d,Ymin3d,0),Dy(Xmax3d,Ymin3d,0),color);
+	Line(Dx(Xmin3d,Ymin3d,Zmax3d),Dy(Xmin3d,Ymin3d,Zmax3d),Dx(Xmax3d,Ymin3d,Zmax3d),Dy(Xmax3d,Ymin3d,Zmax3d),color);
+
+	Line(Dx(Xmin3d,Ymin3d,0),Dy(Xmin3d,Ymin3d,0),Dx(Xmin3d,Ymax3d,0),Dy(Xmin3d,Ymax3d,0),color);
+	Line(Dx(Xmin3d,Ymin3d,Zmax3d),Dy(Xmin3d,Ymin3d,Zmax3d),Dx(Xmin3d,Ymax3d,Zmax3d),Dy(Xmin3d,Ymax3d,Zmax3d),color);
+	Line(Dx(Xmin3d,Ymin3d,0),Dy(Xmin3d,Ymin3d,0),Dx(Xmin3d,Ymin3d,Zmax3d),Dy(Xmin3d,Ymin3d,Zmax3d),color);
+	Line(Dx(Xmin3d,Ymax3d,0),Dy(Xmin3d,Ymax3d,0),Dx(Xmin3d,Ymax3d,Zmax3d),Dy(Xmin3d,Ymax3d,Zmax3d),color);
+
+	Line(Dx(Xmax3d,Ymin3d,0),Dy(Xmax3d,Ymin3d,0),Dx(Xmax3d,Ymax3d,0),Dy(Xmax3d,Ymax3d,0),color);
+	//Line(Dx(Xmax3d,Ymin3d,Zmax3d),Dy(Xmax3d,Ymin3d,Zmax3d),Dx(Xmax3d,Ymax3d,Zmax3d),Dy(Xmax3d,Ymax3d,Zmax3d),color);
+	Line(Dx(Xmax3d,Ymin3d,0),Dy(Xmax3d,Ymin3d,0),Dx(Xmax3d,Ymin3d,Zmax3d),Dy(Xmax3d,Ymin3d,Zmax3d),color);
+	//Line(Dx(Xmax3d,Ymax3d,0),Dy(Xmax3d,Ymax3d,0),Dx(Xmax3d,Ymax3d,Zmax3d),Dy(Xmax3d,Ymax3d,Zmax3d),color);
+	Line(Dx(Xmin3d,Ymax3d,0),Dy(Xmin3d,Ymax3d,0),Dx(Xmax3d,Ymax3d,0),Dy(Xmax3d,Ymax3d,0),color);
+
+}
+	
+static float Dx(float x, float y, float z){
+	return y-x*(xp-y)/zp;
+}
+static float Dy(float x, float y, float z){
+	return 	z-x*(yp-z)/zp;
+}	
 	
 static void TracerAxis(int centerx,int centery,int width, int height){
 	RGBColorType MyPenColor,OldPenColor,OldPenColor2;
