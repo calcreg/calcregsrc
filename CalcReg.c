@@ -1,8 +1,11 @@
--/* ---------------------------
-- * CalcReg.c
-- * Bussy-Socrate Regan
-- * 2012
-------------------------------*/
+/* ---------------------------
+ * CalcReg.c
+ * Bussy-Socrate Regan
+ * 2012
+-----------------------------*/
+
+#define NAME1_SECTION __attribute__ ( (section("Seg1")))
+//#define NAME2_SECTION __attribute__ ( (section("Seg2")))
 
 /* Includes */
 #include <PalmOS.h>			// system
@@ -17,8 +20,10 @@
 //for the memoresource
 #include "MemoDB.h" //You will need to get it from Palm OS SDK
 #include "MemoMain.h" //You will need to get it from Palm OS SDK
+//#include "RMath.lib"
+#include <PalmOSGlue.h>
 
-#define printf Printf     //Force Redefinition because it already exists in StdIOPalm.h but doesn't suit here
+//#define printf Printf     //Force Redefinition because it already exists in StdIOPalm.h but doesn't suit here
 #define	ChartRectLeft		30
 #define	ChartRectTop		52
 #define	ChartRectWidth		100
@@ -39,6 +44,7 @@
 typedef struct floactet{
 	unsigned char code;
 	float value;
+	float cmplx;
 }floactet;
 
 typedef struct lbl{
@@ -51,27 +57,32 @@ typedef struct var{//takes the name of the Accu
 	int adr;	// Adr of the variable in the WholeMnemoProg list
 }var;
 
+typedef struct NbrCmplx{
+	float value;
+	float cmplx;
+}NbrCmplx;
+	
 
-//MathFunctions
-extern int MathError; //send back a code if error in the Math functions. MathError=1 out of range exponential
-//-------exponential----------  MathError=1 out of range exponential
-//#define SizeMathExpTable 800
-//extern float MathExpTable[SizeMathExpTable];
-
-//-------logarithme neperien----------  MathError=2 out of range Ln
-//#define SizeMathLnTable 102 //Not below 100 !
-//extern float MathLnTable[SizeMathLnTable];
-
-//-------logarithme Square root----------  MathError=2 out of range Ln
-
-extern void PrintCmd(char * s);
-extern void DeleteCmd();
-extern void Printf(const char * format, ...); //should be Printf and not printf otherwise it conflicts with StdIOPalm.h definition
+extern void PrintCmd(char * s) NAME1_SECTION;
+extern void DeleteCmd() NAME1_SECTION;
+extern void Printf(const char * format, ...)NAME1_SECTION; //should be Printf and not printf otherwise it conflicts with StdIOPalm.h definition
 //static float sscanf (char *StringNbr,char* s, float *Nbr);
-extern float Rsscanf (char *StringNbr,char *s ,float *Nbr);
-extern float TenPower (int exp);
-extern char Octet(char * );
-extern void SetUpTextProg();
+extern float Rsscanf (char *StringNbr,char *s ,float *Nbr)NAME1_SECTION;
+extern float TenPower (int exp)NAME1_SECTION;
+extern char Octet(char * )NAME1_SECTION;
+extern void SetUpTextProg()NAME1_SECTION;
+extern void HideKeyPad()NAME1_SECTION;
+extern void ShowKeyPad()NAME1_SECTION;
+extern void DeleteProg()NAME1_SECTION;
+extern void PrintProg(char * s)NAME1_SECTION;
+
+
+// Graphic functions
+extern void TracerAxis(int centerx,int centery,int width, int height)NAME1_SECTION;//color 0black 1red 2green 3blue
+extern void Tracer3DAxis()NAME1_SECTION;
+extern float Dx(float x, float y, float z)NAME1_SECTION;
+extern float Dy(float x, float y, float z)NAME1_SECTION;
+extern void Line(float x1, float y1, float x2, float y2, float Color)NAME1_SECTION; //line x1,y1,x2,y2,color 0black 1red 2green 3blue
 
 
 // Prototypes ajout menu
@@ -81,8 +92,9 @@ static Boolean doMainMenu (FormPtr pForm, UInt16 command);
 
 //Ajout memo
 
-static void SaveProg();
-static void LoadProg();
+extern void SaveProg()NAME1_SECTION;
+extern void LoadProg()NAME1_SECTION;
+extern void RemoveComments(char *txt)NAME1_SECTION;
 
 static void StartApplication(void);
 static void StopApplication(void);
@@ -91,12 +103,16 @@ static void EventLoop(void);
 static void EnableControl (FormPtr Frm, Word ControlID, Boolean State);
 static void EnableField (FormPtr Frm, Word FieldID, Boolean State);
 static void Execute(void);
-static void PrintProg(char * s);
-static void Rprintf(float x);
+extern void Rprintf(float x);//write and enter
+static void RCPrintf(floactet F);//write complexe number Re+Im*i
+extern void REPrintf(float x);//write nbr but don't enter
+extern void decode(char *txt, int size);
 
 int CheckForBreak();
 static int ConvertMnemo(char * MnemoList, floactet * CodeList); //convert Mnemo in codes
 static int CalculOneLine(floactet *CodeList);
+static int CalculOneLineReel(floactet *CodeList)NAME1_SECTION;
+static int CalculOneLineComplexe(floactet *CodeList)NAME1_SECTION;
 static int TreatParenthese(floactet *CodeList);
 static int FillCodeOfOneLine(floactet *CodeList,floactet *CodeOfOneLine);
 static int HandleInstructions(char *MnemoList,int i);
@@ -104,54 +120,61 @@ static void RemoveSpace(char * InstructionLine, int Size);
 static void ReplaceAccuByValue(floactet *CodeOfOneLine);
 static int CheckLabelDef(char *InstructionLine, int Size);
 static signed int TestForLabels(char *WholeProg, int index);
-int CalcMain();
-static void TracerAxis(int centerx,int centery,int width, int height);//color 0black 1red 2green 3blue
+static  int CalcMain(floactet *CodeList);
+static int TraceFunctionOneVariable(floactet *CodeOfOneLine, floactet *CodeList);
+static int TraceFunctionTwoVariable(floactet *CodeOfOneLine, floactet *CodeList)NAME1_SECTION;
 static int CreateVariablesList(char *progtext); //gives back the number of Accu necessary
-static int CompareVarNames(char* txt, int i1, int i2);
-static int InsertMacros();
+extern int CompareVarNames(char* txt, int i1, int i2)NAME1_SECTION;
+
+
 static void ChangeNamesToAccu(char *text);
 static int ReplaceInMnemoProg(char *ttr,char *str);
 MemPtr Allocmem(int size, MemHandle *memHdle);
-static void DeleteProg();
-static void HideKeyPad();
-static void ShowKeyPad();
 int CalculFAccu(floactet *CodeOfOneLine,int NbrFAccu,float ValX, float *ResultY);
-
-// Graphic functions
-static void Line(float x1, float y1, float x2, float y2, float Color); //line x1,y1,x2,y2,color 0black 1red 2green 3blue
+int CalculFAccuComplexe(floactet *CodeListLine, int i,float *val, float *val_cmplx);
 
 //Math functions
-extern void CreateMathExpTable();
-extern float RMath_exp(float x);//value on range: exp(-+SizeMathExpTable) 
-extern float RMath_ln(float x);//value on range: x>0 
-extern void GetMantisseExponant(float x, int *exponant, float*mantisse);
-extern float RMath_sqrt(float x);
-extern float RMath_sin(float x);
-extern float RMath_cos(float x);
-extern float  RMath_tan(float x);
-extern float fact(int k);
-extern float RMath_Pow(float x, float a);
-extern void LowPerformance();
+extern void CreateMathExpTable()NAME1_SECTION;
+extern float RMath_exp(float x)NAME1_SECTION;//value on range: exp(-+SizeMathExpTable) 
+extern float RMath_ln(float x)NAME1_SECTION;//value on range: x>0
+extern void GetMantisseExponant(float x, int *exponant, float*mantisse)NAME1_SECTION;
+extern float RMath_sqrt(float x)NAME1_SECTION;
+extern float RMath_sin(float x)NAME1_SECTION;
+extern float RMath_cos(float x)NAME1_SECTION;
+extern float  RMath_tan(float x)NAME1_SECTION;
+extern float fact(int k)NAME1_SECTION;
+extern float RMath_Pow(float x, float a)NAME1_SECTION;
+extern void LowPerformance()NAME1_SECTION;
+extern float  RMath_ch(float x)NAME1_SECTION;
+extern float  RMath_sh(float x)NAME1_SECTION;
+extern float  RMath_th(float x)NAME1_SECTION;
 
 //Math dimensions of the square for drawing (the hardware display is rearranged afterwards)
-float DimXmin=-3;
-float DimXmax=3;
-float DimYmin=-5;
-float DimYmax=5;
-float IncX=0.05;
-float StepX=1;
+extern float DimXmin;
+extern float DimXmax;
+extern float DimYmin;
+extern float DimYmax;
+extern float IncX;
+extern float StepX;
+
+//3D plots
+extern float zp,yp,xp,zp0,yp0,xp0;//should be proportional to the 3D dimension box
+extern float Xmin3d,Xmax3d,Ymin3d,Ymax3d,Zmin3d,Zmax3d;
+extern float Inc3D;
+
+
 //Drawing Zone Square
-float DrawZoneX=75;
-float DrawZoneY=90;
-float DrawZoneH=70;
-float DrawZoneW=85;
+extern float DrawZoneX;
+extern float DrawZoneY;
+extern float DrawZoneH;
+extern float DrawZoneW;
 
 #define OpListSize 9 // add the size if add new instructions or special codes in OperatorList
 static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListSize
-static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_Fact_";
-//									                        	1	  2     3    4   5    6     7      8
-static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_";
-//																0       1      2       3   4    5    6    7      8       9        10
+static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_";
+//									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15
+static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_box3d_";
+//																0       1      2       3   4    5    6    7      8       9        10               11
 //char blabli[]= { {'hello'},0x1,{'hi'},0x0};
 
 //--------------labels
@@ -162,7 +185,7 @@ struct var *AccuVar; //Pointer on Locked struct var memory for variables affecta
 MemHandle MemHdle; //Handler on the structure AccuVar opened in CountNbrVar
 int NbrMaxAccu; //Max number of accu (a bit absolete but used in the program somewhere)
 MemHandle MemHdleAccu; //Handler on the Accu list of float
-float *Accu;
+NbrCmplx *Accu;
 int NbrVar; //total exact number of accu allocated
 //int MaxSizeVarName=50; //Size maximum for variable names
 #define MaxSizeVarName 50
@@ -203,21 +226,35 @@ Code 13 = Maths Functions [13][Code Function]
 														cos = 5
 														sin = 6
 														tan = 7
-														x^a = 8
-														
+														fact= 8
+														x^a = 9
+														ch   =10
+														sh   =11
+														th   =12
+														Re  =13
+														Im  =14
+														Int  = 15
 Code 14 = FAccu Functions [14][Nbr of the FAccu Function defined in line FAccu[NbrFAccu] ]
-Code 15 = FAccu Functions [15][Nbr n FAccu] [9][var X Accu] [1][a]] Derivative dFn(a)/d(x)
+Code ?? = FAccu Functions [15][Nbr n FAccu] [9][var X Accu] [1][a]] Derivative dFn(a)/d(x)
 														 */
 
 //loop:
 //grid Step	//StepX and Y for grid
 //gfxdim xmin,xmax,ymin,ymax,IncX //Gfx definition
+//box3d wx,wy,wz,Inc3d  wx width of the box from -wx to wx Xmax3d = wx =-Xmin3d
 //F1(x) = 8*x+2
 //Tf(x)= exp(x+1)+F1(x)
 //line x1,y1,x2,y2,color
 //x<10=>goto loop
 //
 
+//MathFunctions
+extern int MathError; //send back a code if error in the Math functions. MathError=1 out of range exponential
+//----------------------------------
+
+int VDemo = 0; //0=version normale, 1=version demo
+
+//----------------------------------
 
 int debug=0; // possible values 0=nodebug, 1, 2
 int NbrMaxOperationOnLine=100;//in CodeList
@@ -226,23 +263,26 @@ int CodeListOffsetMax; //Gets the number of coding instructions
 int CodeListOffset;
 //int CodeOneLineSizeMax=100; //=NbrMaxOperationOnLine!!
 #define CodeOneLineSizeMax 100
+int AllowComplexe=-1; //Allow complexe number calculation
+floactet LastValCalculated;
+
 int Iindex,NmaxLbl, TestCondition;
 char s[CharMaxOneLine]; //for the info printings.
 int displayval=0;
 RectangleType rP[1];
-int testProg=0; //change the test prog given
+static int testProg=0; //change the test prog given
 int StartInfoDone=0;
 int GfxBigDisplay=-1;
 int CountBreak=0; //init
 int DispBrk=0;
 int BreakActivated=1; //init brk activated, -1 for disabled at start
 int StopProgram=0;
-//----------------------------------
-
-int VersionDemo=0; //0=version normale, 1=version demo
 
 //----------------------------------
-float LastValCalculated=0;
+
+int bla = 0; //This position is troublesome
+
+//----------------------------------
 
 //static char Copyright[] ="Contact me for job or Bug Reports.\nNot to be sold. Read manual Before Use.\nHome made math library. Use at your own risks and enjoy!";
 //static char Copyright2[]="\n Copyright 2012\n    CalcReg v1.2\n   by Regan B.S.\n\n";
@@ -282,8 +322,7 @@ static char CodedWord[]={0xab,0x96,0x9b,0xde,0x97,0x9a,0x9b,0x90,0x8a,0x94,
 0x91,0x9f,0xcf,0x9b,0x83,0x93,0x8d,0x8d,0x95,0xa9,0xfb,0xb5,0xaf,0xf3,0xa1,0xab,
 0xbe,0xa4,0xae,0xb7,0xb1,0xd6,0xd2,0xd4,0x96,0xb5};
 
-
-unsigned char Manual[]="This is a DEMO of CalcReg. CalcReg is a Powerful Tool which accompanies you in your scientific"
+unsigned char Manual[]="This is a DEMO of CalcReg.CalcReg is a Powerful Tool which accompanies you in your scientific"
 		" work. It has the usual basic functions of any calculator and handles the "
 		"trigonometric and exponential, logarithm functions.\n"
 		"The limitation of this DEMO is that the trigonometric, the logarithmic "
@@ -306,54 +345,35 @@ unsigned char Manual[]="This is a DEMO of CalcReg. CalcReg is a Powerful Tool wh
 		"grid a\n*Draws the grid, a=Width graduation.\n\n"
 		"gfxdim x1,x2,y1,y2,deltaX\n*Grid dimension with delta X the "
 		"step of calculation of the functions.\n\n"
-		"Trf(x)= cos(x)+c\n*Draws the function x->f(x), use x or t or any variable.\n\n"
+		"box3d wx,wy,wz,Inc3d\n*Box 3d dimension for the 3d plot of f(x,y). dim box is "
+		"from -wx to wx, -wy to wy and -wz to wz. Inc3d is the delta x and y for plotting. "
+		"For 3d plotting you will need to adjust first the gfxdim to set an overall window "
+		"larger than the 3d margins plot, and then setup the box3d for your needs.\n\n"
+		"Trf(x)= (..function(x) here..)\n*Draws the function x->f(x), use x or t or any variable. "
+		"The drawing of a function of 2 variables Trf(x,y) is supported.\n\n"
 		"x<y => goto lbl\n*If x<y then goes to the label "
 		"'lbl:'. The label is set by 'name:' \n\n"
-		"print x   *Prints the value of var x\n"
+		"print x \n  *Prints the value of var x\n\n"
+		"-Math Functions Supported-\n\n"
+		"+ - * / cos sin tan ch sh th x^a sqrt ln exp \n\n"
+		"The algorithm searches first the variables x, y,... Followed by the parentheses. "
+		"Then the Functions Fn(x) and at last the numerical priorities * /  then + and - at the end." 
 		" Enjoy. If you have any question send email to: palmreg@venez.fr\n";
+
+
 										
 //UInt16 SerIORef;
 
 
-	
-void decode(char *txt, int size){
-int i;
-	for (i=0;i<size;i++){
-	//printf("%c",(unsigned char)(255*RMath_cos((float)i/100 ))^txt[i] );
-	txt[i]=(unsigned char)(255*RMath_cos((float)i/100 ))^txt[i] ;
+void RCPrintf(floactet F){
+	REPrintf(F.value);
+	if (F.cmplx>=0) PrintCmd("+");
+	else PrintCmd("  ");
+	REPrintf(F.cmplx);
+	PrintCmd("*i\n");
 	}
-}
 
-void Rprintf(float x){
-	int Pres=3; int i;
-	char s2[20],*c;
-	float X,alfa,precision;
-	int n=0; int opp=0;
-	int Ndigit=3;
-	if (x==0) {PrintCmd(" 0\n"); return;}
-	precision=TenPower(-Pres);
-	if (x<0) {x=-x;opp=1;}	
-	X=x;
-	if(x*10==x) {PrintCmd("Nbr Out Of Range");return ;}
-	if (x>=precision)while(X>=precision){X=X/10; n++;}
-	if (x< precision){while(X<=precision){X=X*10; n--;}n++;}
 
-	alfa=x*TenPower(Ndigit+Pres+1-n);
-	if ( (alfa*10-10*(UInt32)alfa) >5) alfa=alfa+1; //if ... to truncate properly.
-
-	StrPrintF(s,"%d",(UInt)alfa);
-	
-	if (opp==1) s2[0]=Octet("-"); 
-	else s2[0]=Octet(" ");
-	s2[1]=s[0];	s2[2]=Octet(".");
-	i=1;
-	while(s[i]!=0){s2[i+2]=s[i]; i++;}
-	s2[i+2]=Octet("E");
-	c=s2+i+3;
-	if(alfa>=10000) n++;
-	StrPrintF(c,"%d\n",n-(Pres+1));
-	PrintCmd(s2);
-	}
 	
 //------------------------------------------------
 static void Execute(void) {
@@ -374,7 +394,7 @@ static void Execute(void) {
 	GridSet=0;//init
 	ColorGraph=1;
 	StepX=1;
-		
+	
 	FieldProgTextPtr=(FieldPtr)(FrmGetObjectPtr(Frm, (FrmGetObjectIndex(Frm, fld_prog))));
 	progtext = FldGetTextPtr(FieldProgTextPtr); //return the ptr to a the lock memory string of the fld_prog
 	if (progtext==0) {PrintCmd("Keep clicking  on Test <tst> to view different program examples...\nclick <exec> to launch them.");return;}
@@ -390,13 +410,13 @@ static void Execute(void) {
 
 	//Copy of the text from the field to WholeMnemoProg
 	StrCopy(WholeMnemoProg,progtext);
-
+	RemoveComments(WholeMnemoProg);
 //	Nm=InsertMacros();//returns number of macros
 //	if (debug >0 ){	StrPrintF(s,"%d macros found\n",Nm); PrintCmd(s);}
 
-	
+
 	NbrVar=CreateVariablesList(WholeMnemoProg);//gives back the exact number of Accu necessary, MemHdle is created, think to free memory at the end
-	MemHdleAccu = MemHandleNew(NbrVar*sizeof(Accu) +1);//size+1 if overflow possibilities
+	MemHdleAccu = MemHandleNew(NbrVar*sizeof(struct NbrCmplx) +1);//size+1 if overflow possibilities
 	if( MemHdleAccu == 0){PrintCmd("can't allocate Accu!");return;}
     Accu = MemHandleLock(MemHdleAccu);
 	NbrMaxAccu = NbrVar;
@@ -409,21 +429,26 @@ static void Execute(void) {
 		// pour réorganiser la liste.
 		MathError=0;//init
 		StopProgram=0;//init outing calculation
-		if (VersionDemo !=0 ) LowPerformance(); //diminish peformance in Demo version
+		if (VDemo != 0) {StrPrintF(s,"Version %d\n",VDemo); PrintCmd(s); 
+												if (VDemo == 1) {PrintCmd("Demo\n");LowPerformance();}
+												}
 
 		MemHdleCodeList = MemHandleNew(CodeListSize*sizeof(struct floactet));
 		if( MemHdleCodeList == 0){PrintCmd("Can't allocate CodeList!");goto FreeMemories;}
 		CodeList = MemHandleLock(MemHdleCodeList);
 
-		
+		LastValCalculated.value=0; //init
+		LastValCalculated.cmplx=0;//init
+
 //------------ start -------
 	CalcMain(CodeList);
 //------------ end --------
 
 		MemHandleFree(MemHdleCodeList);
 	
-	if (displayval==1) Rprintf(LastValCalculated); //display for little digital calculator
-
+	if (displayval==1) {if (AllowComplexe !=1)Rprintf(LastValCalculated.value); //display for little digital calculator
+									else RCPrintf(LastValCalculated);}
+	
 	if (BreakActivated ==1)WinDrawChars("       ",7,BrkX,BrkY); //clean the "brk area"
 	if (Keypad==0) FrmShowObject(Frm, (FrmGetObjectIndex(Frm, btnkeypad)));
 	
@@ -438,7 +463,6 @@ FreeMemories:
 }
 
 
-	
 static void ChangeNamesToAccu(char *text){
 	//This subroutine changes the names of the var into Accu A0,A1,...
 	static char str[MaxSizeVarName];//It would be fool to write a variable bigger than 50 characters
@@ -512,6 +536,7 @@ static void ChangeNamesToAccu(char *text){
 	}
 
 
+
  static int CreateVariablesList(char *text){
   //The first use of this function is to enumerate the Accu var. The spaces don't need to be removed
   //before. But for the exact acquisition of the name of the var, the spaces must be taken away.
@@ -560,45 +585,7 @@ static void ChangeNamesToAccu(char *text){
 	return N_Accu;
  }
  
- static int CompareVarNames(char* txt, int i1, int i2){ //returns 0 if same
-	//in text txt, compare different places txt(i1)=txti2?
-	// Here we neglect the spaces:   ('n am e= '  is equal to ' name=')
-	int size;
-
-	if (i2 < 0 ) return 1;
-	size = StrLen(txt);
-	while  ( i1 < size && i2 < size ){
-		while ( txt[i1] == Octet(" ")  && i1 < size ) i1++; //remove the spaces 
-		while ( txt[i2] == Octet(" ")  && i2 < size ) i2++; 
-		if ( (i1 < size) && (i2 < size) ){
-			if ( txt[i1] != txt[i2] ) {return 1;} // not same
-			if (txt[i1]== Octet("=") && txt[i2]== Octet("=") )return 0;
-		}
-	i1++; i2++;		
-	}
-	return 1; //if it returns from here, it means something went unexpectadly
-}
  
- 
-static void PrintProg(char * s){
-	FormPtr 	Frm;
-	FieldPtr 	FldPtr;
-	
-	Frm = FrmGetFormPtr(frmadc16);
-	FldPtr = (FieldPtr)(FrmGetObjectPtr(Frm, (FrmGetObjectIndex(Frm, fld_prog))));
-	FldInsert(FldPtr, s, StrLen(s));
-}
-
-
-static void DeleteProg(){
-	FormPtr 	Frm;
-	FieldPtr 	FldPtr;
-	
-	Frm = FrmGetFormPtr(frmadc16);
-	FldPtr = (FieldPtr)(FrmGetObjectPtr(Frm, (FrmGetObjectIndex(Frm, fld_prog))));
-	FldDelete(FldPtr, 0, 5000);//Size of the cmd 5000 maxchars see CalcReg.rcp
-}
-
 
  
 static void EnableControl (FormPtr Frm, Word ControlID, Boolean State) {
@@ -684,15 +671,15 @@ static Boolean MainFormHandleEvent(EventPtr event) {
    			case btntest:
 				DeleteProg();
 				if( testProg == 0 ) StrPrintF(ValueStr, "gfxdim -3,3,-10,3,0.1\nx=-3\nTrf(x)= -x + 1\nTrf(x)= -x^2 + 1\n");
-				if( testProg == 1 ) StrPrintF(ValueStr, "gfxdim -3,3,-1,3,0.1\nx=-3\nh=0.0001\nF1(x)=cos(x)\nTrf(x)=(F1(x+h)-F1(x-h))/(2*h)\n");
-				if( testProg == 2 ) StrPrintF(ValueStr, "gfxdim -6,6,-1.2,1.2,0.1\nx=-6\nTrf(x)=sin (x)\nTrf(x)= cos (x) \n");
-				if( testProg == 3 ) StrPrintF(ValueStr, "gfxdim -1,10,-5,5,0.1\nx=0.0001\nTrf(x)=ln (x)\n");
-				if( testProg == 4 ) StrPrintF(ValueStr, "gfxdim -3,3,-0.1,0.1,0.05\nx=-3\nTrf(x)=x - ln ( exp (x) ) \n");
-				if( testProg == 5 ) StrPrintF(ValueStr, "gfxdim -3,3,-5,5,0.1\nx=-3\nTrf(x)=ln ( exp (x) )-1 \n");
-				if( testProg == 6 ) StrPrintF(ValueStr, "gfxdim -15,15,0.995,1.005,0.1\nx=-15\nTrf(x)= (cos(x))^2+(sin(x))^2\n");
-				if( testProg == 7 ) StrPrintF(ValueStr, "gfxdim -2,2,-1.1,1.1,0.05\nx=-3\nTrf(x)= exp(0-x^2)*cos(10*x)\n");
-				if( testProg == 8 ) StrPrintF(ValueStr, "grid3\ngfxdim -10,10,-10,10,0.05\nx0=-10\ny0=exp x0\nloop:\nx1=x0+1\ny1=exp x1\nline x0,y0,x1,y1,3\nx0=x1\ny0=y1\nx0<10=>goto loop\n");
-				if( testProg == 9 ) StrPrintF(ValueStr, "gfxdim -3,3,-1,3,0.1\nx=-3\nTrf(x)=x*exp (x)\nTrf(x)= x + 1\nTrf(x)= 1- 2*x\n");
+				if( testProg == 1 ) StrPrintF(ValueStr, "gfxdim -6,6,-1.2,1.2,0.1\nx=-6\nTrf(x)=sin (x)\nTrf(x)= cos (x) \n");
+				if( testProg == 2 ) StrPrintF(ValueStr, "gfxdim -7,5,-4,5,0.2\nbox3d 4,4,4,0.2\nx=4\ny=-4\nTrf(x,y)=3-3*exp(-(x^2+y^2)/2.5)*cos(0.9*(x^2+y^2))\n");
+				if( testProg == 3 ) StrPrintF(ValueStr, "gfxdim -3,3,-0.1,0.1,0.05\nx=-3\nTrf(x)=x - ln ( exp (x) ) \n");
+				if( testProg == 4 ) StrPrintF(ValueStr, "gfxdim -3,3,-5,5,0.1\nx=-3\nTrf(x)=ln ( exp (x) )-1 \n");
+				if( testProg == 5 ) StrPrintF(ValueStr, "gfxdim -15,15,0.995,1.005,0.1\nx=-15\nTrf(x)= (cos(x))^2+(sin(x))^2\n");
+				if( testProg == 6 ) StrPrintF(ValueStr, "gfxdim -2,2,-1.1,1.1,0.05\nx=-3\nTrf(x)= exp(0-x^2)*cos(10*x)\n");
+				if( testProg == 7 ) StrPrintF(ValueStr, "gfxdim -10,10,-10,10,0.05\ngrid3\nx0=-10\ny0=exp x0\nloop:\nx1=x0+1\ny1=exp x1\nline x0,y0,x1,y1,3\nx0=x1\ny0=y1\nx0<10=>goto loop\n");
+				if( testProg == 8 ) StrPrintF(ValueStr, "gfxdim -3,3,-1,3,0.1\nx=-3\nTrf(x)=x*exp (x)\nTrf(x)= x + 1\nTrf(x)= 1- 2*x\n");
+				if( testProg == 9 ) StrPrintF(ValueStr, "x=-3+i\nF1(x)=x\nprint Re(F1(x))\nprint Im(F1(x))\nF1(x)\n");
 				PrintProg(ValueStr);
 				SetUpTextProg(0);
 				testProg++;
@@ -913,6 +900,12 @@ static void EventLoop(void) {
 		PrintCmd("Break disabled\n");
 		}
 		break;
+	case cmplxMenuId:
+		AllowComplexe = AllowComplexe *(-1);
+		if (AllowComplexe ==-1) {PrintCmd("Complexe calculation OFF\n");}
+		if (AllowComplexe ==1) {PrintCmd("Complexe calculation ON\n");}
+		break;
+
 	case TGfxDspMenuId:
 		GfxBigDisplay=-GfxBigDisplay;
 		if (GfxBigDisplay==1){
@@ -929,79 +922,32 @@ static void EventLoop(void) {
 		PrintCmd("Small Display\n");
 		}
 		break;
+	case PolPltMenuId:
+		DeleteProg();
+		PrintProg("//Polar plot r(t)=F2(t)\n\nF2(t)=(4*cos(t/4))^2\npi=3.1415927\nAngleTot=4*pi\ninc=0.07\ngfxdim -20,20,-15,15,0.1\n\n\n\ngrid3\nt=0\ny0=0\ny=0\nF0(y)=F2(y)*cos(y)\nF1(y)=F2(y)*sin(y)\nloop:\ny=y0+pi*inc\nline F0(y0),F1(y0),F0(y),F1(y),3\ny0=y\ny0<AngleTot =>goto loop\n\n");
+		SetUpTextProg(0);
+		break;
+	case DerivateMenuId:
+		DeleteProg();
+		PrintProg("//Derivation of F1(x)\n\nF1(x)=cos(x)\n//h smaller the better\nh=0.0001\nx=-3\ngfxdim -3,3,-2,2,0.1\nF2(x)=(F1(x+h)-F1(x-h))/(2*h)\nTrf(x)=F2(x)\npi=3.1415927\na=pi/2\n//get derivative in a\n//print F2(a)\n");
+		SetUpTextProg(0);
+		break;
+	case ThreeDpltMenuId:
+		DeleteProg();
+		PrintProg("//3D plot of f(x,y)\n//x>0 at start !\ngfxdim -7,5,-4,5,0.2\nbox3d 4,4,4,0.4\nx=4\ny=-4\nTrf(x,y)=3*exp(-(x^2+y^2)/2.5)*cos(0.5*(x^2+y^2))\n");
+		SetUpTextProg(0);
+		break;
+	case FFTMenuId:
+		DeleteProg();
+		PrintProg("F1(x)=2*x^2+0.5\ngfxdim -0.1,8,-5,5,0.1\ngrid 1\nc=0\npi=3.1415927\na=-pi\nb=pi\nn=10\nk=0\nS=0\nY0=0\nloop:\nx=a+k*(b-a)/n\nS=cos(c*x)*F1(x)+S\nk=k+1\nk<n=>goto loop\nY1= S*2/n\nline c,0,c,Y1,1\nY0=Y1\nc=c+0.1\nk=0\nS=0\nc<8=>goto loop\n");
+		SetUpTextProg(0);
+		break;
 
     }
     return handled;
 }
 
 
-
-static void SaveProg()
-{
-	Err Error;
-	LocalID dbID;
-	DmOpenRef dbP;
-	UInt16 index=0;
-	MemHandle h=0;
-	MemPtr Mem,progtext;    
-	FieldPtr FieldProgTextPtr;
-	FormPtr Frm;
-
-	Frm = FrmGetFormPtr(frmadc16);
-
-		dbID = DmFindDatabase(0,"CalcProg");
-	if (dbID == 0) {
-		PrintCmd("Creation of Database\n");
-		Error=DmCreateDatabase(0,"CalcProg",'CReg','TEXt',false);
-		if (Error == dmErrAlreadyExists ) {PrintCmd("StrangeError!");return;}
-		dbID = DmFindDatabase(0,"CalcProg");
-		if (dbID == 0) {PrintCmd("Should be opened now, but isn't!\n");return;}
-		}
-		dbP = DmOpenDatabase(0,dbID,dmModeWrite);
-		//PrintCmd("DataBase opened in write mode\n");
-		FieldProgTextPtr=(FieldPtr)(FrmGetObjectPtr(Frm, (FrmGetObjectIndex(Frm, fld_prog))));
-		progtext = FldGetTextPtr(FieldProgTextPtr); //return the ptr to a the lock memory string of the fld_prog
-		index=0;
-		h = DmQueryRecord (dbP,0);
-		if (h!=0) {DmRemoveRecord(dbP,0);}
-		h = DmNewRecord (dbP, &index, StrLen(progtext) );
-		if( h !=0 )Mem = MemHandleLock(h);
-		else {PrintCmd("Can't save prog");return;}
-
-		DmWrite(Mem,0,progtext,StrLen(progtext) );
-		if (Error == errNone) PrintCmd ("done\n");
-		else PrintCmd("an error occured while writing\n");
-
-		MemHandleUnlock(h);
-		DmReleaseRecord(dbP, index, true);
-
-		DmCloseDatabase(dbP);	
-
-}
-		
-
-static void LoadProg()
-{
-	LocalID dbID;
-	DmOpenRef dbP;
-	UInt16 index=0;
-	MemHandle h;
-	MemPtr Mem;
-	dbID = DmFindDatabase(0,"CalcProg");
-	if (dbID == 0) {PrintCmd("No user prog found\n");return;}
-	dbP = DmOpenDatabase(0,dbID,dmModeReadOnly);
-	h = DmQueryRecord (dbP,index);
-	if( h !=0 )Mem = MemHandleLock(h);
-	else {PrintCmd("Cannot Load prog\n");return;}
-	SetUpTextProg();
-	if (FrmAlert (MergeText) == 0){DeleteProg();}
-	PrintProg(Mem);
-	MemHandleUnlock(h);
-	DmReleaseRecord(dbP, index, true);
-	DmCloseDatabase(dbP);	
-
-
-}
 
 
 /*
@@ -1034,7 +980,7 @@ static void StartApplication(void) {
 
 	decode(Copyright,sizeof(Copyright) );//decodage du text cripté
 	decode (CodedWord,sizeof(CodedWord) );//decodage du text cripté
-
+	testProg=0;
 	/*
 	Error = SysLibFind("Serial Library", &SerIORef);
 	if (Error) {
@@ -1055,6 +1001,7 @@ static void StartApplication(void) {
 DWord PilotMain(Word cmd, Ptr cmdPBP, Word launchFlags) {
 	if (cmd == sysAppLaunchCmdNormalLaunch)	{
 
+		if (bla==5)return 0;
 		StartApplication();
     	EventLoop();
 		StopApplication();
@@ -1087,17 +1034,17 @@ Boolean pPenDown;
 
 
 // --------------------CalcMain--------------------
- int CalcMain(floactet *CodeList){
+static  int CalcMain(floactet *CodeList){
  
 //char *InstructionLine = "1+(1+(-1+3*2)-1)*2\n";
 static char InstructionLine[LineSize];
-int Error,i,a,b,nbrLine,NbrCodesCopied,OffsetLine;
+int Error,i,a,b,c,nbrLine,NbrCodesCopied,OffsetLine;
 int ProgSize;
 
 //floactet CodeList[CodeListSize]; //Whole List 
 static floactet CodeOfOneLine[CodeOneLineSizeMax]; //Code Of One Line
 
-int AccIndex,lblptr, istrt,pos,offsetP,k,K,OkLine,N_AccuX,FunctionStart,CodeListOffsetSave;
+int AccIndex,lblptr, istrt,pos,offsetP,k,K,OkLine,CodeListOffsetSave;
 float x1,y1,x2,y2,color;
 float X0,X1,Y0,Y1,Y;
 
@@ -1161,6 +1108,7 @@ float X0,X1,Y0,Y1,Y;
 	}
 	CodeList[CodeListOffsetMax].code=0;   //Signal for End of Program
 	CodeList[CodeListOffsetMax].value=-1;
+	CodeList[CodeListOffsetMax].cmplx=0;
 
 
 	if (debug >0) {	PrintCmd("ok\n");StrPrintF(s," %d Lines,  %d codes  \n", nbrLine,CodeListOffsetMax);
@@ -1172,20 +1120,21 @@ float X0,X1,Y0,Y1,Y;
 	for  (i=0;i<CodeListOffsetMax;i++){//Transfert the numbers of the labels to the pointed CodeList value
 			if (CodeList[i].code==12){; //Code for Labels
 				pos=CodeList[i].value;
-			CodeList[i].value=Labels[pos].n;
+			CodeList[i].value=Labels[pos].n;CodeList[i].cmplx=0;
 	}}
 	if (debug > 0 || debug == -1) {
-		PrintCmd ("-------------------\n");
+		PrintCmd ("----------------\n");
 		for  (i=0;i<CodeListOffsetMax;i++){
 			a=CodeList[i].code;
 			b=CodeList[i].value;
-			StrPrintF(s, " %d [%d] [%d]\n",i,a,b);PrintCmd(s);
+			c=CodeList[i].cmplx;
+			StrPrintF(s, " %d [%d][%d][%d]\n",i,a,b,c);PrintCmd(s);
 			}
-		PrintCmd ("-------------------\n");
+		PrintCmd ("----------------\n");
 		}
 
 
-	if (debug > 0) PrintCmd("LAUNCHING... \n");
+	if (debug > 0) PrintCmd("LAUNCHING...\n");
 	CodeListOffset=0;
 	OffsetLine=0;
 	CountBreak=0; //init
@@ -1208,41 +1157,21 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 	
 	NbrCodesCopied=FillCodeOfOneLine(CodeList,CodeOfOneLine);//transfert one line 
 	CodeListOffsetSave=CodeListOffset;
-	
-	if (CodeOfOneLine[0].code == 11 && CodeOfOneLine[0].value == -1){//Trf(x)=...
+
+	if (CodeOfOneLine[0].code == 11 && CodeOfOneLine[0].value == -1 && CodeOfOneLine[3].code == 7){//Trf(x)=...
 			if (CodeOfOneLine[2].code != 9 ){ PrintCmd("Error syntaxe Trf(x)\n");goto EndMain;}
-			N_AccuX=(int)CodeOfOneLine[2].value;
-			//CodeOfOneLine=CodeOfOneLine+5*sizeof(struct floactet);
-			CodeListOffset=CodeListOffset+5;
-			FillCodeOfOneLine(CodeList,CodeOfOneLine);//transfert one line 
-			X0=Accu[N_AccuX];
-			if (X0<DimXmin || X0>DimXmax) X0=DimXmin;
-			FunctionStart=0;
-			if (GridSet == 0){
-			RctSetRectangle(rP,DrawZoneX,DrawZoneY,DrawZoneW,DrawZoneH);
-			WinEraseRectangle(rP,0);
-			TracerAxis(DrawZoneX+DrawZoneW/2,DrawZoneY+DrawZoneH/2,DrawZoneW, DrawZoneH);
-			}
-			
-		LoopDrawFunction:
-				
-				ReplaceAccuByValue(CodeOfOneLine);
-				Error = TreatParenthese(CodeOfOneLine);													//parenthese
-				if (Error != 0) {StrPrintF (s,"Parenthese Error = %d \n", Error);PrintCmd(s);goto EndMain;}
-				if(StopProgram == 1) goto EndMain;
-				Error = CalculOneLine(CodeOfOneLine); //Calcul
-				if(StopProgram == 1) goto EndMain;
-				if (Error != 0) {StrPrintF (s,"Error = %d \n", Error);PrintCmd(s);goto EndMain;}
-				if (CodeOfOneLine[0].code != 1) {PrintCmd("Error finishing function line\n");goto EndMain;}
-				Y=CodeOfOneLine[0].value;
-				FillCodeOfOneLine(CodeList,CodeOfOneLine);//transfert one line 
-				if (FunctionStart==0) {Y0=Y; X1=X0+IncX;Accu[N_AccuX]=X1; FunctionStart=1;}
-				else{Y1=Y;
-					if (Y0>DimYmin && Y0 < DimYmax) Line(X0,Y0,X1,Y1,ColorGraph);
-					X0=X1;Y0=Y1;X1=X0+IncX;Accu[N_AccuX]=X1;}
-				if ( X1>DimXmax) goto EndFunctionFX;
-				goto LoopDrawFunction;
-		EndFunctionFX:
+
+			if (TraceFunctionOneVariable(CodeOfOneLine,CodeList) !=0 ) goto EndMain;
+			if (StopProgram==1) goto EndMain;
+			CodeListOffset=CodeListOffsetSave+NbrCodesCopied;
+			OffsetLine=0; ColorGraph++; 
+			goto AlmostEndLoop;
+		}
+	if (CodeOfOneLine[0].code == 11 && CodeOfOneLine[0].value == -1 && CodeOfOneLine[3].code == 10){//Trf(x)=...
+			if (CodeOfOneLine[2].code != 9 && CodeOfOneLine[4].code != 9){ PrintCmd("Error syntaxe Trf(x)\n");goto EndMain;}
+
+			if (TraceFunctionTwoVariable(CodeOfOneLine,CodeList) !=0 ) goto EndMain;
+			if (StopProgram==1) goto EndMain;
 			CodeListOffset=CodeListOffsetSave+NbrCodesCopied;
 			OffsetLine=0; ColorGraph++; 
 			goto AlmostEndLoop;
@@ -1270,10 +1199,10 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 	Error = TreatParenthese(CodeOfOneLine);													//parenthese
 	if (Error != 0) {StrPrintF(s,"Parenthese Error = %d \n", Error);PrintCmd(s);goto EndMain;}
 	if(StopProgram == 1) goto EndMain;
-
 	Error = CalculOneLine(CodeOfOneLine); //Calcul
 	if (Error != 0) {StrPrintF(s,"Error = %d \n", Error); PrintCmd (s); goto EndMain;}
 	if(StopProgram == 1) goto EndMain;
+
 
 		// => Instruction
 		if (debug > 1){StrPrintF(s,"Test condition= %d\n",TestCondition);PrintCmd(s);}
@@ -1290,8 +1219,12 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 	if (CodeOfOneLine[OffsetLine].code==9) {//Accu detected
 		AccIndex = CodeOfOneLine[OffsetLine].value;
 		if (CodeOfOneLine[OffsetLine+1].code == 8 ){ 
-				if (CodeOfOneLine[OffsetLine+2].code == 1){ Accu[AccIndex]=CodeOfOneLine[OffsetLine+2].value;
-			if (debug >0 ) {StrPrintF(s,"A%d =",AccIndex);PrintCmd(s);Rprintf( Accu[AccIndex]);}  
+				if (CodeOfOneLine[OffsetLine+2].code == 1){ 
+					Accu[AccIndex].value=CodeOfOneLine[OffsetLine+2].value;
+					Accu[AccIndex].cmplx=CodeOfOneLine[OffsetLine+2].cmplx;
+			if (debug >0 ) {
+				StrPrintF(s,"A%d =",AccIndex);PrintCmd(s);
+				Rprintf(Accu[AccIndex].value);PrintCmd("+i*");Rprintf(Accu[AccIndex].cmplx);}  
 			}else PrintCmd("Error Accu, Missing value to load!\n");
 		}}
 
@@ -1371,13 +1304,41 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 				}
 				
 				if (OkLine!=1) {
-					printf("Error Syntaxe Line:\n");
+					PrintCmd("Error Syntaxe Line:\n");
 					goto EndMain;
 				}
 		}
+		
+		
+//-------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==11) {//box3d x,y,z,d
+				if (debug > 0 ) PrintCmd("box3d\n");
+				OkLine=0;
+				if (CodeOfOneLine[OffsetLine+1].code==1 && CodeOfOneLine[OffsetLine+2].code==10) {
+	 				if (CodeOfOneLine[OffsetLine+3].code==1 && CodeOfOneLine[OffsetLine+4].code==10) {
+						if (CodeOfOneLine[OffsetLine+5].code==1 && CodeOfOneLine[OffsetLine+6].code==10) {
+							if (CodeOfOneLine[OffsetLine+7].code==1 ){
+								Xmax3d=CodeOfOneLine[OffsetLine+1].value;
+								Ymax3d=CodeOfOneLine[OffsetLine+3].value;
+								Zmax3d=CodeOfOneLine[OffsetLine+5].value;
+								Inc3D=CodeOfOneLine[OffsetLine+7].value;
+								Zmin3d=-Zmax3d;
+								Ymin3d=-Ymax3d;
+								Xmin3d=-Xmax3d;
+								zp=Zmax3d/4*zp0;
+								yp=Ymax3d/4*yp0;
+								xp=Xmax3d/4*xp0;
+								OkLine=1;
+							}
+						}
+					}
+				}
+				if (OkLine!=1) {PrintCmd("Error Syntaxe gfxdim:\n");goto EndMain;}
+		}
+		
 //-------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==9) {//gfxdim x1,x2,y1,y2
-				if (debug > 0 ) printf("gfxdim\n");
+				if (debug > 0 ) PrintCmd("gfxdim\n");
 				OkLine=0;
 				if (CodeOfOneLine[OffsetLine+1].code==1 && CodeOfOneLine[OffsetLine+2].code==10) {
 	 				if (CodeOfOneLine[OffsetLine+3].code==1 && CodeOfOneLine[OffsetLine+4].code==10) {
@@ -1394,7 +1355,7 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 						}
 					}
 				}
-				if (OkLine!=1) {printf("Error Syntaxe gfxdim:\n");goto EndMain;}
+				if (OkLine!=1) {PrintCmd("Error Syntaxe gfxdim:\n");goto EndMain;}
 		}
 //---------------
 	OutInstructionHere:// ----- here is the end of the check for instructions
@@ -1403,11 +1364,150 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 		OffsetLine=0; //Important before going back from here to LoopCodeProgram	
 		if  (CodeList[CodeListOffset].code!=0 && CodeListOffset<CodeListOffsetMax ) goto LoopCodeProgram;
 	//-------------------------------------------------------EndLoop---------------------------------
-	if (debug > 0 )printf("End\n");
+	if (debug > 0 )PrintCmd("End\n");
 EndMain:
 	return (0);
  }
 
+ 
+ static int TraceFunctionOneVariable(floactet *CodeOfOneLine, floactet *CodeList)
+ {
+	int N_AccuX;
+	float x1,y1,x2,y2,color;
+	float X0,X1,Y0,Y1,Y;
+	int FunctionStart,Error;
+			N_AccuX=(int)CodeOfOneLine[2].value;
+			CodeListOffset=CodeListOffset+5;
+			FillCodeOfOneLine(CodeList,CodeOfOneLine);//transfert one line 
+			X0=Accu[N_AccuX].value;
+			if (X0<DimXmin || X0>DimXmax) X0=DimXmin;
+			FunctionStart=0;
+			if (GridSet == 0){
+			RctSetRectangle(rP,DrawZoneX,DrawZoneY,DrawZoneW,DrawZoneH);
+			WinEraseRectangle(rP,0);
+			TracerAxis(DrawZoneX+DrawZoneW/2,DrawZoneY+DrawZoneH/2,DrawZoneW, DrawZoneH);
+			}
+			
+		LoopDrawFunction:
+				
+				ReplaceAccuByValue(CodeOfOneLine);
+				Error = TreatParenthese(CodeOfOneLine);													//parenthese
+				if (Error != 0) {StrPrintF (s,"Parenthese Error = %d \n", Error);PrintCmd(s);goto EndFunctionFX;}
+				if(StopProgram == 1) goto EndFunctionFX;
+				Error = CalculOneLine(CodeOfOneLine); //Calcul
+				if(StopProgram == 1) goto EndFunctionFX;
+				if (Error != 0) {StrPrintF (s,"Error = %d \n", Error);PrintCmd(s);goto EndFunctionFX;}
+				if (CodeOfOneLine[0].code != 1) {PrintCmd("Error finishing function line\n");goto EndFunctionFX;}
+				Y=CodeOfOneLine[0].value;
+				FillCodeOfOneLine(CodeList,CodeOfOneLine);//transfert one line 
+				if (FunctionStart==0) {Y0=Y; X1=X0+IncX;Accu[N_AccuX].value=X1; FunctionStart=1;}
+				else{Y1=Y;
+					if (Y0>DimYmin && Y0 < DimYmax) Line(X0,Y0,X1,Y1,ColorGraph);
+					X0=X1;Y0=Y1;X1=X0+IncX;Accu[N_AccuX].value=X1;}
+				if ( X1>DimXmax) goto EndFunctionFX;
+				goto LoopDrawFunction;
+		EndFunctionFX:
+			return Error;
+}
+
+ 
+ static int TraceFunctionTwoVariable(floactet *CodeOfOneLine, floactet *CodeList)
+ {
+	int N_AccuX,N_AccuY;
+	float x,y,z;
+	float X0,X1,Y0,Y1;
+	int FunctionStart,Error;
+	float dx,dy;
+	typedef struct BandDrawn{
+		float max;
+		float min;
+		}BandDrawn;
+	MemHandle hb;
+	BandDrawn *band;
+	int a,b,st,N,i,init;
+
+		N=DrawZoneW/2;//(DimXmax-DimXmin)/Inc3D;
+		hb = MemHandleNew (N*sizeof(struct BandDrawn) );
+		if (hb !=0) band=MemHandleLock(hb);
+		else {PrintCmd("BandDrawn Allocation failed\n");goto OutFunction;}
+		init =0;
+		dx=Inc3D;
+			st=0;
+			dy=dx;
+			N_AccuX=(int)CodeOfOneLine[2].value;
+			N_AccuY=(int)CodeOfOneLine[4].value;
+			CodeListOffset=CodeListOffset+7;
+			FillCodeOfOneLine(CodeList,CodeOfOneLine);//transfert one line 
+			x=Accu[N_AccuX].value;
+			y=Accu[N_AccuY].value;
+			if (X0<Xmin3d || X0>Xmax3d) X0=Xmax3d; //box3d
+			if (Y0<Ymin3d || Y0>Ymax3d) Y0=Ymin3d;
+			FunctionStart=0;
+			if (GridSet == 0){
+			RctSetRectangle(rP,DrawZoneX,DrawZoneY,DrawZoneW,DrawZoneH);
+			WinEraseRectangle(rP,0);
+			Tracer3DAxis();
+			}
+			
+		LoopDrawFunction:
+				
+				ReplaceAccuByValue(CodeOfOneLine);
+				Error = TreatParenthese(CodeOfOneLine);													//parenthese
+				if (Error != 0) {StrPrintF (s,"Parenthese Error = %d \n", Error);PrintCmd(s);goto EndFunctionFX;}
+				if(StopProgram == 1) goto EndFunctionFX;
+				Error = CalculOneLine(CodeOfOneLine); //Calcul
+				if(StopProgram == 1) goto EndFunctionFX;
+				if (Error != 0) {StrPrintF (s,"Error = %d \n", Error);PrintCmd(s);goto EndFunctionFX;}
+				if (CodeOfOneLine[0].code != 1) {PrintCmd("Error finishing function line\n");goto EndFunctionFX;}
+				z=CodeOfOneLine[0].value;
+				FillCodeOfOneLine(CodeList,CodeOfOneLine);//transfert one line 
+
+
+				if (FunctionStart==0) {
+					X0=y-x*(xp-y)/zp;
+					Y0=z-x*(yp-z)/zp;
+					FunctionStart=1;
+					if (init==0)for (i=0;i<N;i++) {band[i].min =Y0;band[i].max =Y0;}
+				}else{
+					X1=y-x*(xp-y)/zp;
+					Y1=z-x*(yp-z)/zp;
+					if (Y0>DimYmin && Y0 < DimYmax && Y1>DimYmin && Y1 < DimYmax) 
+						if (X0>DimXmin && X0 < DimXmax && X1>DimXmin && X1 < DimXmax) {
+
+							a=(int)( (X1-DimXmin)*N /(DimXmax-DimXmin) );
+							b=(int)( (X1+Inc3D-DimXmin)*N /(DimXmax-DimXmin) );
+							if (init==0){Line(X0,Y0,X1,Y1,ColorGraph);
+								for (i=a; i <= b; i++){band[i].min =Y0; band[i].max =Y0;}
+							}else{
+							if ( band[a].min>= Y1 || Y1>=band[a].max ){//outside band
+							 Line(X0,Y0,X1,Y1,ColorGraph);
+							if (band[a].min >Y1) band[a].min=Y1;
+							if (band[a].max <Y1) band[a].max=Y1;
+							//Line(X1,band[a].min,X1,band[a].max,ColorGraph+2);
+							}else {
+									if ( band[a].min>= Y0){
+									Line( (band[a].min*(X1-X0)-Y0*X1+X0*Y1)/(Y1-Y0),band[a].min,X0,Y0,ColorGraph);
+									}
+									if ( band[a].max<= Y0){
+									Line( (band[a].max*(X1-X0)-Y0*X1+X0*Y1)/(Y1-Y0),band[a].max,X0,Y0,ColorGraph);
+									}
+							}
+						}
+						X0=X1;Y0=Y1;
+						}}
+				y=y+dy;Accu[N_AccuY].value=y;
+				if (y < Ymax3d) goto LoopDrawFunction;
+				init=1; //first line done
+				y=Ymin3d;x=x-dx;Accu[N_AccuX].value=x;Accu[N_AccuY].value=y; FunctionStart =0; 
+				if (x > Xmin3d) goto LoopDrawFunction;
+
+		EndFunctionFX:
+			MemHandleFree(hb);
+		OutFunction:
+			return Error;
+}
+
+ 
  static int CheckLabelDef(char *InstructionLine,int Size){
 	int i=0;
 	while (i<Size && InstructionLine[i] != 0x0A){
@@ -1472,6 +1572,7 @@ int StrtStr,EndStr,p,a,BackFromAccu=0;
 		if (debug > 0) {StrPrintF(s,"Instruction Nbr = %d \n",InstructionNumber); PrintCmd(s);}
 		if (InstructionNumber !=0) {CodeList[CodeListOffset].code=11;	//General Code Instruction
 		CodeList[CodeListOffset].value=InstructionNumber;
+		CodeList[CodeListOffset].cmplx=0;
 		CodeListOffset++;
 		}
 	}
@@ -1479,10 +1580,11 @@ int StrtStr,EndStr,p,a,BackFromAccu=0;
 	//--- check label ---
 		LabelNbrFound=TestForLabels(MnemoListLine,i);
 		if (LabelNbrFound != -1 ) {
-			if (debug >1) printf("label [%d] \n",LabelNbrFound);
+			if (debug >1) {StrPrintF(s,"label [%d] \n",LabelNbrFound);PrintCmd(s);}
 			i=Iindex;
 			CodeList[CodeListOffset].code=12; //Code for Labels
 			CodeList[CodeListOffset].value=LabelNbrFound ;// Later put Labels[LabelNbrFound].n;
+			CodeList[CodeListOffset].cmplx=0 ;
 			CodeListOffset++;
 			//if (debug >1) printf("pointer on character [%c]\n",MnemoListLine[i]);
 			}	
@@ -1494,11 +1596,20 @@ int StrtStr,EndStr,p,a,BackFromAccu=0;
 		if (CodeListOffset > CodeListSize-10) {PrintCmd("Exceeding Memory size for Codes --- contact Regan B.S. by email for info");return 5;} 
 		if (MnemoListLine[i]==Octet("\n") )  {Out=1; goto EndNbr;} //endLine or No data
 		if (MnemoListLine[i]==OperatorList[4] ) { //"("
+			if (opposite == 1) {
+			CodeList[CodeListOffset].code = 1;
+			CodeList[CodeListOffset].value = 0;
+			CodeList[CodeListOffset].cmplx = 0;
+			CodeList[CodeListOffset+1].code = 3;
+			CodeList[CodeListOffset+1].value = 0;
+			CodeList[CodeListOffset+1].cmplx = 0;
+			CodeListOffset=CodeListOffset+2; opposite=0;} //we've put 0-(
 			i++; ///parenthese left is special, there can be a sign behind like in (-1+2)
 			CodeList[CodeListOffset].code = 6; 
-			CodeList[CodeListOffset].value = 0; // Floating point Value is set
-
-			if (debug > 0) printf("Parenthese on\n");
+			CodeList[CodeListOffset].value = 0; 
+			CodeList[CodeListOffset].cmplx = 0;
+		
+			if (debug > 0) PrintCmd("Parenthese on\n");
 			CodeListOffset++;
 			goto StartConvList;
 			}//End Coding Parenthese 
@@ -1512,29 +1623,37 @@ int StrtStr,EndStr,p,a,BackFromAccu=0;
 		FunctionNumber=HandleMathFunctions(MnemoListLine,Iindex);
 		i=Iindex;
 		if (FunctionNumber == 4 ){
-			if (debug > 0) printf("Spécial Trf(x) \n");
+			if (debug > 0) PrintCmd("Spécial Trf(x) \n");
 			CodeList[CodeListOffset].code=11;	//Change it to instruction for spécial use
 			CodeList[CodeListOffset].value=-1; 	//Specific coding for display function f(x)= ...
+			CodeList[CodeListOffset].cmplx=0;
 			CodeListOffset++;
 			goto StartConvList;
 			//the function f(x)= is actually using the job of the math function for coding it becomes an instruction with coding [11] [-1]
 		}//end coding search function
 
 		if (FunctionNumber !=0) {
-			if (opposite == 1) {CodeList[CodeListOffset].code = 1;CodeList[CodeListOffset].value = 0;
-			CodeList[CodeListOffset+1].code = 3;CodeList[CodeListOffset+1].value = 0;
+			if (opposite == 1) {
+			CodeList[CodeListOffset].code = 1;
+			CodeList[CodeListOffset].value = 0;
+			CodeList[CodeListOffset].cmplx = 0;
+			CodeList[CodeListOffset+1].code = 3;
+			CodeList[CodeListOffset+1].value = 0;
+			CodeList[CodeListOffset+1].cmplx = 0;
 			CodeListOffset=CodeListOffset+2; opposite=0;} //we've put 0-function
-			if (debug > 0) printf("Function coded\n");
+			if (debug > 0) PrintCmd("Function coded\n");
 			CodeList[CodeListOffset].code=13;	//General Code Math Instruction
 			CodeList[CodeListOffset].value=FunctionNumber; 	//Specific code (example: exp=1, ln =2,...)
+			CodeList[CodeListOffset].cmplx=0;
 			CodeListOffset++;
 			goto StartConvList;
 		}//end coding search function
 
 		if (MnemoListLine[i]==Octet("^") )  {
-			if (debug > 0 ) printf("found ^");
+			if (debug > 0 ) PrintCmd("found ^");
 				CodeList[CodeListOffset].code = 13; //It is a function
 				CodeList[CodeListOffset].value = 9;  // Coding for "^"
+				CodeList[CodeListOffset].cmplx = 0;
 				CodeListOffset++;
 				i++; // then i points next number
 				CodeListOffsetMax=CodeListOffset;
@@ -1556,14 +1675,16 @@ int StrtStr,EndStr,p,a,BackFromAccu=0;
 				val= MnemoListLine[i]-Octet("0");
 				if (val >= 0 && val <=9) Nbr = Codage*Nbr + val ; 
 				else {
-					if (opposite == 1) {CodeList[CodeListOffset].code = 1;CodeList[CodeListOffset].value = 0;
-					CodeList[CodeListOffset+1].code = 3;CodeList[CodeListOffset+1].value = 0;
+					if (opposite == 1) {
+					CodeList[CodeListOffset].code = 1;CodeList[CodeListOffset].value = 0;CodeList[CodeListOffset].cmplx = 0;
+					CodeList[CodeListOffset+1].code = 3;CodeList[CodeListOffset+1].value = 0;CodeList[CodeListOffset+1].cmplx = 0;
 					CodeListOffset=CodeListOffset+2; opposite=0;} //we've put 0-Accu
 					CodeList[CodeListOffset].code = 14; //code of the FAccu
 					CodeList[CodeListOffset].value = Nbr;
+					CodeList[CodeListOffset].cmplx = 0;
 					//Recording the place in FAccu[Nbr]
 					if ((int)Nbr < NbrMaxFAccu) FAccu[(int)Nbr]=CodeListOffset;//integer
-					if (Nbr>NbrMaxFAccu) {printf("FAccu Nbr too big\n");ErrorCode=4; goto EndConvert;} 
+					if (Nbr>NbrMaxFAccu) {PrintCmd("FAccu Nbr too big\n");ErrorCode=4; goto EndConvert;} 
 					if (debug > 0) {StrPrintF(s,"FAccu F%d at place %d\n",(int) Nbr,CodeListOffset);PrintCmd(s);}
 					CodeListOffset++;
 					Nbr=0;// Reinitialise  Nbr for next value
@@ -1598,7 +1719,8 @@ int StrtStr,EndStr,p,a,BackFromAccu=0;
 					CodeListOffset=CodeListOffset+2; opposite=0;} //we've put 0-Accu
 					CodeList[CodeListOffset].code = 9; //code of the Accu
 					CodeList[CodeListOffset].value = Nbr; 
-					if (Nbr>NbrMaxAccu) {printf("Accu number too big\n");ErrorCode=4; goto EndConvert;} 
+					CodeList[CodeListOffset].cmplx = 0; 
+					if (Nbr>NbrMaxAccu) {PrintCmd("Accu number too big\n");ErrorCode=4; goto EndConvert;} 
 					CodeListOffset++;
 					if (debug > 0) {StrPrintF(s,"Accu A%d \n",(int) Nbr);PrintCmd(s);}
 					Nbr=0;// Reinitialise  Nbr for next value
@@ -1622,6 +1744,7 @@ int StrtStr,EndStr,p,a,BackFromAccu=0;
 			if (MnemoListLine[i] == ')') {
 			CodeList[CodeListOffset].code = 7;       // +2  so that "+"=2
 			CodeList[CodeListOffset].value = 0; 			// No values for operators
+			CodeList[CodeListOffset].cmplx = 0; 			// No values for operators
 			CodeListOffset++;
 			i++; // then i points next number
 			CodeListOffsetMax=CodeListOffset;
@@ -1634,6 +1757,7 @@ int StrtStr,EndStr,p,a,BackFromAccu=0;
 			if (MnemoListLine[i] == OperatorList[iop]) {
 			CodeList[CodeListOffset].code = iop+2;       // +2  so that "+"=2
 			CodeList[CodeListOffset].value = 0; 			// No values for operators
+			CodeList[CodeListOffset].cmplx = 0; 			// No values for operators
 			CodeListOffset++;
 			i++; // then i points next number
 			CodeListOffsetMax=CodeListOffset;
@@ -1641,6 +1765,17 @@ int StrtStr,EndStr,p,a,BackFromAccu=0;
 			}
 		}
 			
+			
+		// i Complexe handling here
+		if (AllowComplexe == 1 && MnemoListLine[i]=='i'){
+			CodeList[CodeListOffset].code = 1;       // It is a number: code=0
+			CodeList[CodeListOffset].value = 0; 
+			CodeList[CodeListOffset].cmplx = 1;// The initial point of complexe numbers! 			
+			CodeListOffset++;i++;
+			CodeListOffsetMax=CodeListOffset;
+			goto StartConvList;
+		}
+		
 		//--- Number Handling here --- 
 	HandleNbr:
 	
@@ -1662,6 +1797,7 @@ int StrtStr,EndStr,p,a,BackFromAccu=0;
 		if (debug>0) {StrPrintF(s,"StringNbr= [%s], Nbr = %d\n",StringNbr,(int)Nbr);PrintCmd(s);}
 		CodeList[CodeListOffset].code = 1;       // It is a number: code=0
 		CodeList[CodeListOffset].value = Nbr; // Floating point Value is set
+		CodeList[CodeListOffset].cmplx = 0; // Floating point Value is set
 		CodeListOffset++;
 		Nbr=0;// Reinitialise  Nbr for next value
 
@@ -1684,6 +1820,7 @@ int StrtStr,EndStr,p,a,BackFromAccu=0;
 			if (MnemoListLine[i]==Octet(",") && MnemoListLine[i+1]==Octet("-"))  {
 			CodeList[CodeListOffset].code =  10;       // "," coding
 			CodeList[CodeListOffset].value = 0; 
+			CodeList[CodeListOffset].cmplx = 0; 
 			CodeListOffset++;
 			CodeListOffsetMax=CodeListOffset;
 			i++;
@@ -1699,9 +1836,10 @@ int StrtStr,EndStr,p,a,BackFromAccu=0;
 
 			
 		if (MnemoListLine[i]==Octet("^") )  {
-			if (debug > 0 ) printf("found ^");
+			if (debug > 0 ) PrintCmd("found ^");
 				CodeList[CodeListOffset].code = 13; //It is a function
 				CodeList[CodeListOffset].value = 9;  // Coding for "^"
+				CodeList[CodeListOffset].cmplx = 0;  // Coding for "^"
 				CodeListOffset++;
 				i++; // then i points next number
 				CodeListOffsetMax=CodeListOffset;
@@ -1717,6 +1855,7 @@ int StrtStr,EndStr,p,a,BackFromAccu=0;
 	OpCodeFound:
 			CodeList[CodeListOffset].code = iop+2;       // +2  so that "+"=2
 			CodeList[CodeListOffset].value = 0; 			// No values for operators
+			CodeList[CodeListOffset].cmplx = 0; 			// No values for operators
 			CodeListOffset++;
 			i++; // then i points next number
 			CodeListOffsetMax=CodeListOffset;
@@ -1833,15 +1972,17 @@ StartFill:
 	if (CodeList[CodeListOffset+i].code==0 ) goto EndFill;
 	goto StartFill;
 EndFill:
-	CodeOfOneLine[i].code=0xFF; CodeOfOneLine[i].value=0;
+	CodeOfOneLine[i].code=0xFF; CodeOfOneLine[i].value=0;CodeOfOneLine[i].cmplx=0;
 	return (i+1);
 }
 
 static void ReplaceAccuByValue(floactet *CodeOfOneLine){
 int i=0;
 int iptrstrt=0,Aind;
+signed int Ainteg=-1;
 
   while (i<NbrMaxOperationOnLine ){ 
+	if (CodeOfOneLine[i].code==13 && CodeOfOneLine[i].value==15) Ainteg=CodeOfOneLine[i+8].value;//Int(a,b,h,x) detection to avoid change of x in value we'll need the nbr of the accu, but change the others
 	if (CodeOfOneLine[i].code==0xFF) goto StartOperate;
 	if (CodeOfOneLine[i].code == 8) {iptrstrt=i+1; goto StartOperate;} //8 is the code of "="
 	i++;
@@ -1851,9 +1992,14 @@ int iptrstrt=0,Aind;
 	while (i<NbrMaxOperationOnLine && CodeOfOneLine[i].code!=0xFF){ 
 		if (CodeOfOneLine[i].code == 9){ //9 is the Code for Accu
 			Aind=CodeOfOneLine[i].value;
+			if (Aind != Ainteg){
 			CodeOfOneLine[i].code =1;//change in a number 
-			CodeOfOneLine[i].value = Accu[Aind];
-			if (debug >0) {StrPrintF(s,"A%d = ",Aind);PrintCmd(s);Rprintf(Accu[Aind]);}
+			CodeOfOneLine[i].value = Accu[Aind].value;
+			CodeOfOneLine[i].cmplx=Accu[Aind].cmplx;
+			}else PrintCmd("One not done accu\n");
+			if (debug >0) {
+			StrPrintF(s,"A%d = ",Aind);PrintCmd(s);Rprintf(Accu[Aind].value);
+			PrintCmd("+i*");Rprintf(Accu[Aind].cmplx);}
 			}
 	i++;
 	} 
@@ -1888,7 +2034,8 @@ int iptrstrt=0,Aind;
 	iptrEnd=0;
     i=0;
 	
- while (i<NbrMaxOperationOnLine){ 
+ while (i<NbrMaxOperationOnLine){
+	if (CodeList[i].code==13 && CodeList[i].value == 15) {PrintCmd("found Int\n");goto EndHandleParenthese;}
 	if (CodeList[i].code==6) {
 		CountLevelPar++; //detection of "("
 		//if(LevelParMax<CountLevelPar) {//this was not working for (1)=(1)
@@ -1914,8 +2061,8 @@ int iptrstrt=0,Aind;
 	BufferLineCode[i].code=0xFF;BufferLineCode[i].value=0; //add the "\n" in the buffer
 	Error = CalculOneLine(BufferLineCode);//Go to calculate the BufferOneLine
 	if(StopProgram == 1) {MemHandleFree(BLCHdle);return 0;}
-	if (Error != 0) {printf ("Error in Parenthese = %d\n", Error); ErrorCode=2;} 
-	if (debug >0) {printf("Parenthese Result BufferLineCode:\n");
+	if (Error != 0) {StrPrintF (s,"Error in Parenthese = %d\n", Error);PrintCmd(s); ErrorCode=2;} 
+	if (debug >0) {PrintCmd("Parenthese Result BufferLineCode:\n");
 							StrPrintF(s,"  [%d]   [%d]\n",BufferLineCode[0].code,(int)BufferLineCode[0].value);
 							PrintCmd(s);
 							StrPrintF(s,"  [%d]   [%d]\n",BufferLineCode[1].code,(int)BufferLineCode[1].value);
@@ -1937,7 +2084,63 @@ int iptrstrt=0,Aind;
 	return ErrorCode;
 	
  }
+CalculFAccuComplexe(floactet *CodeLine, int i,float *ResultY,float *ResultY_cmplx){
+//old one: int CalculFAccu(floactet *CodeOfOneLine, int NbrFAccu,float valX, float *ResultY){
+	//ResultY is the final calculation result of F...(ValX)=ResultY
+	//floactet BufferCodes[200]; ! Creates stack overflow 'cause multiple loops
+	MemHandle MemHdle;
+	floactet * BufferCodes;
+	float SaveAccuVal,valX,SaveAccuVal_cmplx,valX_cmplx;
+	int N_AccuX,OfPtr,SaveCodeListOffset,Error,NbrFAccu;
+	int SizeBufferCodes=200;
+	floactet *CodeList;
+
+		NbrFAccu=(int)CodeLine[i].value;
+		valX=CodeLine[i+1].value;
+		if (AllowComplexe!=1) valX_cmplx=0;
+		else 	valX_cmplx=CodeLine[i+1].cmplx;
+
+		CodeList = CodeListAdr; //Transporte the full list adresse here
+
+		MemHdle = MemHandleNew(SizeBufferCodes*sizeof (struct floactet) );
+		if( MemHdle == 0){PrintCmd("Cannot allocate BufferCodes!");return;}
+		BufferCodes = MemHandleLock(MemHdle);
+
+		
+		OfPtr = FAccu[NbrFAccu];
+		
+		if (CodeList[OfPtr+0].code != 14 || CodeList[OfPtr+0].value != NbrFAccu ) {
+				PrintCmd("Error Wrong Function");return 1;}
+		
+		N_AccuX=(int)CodeList[OfPtr+2].value;
+		SaveCodeListOffset=CodeListOffset;
+		CodeListOffset=OfPtr+5;
+		FillCodeOfOneLine(CodeList,BufferCodes);//transfert one line 
+		SaveAccuVal=Accu[N_AccuX].value; //We save Accu value to avoid interference with other variables calculations
+		SaveAccuVal_cmplx=Accu[N_AccuX].cmplx; //We save Accu value to avoid interference with other variables calculations
+		Accu[N_AccuX].value=valX; //Set the value of X for F...(ValX)=
+		Accu[N_AccuX].cmplx=valX_cmplx; //Set the value of X for F...(ValX)=
+		ReplaceAccuByValue(BufferCodes);
+		//StrPrintF(s,"Code F [%d] [%d]",BufferCodes[0].code,(int)BufferCodes[0].value);
+		//PrintCmd(s);
+		Error = TreatParenthese(BufferCodes);													//parenthese
+		if (Error != 0) {StrPrintF (s,"In function FAccu%d, Error%d  \n", NbrFAccu,Error);PrintCmd(s);goto ErrorOut;}
+		Error = CalculOneLine(BufferCodes); //Calcul
+		if (Error != 0) {StrPrintF (s,"Calcul Error in FAccu %d \n", NbrFAccu);PrintCmd(s);goto ErrorOut;}
+		if (BufferCodes[0].code != 1) {PrintCmd("Error finishing function line\n");goto ErrorOut;}
+		*ResultY= BufferCodes[0].value;
+		*ResultY_cmplx=BufferCodes[0].cmplx;
+		CodeListOffset=SaveCodeListOffset;
+		Accu[N_AccuX].value=SaveAccuVal; //Set the value of X for F...(ValX)=
+		Accu[N_AccuX].cmplx=SaveAccuVal_cmplx; //Set the value of X for F...(ValX)=
+		MemHandleFree(MemHdle);
+		return 0;
+ErrorOut:
+		MemHandleFree(MemHdle);
+		return Error;
+	}
  
+/*
 int CalculFAccu(floactet *CodeOfOneLine, int NbrFAccu,float valX, float *ResultY){
 	//ResultY is the final calculation result of F...(ValX)=ResultY
 	//floactet BufferCodes[200]; ! Creates stack overflow 'cause multiple loops
@@ -1964,8 +2167,8 @@ int CalculFAccu(floactet *CodeOfOneLine, int NbrFAccu,float valX, float *ResultY
 		SaveCodeListOffset=CodeListOffset;
 		CodeListOffset=OfPtr+5;
 		FillCodeOfOneLine(CodeList,BufferCodes);//transfert one line 
-		SaveAccuVal=Accu[N_AccuX]; //We save Accu value to avoid interference with other variables calculations
-		Accu[N_AccuX]=valX; //Set the value of X for F...(ValX)=
+		SaveAccuVal=Accu[N_AccuX].value; //We save Accu value to avoid interference with other variables calculations
+		Accu[N_AccuX].value=valX; //Set the value of X for F...(ValX)=
 		ReplaceAccuByValue(BufferCodes);
 		//StrPrintF(s,"Code F [%d] [%d]",BufferCodes[0].code,(int)BufferCodes[0].value);
 		//PrintCmd(s);
@@ -1976,17 +2179,79 @@ int CalculFAccu(floactet *CodeOfOneLine, int NbrFAccu,float valX, float *ResultY
 		if (BufferCodes[0].code != 1) {PrintCmd("Error finishing function line\n");goto ErrorOut;}
 		*ResultY= BufferCodes[0].value;
 		CodeListOffset=SaveCodeListOffset;
-		Accu[N_AccuX]=SaveAccuVal; //Set the value of X for F...(ValX)=
+		Accu[N_AccuX].value=SaveAccuVal; //Set the value of X for F...(ValX)=
 		MemHandleFree(MemHdle);
 		return 0;
 ErrorOut:
 		MemHandleFree(MemHdle);
 		return Error;
 	}
+*/
 
- 
- 
-static int  CalculOneLine(floactet * CodeListLine){//Must be one line only
+int Integration(floactet *CodeOfOneLine, int i,float *ResultY,float *ResultY_cmplx){
+	//ResultY is the final calculation result of the integration
+	MemHandle MemHdle;
+	floactet * BufferCodes,*CodeList;
+	float SaveAccuVal,SaveAccuVal_cmplx,S,S_cmplx,a,h,b,X,Y;
+	int N_AccuX,OfPtr,SaveCodeListOffset,Error,k;
+	int SizeBufferCodes=200; //therefore maximum code for CodeOfOneLine is 200
+
+	CodeList = CodeListAdr; //We take the unchanged value of the Accu x Int(a,b,h,x)
+		MemHdle = MemHandleNew(SizeBufferCodes*sizeof (struct floactet) );
+		if( MemHdle == 0){PrintCmd("Can't allocate BufferCodes!\n");return;}
+		BufferCodes = MemHandleLock(MemHdle);
+		a = CodeOfOneLine[i+2].value; b= CodeOfOneLine[i+4].value;
+		h= CodeOfOneLine[i+6].value; N_AccuX=(int)CodeOfOneLine[i+8].value; //We take from CodeList this one! otherwise we get the changed value into values instead of accu
+		if(debug > 0) {StrPrintF(s,"Int(%d,%d,%d,A%d)\n",(int)a,(int)b,(int)h,N_AccuX); PrintCmd(s);}
+		if (h<=0) {PrintCmd("Error Step of integration h should be > 0");Error =1;goto ErrorOut;} 
+		SaveCodeListOffset=CodeListOffset;
+
+		X=a;//init
+		Accu[N_AccuX].value=X; 
+		Accu[N_AccuX].cmplx=0; // init
+		S=0;//init
+		S_cmplx=0;
+		SaveAccuVal=Accu[N_AccuX].value; //We save Accu value to avoid interference with other variables calculations
+		SaveAccuVal_cmplx=Accu[N_AccuX].cmplx; //We save Accu value to avoid interference with other variables calculations
+
+	LoopCalculateIntegral:
+		k=i;
+
+		while (CodeOfOneLine[k+10].code !=0xFF &&CodeOfOneLine[k+10].code!=0){
+												BufferCodes[k]=CodeOfOneLine[k+10];k++;}
+		BufferCodes[k]=CodeOfOneLine[k+10];//copy the last code
+		ReplaceAccuByValue(BufferCodes);
+		Error = TreatParenthese(BufferCodes);
+		if (Error != 0) {StrPrintF (s,"In Integral Error%d\n", Error);PrintCmd(s);goto ErrorOut;}
+		Error = CalculOneLine(BufferCodes); //Calcul
+		if (Error != 0) {StrPrintF (s,"Calcul Error %d in Integral \n", Error);PrintCmd(s);goto ErrorOut;}
+		if (BufferCodes[0].code != 1) {PrintCmd("Error finishing function line\n");goto ErrorOut;}
+
+		S=BufferCodes[0].value+S;
+		if (AllowComplexe==1) S_cmplx=BufferCodes[0].cmplx+S_cmplx;
+		X=X+h;
+		Accu[N_AccuX].value=X;
+
+		if (X<b) goto LoopCalculateIntegral;
+
+		*ResultY= S*h;
+		*ResultY_cmplx= S_cmplx*h;
+		CodeListOffset=SaveCodeListOffset;
+		Accu[N_AccuX].value=SaveAccuVal; //Give back the value of X
+		MemHandleFree(MemHdle);
+		return 0;
+ErrorOut:
+		MemHandleFree(MemHdle);
+		return Error;
+	}
+	
+static int CalculOneLine(floactet *CodeListLine){
+	int Error;
+	if (AllowComplexe ==1) Error = CalculOneLineComplexe(CodeListLine);
+	else Error = CalculOneLineReel(CodeListLine);
+	}
+	
+ static int  CalculOneLineReel(floactet * CodeListLine){//Must be one line only
 	/* Error Code return   0  Calculation Done
 									   1  No  End in the Line
 									   2  Syntaxe error should find numbers around the math operator
@@ -1994,7 +2259,7 @@ static int  CalculOneLine(floactet * CodeListLine){//Must be one line only
 									   4 Should be no parenthese at the stage of this program
 										  The treatment of the parenthese should be done previously.
 									   5 Bad syntax for test condition
-								
+								       6 Syntaxe Error
 									   
 	The calculation is done after the equal sign if there is one,
 	the pointer  iptrEqualSignP points the code 	after equal sign code 8.
@@ -2004,8 +2269,8 @@ static int  CalculOneLine(floactet * CodeListLine){//Must be one line only
 									   
 	//Search for priority *,/,(,  
 	int i,k; int imaxLine=0;
-	float val,x1,x2;
-	int ErrorCode=0;
+	float val,x1,x2,a,b,h,val_cmplx;
+	int ErrorCode=0,NbrAccu;
 	int iptrEqualSignP; //Used to save the position of the equal sign in the line
 	
 	if (BreakActivated==1) if( CheckForBreak() == 1) return; //test for break test
@@ -2019,7 +2284,8 @@ static int  CalculOneLine(floactet * CodeListLine){//Must be one line only
 
 	if (CodeListLine[i].code==14 &&CodeListLine[i+1].code==1) {//FAccu insertion
 		if(debug > 0) {StrPrintF(s,"OffsetAdr FAccu =%d\n",FAccu[(int)CodeListLine[i].value]); PrintCmd(s);}
-		if( CalculFAccu( CodeListLine, (int)CodeListLine[i].value, CodeListLine[i+1].value,&val)!=0) return 5;
+		if(CalculFAccuComplexe(CodeListLine, i,&val,&val_cmplx)!=0) return 5;
+		//if(CalculFAccu( CodeListLine, (int)CodeListLine[i].value, CodeListLine[i+1].value,&val)!=0) return 5;
 		else {CodeListLine[i].code=1; CodeListLine[i].value=val;}
 		k=i+1;
 		while (CodeListLine[k].code !=0xFF && CodeListLine[k].code !=0) {
@@ -2027,8 +2293,29 @@ static int  CalculOneLine(floactet * CodeListLine){//Must be one line only
 			k++;
 			}
 	}	
-	
-	if (CodeListLine[i].code==13 && CodeListLine[i+1].code==1) {//Math Function
+	if (CodeListLine[i].code==13 && CodeListLine[i].value==15) {//Integral
+		if(CodeListLine[i+1].code!=6||CodeListLine[i+2].code!=1||CodeListLine[i+3].code!=10
+			||CodeListLine[i+4].code!=1||CodeListLine[i+5].code!=10||CodeListLine[i+6].code!=1
+			||CodeListLine[i+7].code!=10||CodeListLine[i+8].code!=9||CodeListLine[i+9].code!=7)
+			{PrintCmd("Syntaxe Error Integral\n");
+			/*for (k=0;k<11;k++){
+			StrPrintF(s," code %d [%d] [%d] \n",k,CodeListLine[k].code,(int)CodeListLine[k].value);
+			PrintCmd(s);}*/
+			return 6;}//for the accu to appear (code 9) at i+8 position we have to make a special treatment to avoid conversion of the accu for the variable
+		if(Integration(CodeListLine,i,&val,&val_cmplx)!=0) return 5;
+		else {StrPrintF(s,"Integration =%d\n",(int)val);PrintCmd(s);
+				CodeListLine[i].code=1; CodeListLine[i].value=val;
+				CodeListLine[i+1].code =0xFF;
+				CodeListLine[i+1].value =0;}
+			if (AllowComplexe == 0 && val_cmplx !=0) PrintCmd("Your function of complexe type: you need to Toogle Allow complexe\n");
+		k=i+1;
+		while (CodeListLine[k].code !=0xFF && CodeListLine[k].code !=0) {
+			CodeListLine[k]=CodeListLine[k+1];
+			k++;
+			}
+		}
+
+	if (CodeListLine[i].code==13 &&CodeListLine[i+1].code==1) {//Math Function
 		if (CodeListLine[i].value==1 ) {val=RMath_exp(CodeListLine[i+1].value);}//exp
 		if (CodeListLine[i].value==2 ) {val=RMath_ln(CodeListLine[i+1].value);}	//ln		
 		if (CodeListLine[i].value==3 ) {val=RMath_sqrt(CodeListLine[i+1].value);}	//sqrt		
@@ -2038,6 +2325,12 @@ static int  CalculOneLine(floactet * CodeListLine){//Must be one line only
 		if (CodeListLine[i].value==7 ) {val=RMath_tan(CodeListLine[i+1].value);}	//tan
 		if (CodeListLine[i].value==8 ) {val=fact((int)CodeListLine[i+1].value);}	//factoriel
 		if (CodeListLine[i].value==9 ) {goto OutForPower;}	//Power
+		if (CodeListLine[i].value==10 ) {val=RMath_ch(CodeListLine[i+1].value);}	//ch
+		if (CodeListLine[i].value==11 ) {val=RMath_sh(CodeListLine[i+1].value);}	//sh
+		if (CodeListLine[i].value==12 ) {val=RMath_th(CodeListLine[i+1].value);}	//th
+		if (CodeListLine[i].value==13 ) {val=CodeListLine[i+1].value;PrintCmd("Activate Complexe Calculation in the menu before use!");}
+		if (CodeListLine[i].value==14 ) {val=0;PrintCmd("Activate Complexe Calculation in the menu before use!");}	//Im
+		//if (CodeListLine[i].value==15 ) {//Already taken for integrals}
 		
 		if (MathError !=0 ) {StrPrintF(s,"Math Error = %d",MathError);PrintCmd(s);return 3;}
 		if (ErrorCode == 0) {CodeListLine[i].code=1; CodeListLine[i].value=val;}
@@ -2051,7 +2344,7 @@ static int  CalculOneLine(floactet * CodeListLine){//Must be one line only
 			PrintCmd(s);
 			}*/
 		}
-	OutForPower:
+OutForPower:
 		
 	if (CodeListLine[i+1].code==11 &&CodeListLine[i+1].value==3) {//Test "<"
 		if (CodeListLine[i].code !=1 && CodeListLine[i+2].code !=1){ErrorCode = 5; goto EndCalculOneLine;}
@@ -2079,8 +2372,15 @@ static int  CalculOneLine(floactet * CodeListLine){//Must be one line only
 	if (i>0 && imaxLine==0) {ErrorCode =1; goto EndCalculOneLine;} //NoEnd
 	SearchPriority:
 	i=iptrEqualSignP; //We start the calculation from the equal sign +1	
-	while (i<NbrMaxOperationOnLine){
+	while (i<NbrMaxOperationOnLine){//Strong Priority for Power
 		if (CodeListLine[i].code == 13 && CodeListLine[i].value == 9 ) { goto Power;}
+		if (CodeListLine[i].code == 0xFF ) goto AfterPower;
+		if (CodeListLine[i].code == 0 ) goto AfterPower;
+		i++;
+		}
+	AfterPower:
+	i=iptrEqualSignP; //We start the calculation from the equal sign +1	
+	while (i<NbrMaxOperationOnLine){
 		if (CodeListLine[i].code == 4 ) goto Multiplication;
 		if (CodeListLine[i].code == 5 ) goto Division;
 		if (CodeListLine[i].code == 6 ) {ErrorCode=4; goto EndCalculOneLine;}
@@ -2160,7 +2460,7 @@ static int  CalculOneLine(floactet * CodeListLine){//Must be one line only
 			CodeListLine[iptrEqualSignP].value=val;
  EndCalculOneLine:
 			//if (CodeListLine[0].code==1 && CodeListLine[1].code==0xFF)Rprintf(val); //"print" if nothing else but the number
-			LastValCalculated=val; //After all passages LastValCalculated keeps the value
+			LastValCalculated.value=val; //After all passages LastValCalculated keeps the value
 			if (debug > 0) {
 				StrPrintF (s, "Line value is %d \n",(int) val); PrintCmd(s);
 				}
@@ -2169,133 +2469,204 @@ static int  CalculOneLine(floactet * CodeListLine){//Must be one line only
  }
 
 
+static int  CalculOneLineComplexe(floactet * CodeListLine){//Must be one line only
+	/* Error Code return   0  Calculation Done
+									   1  No  End in the Line
+									   2  Syntaxe error should find numbers around the math operator
+									   3  Division by zero prohibited
+									   4 Should be no parenthese at the stage of this program
+										  The treatment of the parenthese should be done previously.
+									   5 Bad syntax for test condition
+								
+									   
+	The calculation is done after the equal sign if there is one,
+	the pointer  iptrEqualSignP points the code 	after equal sign code 8.
+	We use here the same iptrEqualSign for the Instruction code 11... to perform the calculation
+	behind the instruction (exemple: print 1*2)
+	*/
+									   
+	//Search for priority *,/,(,  
+	int i,k; int imaxLine=0;
+	float val,val_cmplx,x1,x2,x2_cmplx,a1,a2,b1,b2,a,b,ea;
+	int ErrorCode=0;
+	int iptrEqualSignP; //Used to save the position of the equal sign in the line
 	
-static void HideKeyPad(){
-		FormPtr 	Frm;
-		FieldPtr 	FldPtr;
-		UInt16 k;
-		Frm = FrmGetFormPtr(frmadc16);
-		for (k=btntan;k<=btnE;k++){
-		FrmHideObject(Frm, (FrmGetObjectIndex(Frm, k)));
-		Keypad=0;
-		}
-		if (GfxBigDisplay == 1) {
-			FrmHideObject(Frm, (FrmGetObjectIndex(Frm, fld_prog))); 
-			FrmHideObject(Frm, (FrmGetObjectIndex(Frm, fld_cmd))); 
-		}
+	if (BreakActivated==1) if( CheckForBreak() == 1) return; //test for break test
 
+	
+	i=0;
+	imaxLine=0; iptrEqualSignP=0;
+	while (i<NbrMaxOperationOnLine){
+	if (CodeListLine[i].code == 0xFF) {imaxLine=i; goto SearchPriority;}
+	if (CodeListLine[i].code == 8) iptrEqualSignP=i+1; //detect and save equal code position+1 
+
+	if (CodeListLine[i].code==14 &&CodeListLine[i+1].code==1) {//FAccu insertion
+		if(debug > 0) {StrPrintF(s,"OffsetAdr FAccu =%d\n",FAccu[(int)CodeListLine[i].value]); PrintCmd(s);}
+		if(CalculFAccuComplexe(CodeListLine, i,&val,&val_cmplx)!=0) return 5;
+		else {CodeListLine[i].code=1; CodeListLine[i].value=val;CodeListLine[i].cmplx=val_cmplx;}
+		k=i+1;
+		while (CodeListLine[k].code !=0xFF && CodeListLine[k].code !=0) {
+			CodeListLine[k]=CodeListLine[k+1];
+			k++;
+			}
 	}	
-static void ShowKeyPad(){
-		FormPtr 	Frm;
-		FieldPtr 	FldPtr;
-		UInt16 k;
-		Frm = FrmGetFormPtr(frmadc16);
-		for (k=btntan;k<=btnE;k++){
-		FrmShowObject(Frm, (FrmGetObjectIndex(Frm, k)));
+	
+	if (CodeListLine[i].code==13 && CodeListLine[i+1].code==1) {//Math Function
+		a=CodeListLine[i+1].value; 
+		b=CodeListLine[i+1].cmplx;
+		if (CodeListLine[i].value==1 ) {ea=RMath_exp(a);val=ea*RMath_cos(b);val_cmplx=ea*RMath_sin(b);}//exp
+		if (CodeListLine[i].value==2 ) {val=RMath_ln(a);val_cmplx=0;}	//ln		
+		if (CodeListLine[i].value==3 ) {val=RMath_sqrt(a);val_cmplx=0;}	//sqrt		
+		//if (CodeListLine[i].value==4 ) {AlreadyTaken for the function f(x);}	//function f(x)
+		if (CodeListLine[i].value==5 ) {val=RMath_sin(a);val_cmplx=0;}	//sin
+		if (CodeListLine[i].value==6 ) {val=RMath_cos(a);val_cmplx=0;}	//cos
+		if (CodeListLine[i].value==7 ) {val=RMath_tan(a);val_cmplx=0;}	//tan
+		if (CodeListLine[i].value==8 ) {val=fact((int)CodeListLine[i+1].value);val_cmplx=0;}	//factoriel
+		if (CodeListLine[i].value==9 ) {goto OutForPower;val_cmplx=0;}	//Power
+		if (CodeListLine[i].value==10 ) {val=RMath_cos(b)*RMath_ch(a);val_cmplx=RMath_sin(b)*RMath_sh(a);}	//ch
+		if (CodeListLine[i].value==11 ) {val=RMath_sh(a);val_cmplx=0;}	//sh
+		if (CodeListLine[i].value==12 ) {val=RMath_th(a);val_cmplx=0;}	//th
+		if (CodeListLine[i].value==13 ) {val=a;val_cmplx=0;}	//Re
+		if (CodeListLine[i].value==14 ) {val=b;val_cmplx=0;}// PrintCmd("Activate Complexe Calculation in the menu before use!");	//Im
+		
+		if (MathError !=0 ) {StrPrintF(s,"Math Error = %d\n",MathError);PrintCmd(s);return 3;}
+		if (ErrorCode == 0) {CodeListLine[i].code=1; CodeListLine[i].value=val; if(AllowComplexe ==1)CodeListLine[i].cmplx=val_cmplx;}
+		k=i+1;
+		while (CodeListLine[k].code !=0xFF && CodeListLine[k].code !=0) {
+			CodeListLine[k]=CodeListLine[k+1];
+			k++;
+			}
 		}
-		Keypad=1;
-		//Redraw also the prog and cmd fields:
-			if (GfxBigDisplay == 1) {
-				FrmShowObject(Frm, (FrmGetObjectIndex(Frm, fld_prog))); 
-				FrmShowObject(Frm, (FrmGetObjectIndex(Frm, fld_cmd))); 
+	OutForPower:
+		
+	if (CodeListLine[i+1].code==11 &&CodeListLine[i+1].value==3) {//Test "<"
+		if (CodeListLine[i].code !=1 && CodeListLine[i+2].code !=1){ErrorCode = 5; goto EndCalculOneLine;}
+		else { if ( CodeListLine[i].value < CodeListLine[i+2].value) {
+					TestCondition=1; }
+					i=i+3;goto EndCalculOneLine;
+					}
+	}
+		if (CodeListLine[i+1].code==11 &&CodeListLine[i+1].value==6) {//Test ">"
+		if (CodeListLine[i].code !=1 && CodeListLine[i+2].code !=1){ErrorCode = 5; goto EndCalculOneLine;}
+		else { if ( CodeListLine[i].value > CodeListLine[i+2].value) {
+					TestCondition=1; }
+					i=i+3;goto EndCalculOneLine;
+					}
+	}
+	if (CodeListLine[i].code == 11) iptrEqualSignP=i+1; //detect instruction and save code position+1 
+
+	
+	if (debug > 0) {
+	StrPrintF (s," %d  [%d][%d][%d] \n",i,CodeListLine[i].code,(int) CodeListLine[i].value,(int) CodeListLine[i].cmplx);
+	PrintCmd(s);
+	}
+	i++;
+	}
+	if (i>0 && imaxLine==0) {ErrorCode =1; goto EndCalculOneLine;} //NoEnd
+	SearchPriority:
+	i=iptrEqualSignP; //We start the calculation from the equal sign +1	
+	while (i<NbrMaxOperationOnLine){//Strong Priority for Power
+		if (CodeListLine[i].code == 13 && CodeListLine[i].value == 9 ) { goto Power;}
+		if (CodeListLine[i].code == 0xFF ) goto AfterPower;
+		if (CodeListLine[i].code == 0 ) goto AfterPower;
+		i++;
+		}
+	AfterPower:
+
+	i=iptrEqualSignP; //We start the calculation from the equal sign +1	
+	while (i<NbrMaxOperationOnLine){
+		if (CodeListLine[i].code == 13 && CodeListLine[i].value == 9 ) { goto Power;}
+		if (CodeListLine[i].code == 4 ) goto Multiplication;
+		if (CodeListLine[i].code == 5 ) goto Division;
+		if (CodeListLine[i].code == 6 ) {ErrorCode=4; goto EndCalculOneLine;}
+		if (CodeListLine[i].code == 0xFF ) goto NoPriority;
+		if (CodeListLine[i].code == 0 ) goto NoPriority;
+		i++;
+		}
+		
+	Power:
+		//i points on the sign ^
+		i-- ; //place on the left number
+		if (CodeListLine[i].code!=1 || CodeListLine[i+2].code != 1) {ErrorCode=2; goto EndCalculOneLine; }
+		val = RMath_Pow(CodeListLine[i].value,CodeListLine[i+2].value);
+		CodeListLine[i].code=1; //number
+		CodeListLine[i].value=val; // new value
+		CodeListLine[i].cmplx=0;//to be changed later
+		i++;
+		if (debug > 0) {StrPrintF (s,"Power Result : %d\n",(int)val); PrintCmd(s);}	
+		while (i+2<=imaxLine){CodeListLine[i]=CodeListLine[i+2]; i++; }
+		i=iptrEqualSignP; //reinitialise position after the equal sign	
+		goto SearchPriority; // Back to seek for operation priority
+
+	Multiplication:
+		//i points on the multiplie *
+		i-- ; //place on the left number
+		if (CodeListLine[i].code!=1 || CodeListLine[i+2].code != 1) {ErrorCode=2; goto EndCalculOneLine; }
+		if(CodeListLine[i].cmplx==0 && CodeListLine[i+2].cmplx==0){
+			val = CodeListLine[i].value * CodeListLine[i+2].value;
+			val_cmplx= 0;
+		}else {
+			a1=CodeListLine[i].value; a2=CodeListLine[i+2].value;
+			b1=CodeListLine[i].cmplx; b2=CodeListLine[i+2].cmplx;
+			val = a1*a2-b1*b2;
+			val_cmplx = a2*b1+a1*b2;			
+			}
+		CodeListLine[i].code=1; //number
+		CodeListLine[i].value=val; // new value
+		CodeListLine[i].cmplx=val_cmplx; // new value
+		i++;
+		while (i+2<=imaxLine){CodeListLine[i]=CodeListLine[i+2]; i++; }
+		i=iptrEqualSignP; //reinitialise position after the equal sign	
+		goto SearchPriority; // Back to seek for operation priority
+		
+	Division:
+		//i points on the multiplie *
+		i-- ; //place on the left number
+		if (CodeListLine[i].code!=1 || CodeListLine[i+2].code != 1) {ErrorCode=2; goto EndCalculOneLine; }
+		if(CodeListLine[i].cmplx == 0&& CodeListLine[i+2].cmplx == 0 && CodeListLine[i+2].value != 0) {
+			val = CodeListLine[i].value / CodeListLine[i+2].value; val_cmplx=0;}
+		else {
+			if(CodeListLine[i+2].value==0 && CodeListLine[i+2].cmplx==0){ErrorCode = 3; goto EndCalculOneLine;}
+			a1=CodeListLine[i].value; a2=CodeListLine[i+2].value;
+			b1=CodeListLine[i].cmplx; b2=CodeListLine[i+2].cmplx;
+			val = (a1*a2+b1*b2)/(a2*a2+b2*b2);
+			val_cmplx = (a2*b1-a1*b2)/(a2*a2+b2*b2);			
+			}
+
+		CodeListLine[i].code=1; //number
+		CodeListLine[i].value=val; // new value
+		CodeListLine[i].cmplx=val_cmplx; // new value
+		i++;
+		//if (debug ==1) printf ("division result : %f \n",val);	
+		while (i+2<=imaxLine){CodeListLine[i]=CodeListLine[i+2]; i++; }
+		i=iptrEqualSignP;	
+		goto SearchPriority; // Back to seek for operation priority
+	
+	NoPriority:
+		i=iptrEqualSignP; //start after the equal sign
+		val = CodeListLine[i].value; val_cmplx=CodeListLine[i].cmplx;
+		if (CodeListLine[i].code==1 && CodeListLine[i+1].code == 0xFF) {goto EndCalculOneLine; }
+		if (CodeListLine[i].code != 1) {ErrorCode =2; goto EndCalculOneLine; }// Should be a number !		
+		if (CodeListLine[i+2].code != 1) {ErrorCode =2; goto EndCalculOneLine; }		
+		while(i<imaxLine){
+			x2 = CodeListLine[i+2].value; x2_cmplx = CodeListLine[i+2].cmplx;
+			if (CodeListLine[i+1].code==2) {val=x2+val; val_cmplx=x2_cmplx+val_cmplx;}
+			if (CodeListLine[i+1].code==3) {val=val-x2;  val_cmplx=val_cmplx-x2_cmplx;}
+			i=i+2;
+			}
+			//Put Final calculation results
+			CodeListLine[iptrEqualSignP].code=1; //Put value after the equal sign
+			CodeListLine[iptrEqualSignP].value=val;
+			CodeListLine[iptrEqualSignP].cmplx=val_cmplx;
+ EndCalculOneLine:
+			//if (CodeListLine[0].code==1 && CodeListLine[1].code==0xFF)Rprintf(val); //"print" if nothing else but the number
+			LastValCalculated.value=val; //After all passages LastValCalculated keeps the value
+			LastValCalculated.cmplx=val_cmplx; //After all passages LastValCalculated keeps the value
+		
+			if (debug > 0) {
+				StrPrintF (s, "Line value is [%d][%d] \n",(int) val,(int)val_cmplx); PrintCmd(s);
 				}
-	}
-	
-	
-static void TracerAxis(int centerx,int centery,int width, int height){
-	RGBColorType MyPenColor,OldPenColor,OldPenColor2;
-	FormPtr 	Frm;
-	FieldPtr 	FldPtr;
-	int k;
-	float color=0;
-	GridSet=1;
-	HideKeyPad(); //hide the keypad
-	
-	MyPenColor.r = 0;
-	MyPenColor.g = 0; 
-	MyPenColor.b = 0;
-	
-	WinSetForeColorRGB(&MyPenColor,&OldPenColor);
+	return ErrorCode;
+ }
 
 
-	WinDrawLine(centerx-width/2,centery-height/2, centerx+width/2, centery-height/2);	
-	WinDrawLine(centerx-width/2,centery+height/2, centerx+width/2, centery+height/2);	
-	WinDrawLine(centerx-width/2,centery-height/2, centerx-width/2, centery+height/2);	
-	WinDrawLine(centerx+width/2,centery-height/2, centerx+width/2, centery+height/2);	
-
-	centerx=0;
-	centery=0;
-	height=(-DimYmin+DimYmax);
-	width=(-DimXmin+DimXmax);
-	Line(0,0,DimXmin,0,color);
-	Line(0,0,DimXmax,0,color);
-	Line(0,0,0,DimYmin,color);
-	Line(0,0,0,DimYmax,color);
-	if (StepX !=0){
-		for (k=0;k<(DimXmax-DimXmin)/StepX;k++){
-		Line(-k*StepX,0,-k*StepX,(DimYmax-DimYmin)/DrawZoneH,color);
-		Line(k*StepX,0,k*StepX,(DimYmax-DimYmin)/DrawZoneH,color);
-		}
-		}
-	if (StepX !=0){
-		for (k=0;k<(DimYmax-DimYmin)/StepX;k++){
-		Line(0,-k*StepX,(DimXmax-DimXmin)/DrawZoneW,-k*StepX,color);
-		Line(0,k*StepX,(DimXmax-DimXmin)/DrawZoneW,k*StepX,color);
-		}
-		}
-	}
-
-static void Line(float x1, float y1, float x2, float y2,float color){
-/*Drawingzone Square
-#define DrawZoneX 90
-#define DrawZoneY 90
-#define DrawZoneH 70
-#define DrawZoneW 70*/
-	RGBColorType MyPenColor,OldPenColor,OldPenColor2;
-
-	MyPenColor.r = 0;
-	MyPenColor.g = 0; 
-	MyPenColor.b = 0;
-
-	if (color == 1){
-	MyPenColor.r = 0xFF;//Red
-	MyPenColor.g = 0x0A; 
-	MyPenColor.b = 0x0A;
-	}
-	if (color == 2){
-	MyPenColor.r = 0x0A;
-	MyPenColor.g = 0xFF; //Green Only
-	MyPenColor.b = 0x0A;
-	}
-	if (color == 3){
-	MyPenColor.r = 0x0A;
-	MyPenColor.g = 0x0A; 
-	MyPenColor.b = 0xFF;//Blue
-	}
-	
-	WinSetForeColorRGB(&MyPenColor,&OldPenColor);
-
-	//x2-x1 =160
-	//y2-y1=160
-	//resizing according to gfxdim values
-	if (x1<DimXmin ) {goto out;}
-	if (x2 >DimXmax ){goto out;}
-	if (y1<DimYmin ) {goto out;}
-	if (y2 >DimYmax) {goto out;} // no drawing 
-    
-	x1=(x1-DimXmin)/(DimXmax-DimXmin)*160;
-	y1=(y1-DimYmin)/(DimYmax-DimYmin)*160;
-	x2=(x2-DimXmin)/(DimXmax-DimXmin)*160;
-	y2=(y2-DimYmin)/(DimYmax-DimYmin)*160;
-	//WinDrawLine(0,10,160,160);
-	WinDrawLine ( x1*DrawZoneW/160+DrawZoneX,
-									-y1*DrawZoneH/160+DrawZoneY+DrawZoneH,
-										x2*DrawZoneW/160+DrawZoneX,
-										-y2*DrawZoneH/160+DrawZoneY+DrawZoneH);
-
-	out:
-	
-	WinSetForeColorRGB(&OldPenColor,&OldPenColor2); //Set OldColor
-	}
-
-	
