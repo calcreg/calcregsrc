@@ -1,8 +1,8 @@
-/* ---------------------------
- * CalcReg.c
- * Bussy-Socrate Regan
- * 2012
------------------------------*/
+-/* ---------------------------
+- * CalcReg.c
+- * Bussy-Socrate Regan
+- * 2012
+------------------------------*/
 
 #define NAME1_SECTION __attribute__ ( (section("Seg1")))
 //#define NAME2_SECTION __attribute__ ( (section("Seg2")))
@@ -1982,7 +1982,6 @@ int iptrstrt=0,Aind;
 signed int Ainteg=-1;
 
   while (i<NbrMaxOperationOnLine ){ 
-	if (CodeOfOneLine[i].code==13 && CodeOfOneLine[i].value==15) Ainteg=CodeOfOneLine[i+8].value;//Int(a,b,h,x) detection to avoid change of x in value we'll need the nbr of the accu, but change the others
 	if (CodeOfOneLine[i].code==0xFF) goto StartOperate;
 	if (CodeOfOneLine[i].code == 8) {iptrstrt=i+1; goto StartOperate;} //8 is the code of "="
 	i++;
@@ -1990,13 +1989,14 @@ signed int Ainteg=-1;
   StartOperate:
 	i=iptrstrt;
 	while (i<NbrMaxOperationOnLine && CodeOfOneLine[i].code!=0xFF){ 
+		if (CodeOfOneLine[i].code==13 && CodeOfOneLine[i].value==15) {Ainteg=CodeOfOneLine[i+8].value;}//Int(a,b,h,x) detection to avoid change of x in value we'll need the nbr of the accu, but change the others
 		if (CodeOfOneLine[i].code == 9){ //9 is the Code for Accu
 			Aind=CodeOfOneLine[i].value;
 			if (Aind != Ainteg){
 			CodeOfOneLine[i].code =1;//change in a number 
 			CodeOfOneLine[i].value = Accu[Aind].value;
 			CodeOfOneLine[i].cmplx=Accu[Aind].cmplx;
-			}else PrintCmd("One not done accu\n");
+			}//else PrintCmd("One not done accu\n");
 			if (debug >0) {
 			StrPrintF(s,"A%d = ",Aind);PrintCmd(s);Rprintf(Accu[Aind].value);
 			PrintCmd("+i*");Rprintf(Accu[Aind].cmplx);}
@@ -2035,7 +2035,7 @@ signed int Ainteg=-1;
     i=0;
 	
  while (i<NbrMaxOperationOnLine){
-	if (CodeList[i].code==13 && CodeList[i].value == 15) {PrintCmd("found Int\n");goto EndHandleParenthese;}
+	if (CodeList[i].code==13 && CodeList[i].value == 15) {goto EndHandleParenthese;}
 	if (CodeList[i].code==6) {
 		CountLevelPar++; //detection of "("
 		//if(LevelParMax<CountLevelPar) {//this was not working for (1)=(1)
@@ -2215,15 +2215,30 @@ int Integration(floactet *CodeOfOneLine, int i,float *ResultY,float *ResultY_cmp
 		SaveAccuVal_cmplx=Accu[N_AccuX].cmplx; //We save Accu value to avoid interference with other variables calculations
 
 	LoopCalculateIntegral:
-		k=i;
+		k=0;
+	//StrPrintF(s,"i=%d\n",i);PrintCmd(s);
 
-		while (CodeOfOneLine[k+10].code !=0xFF &&CodeOfOneLine[k+10].code!=0){
-												BufferCodes[k]=CodeOfOneLine[k+10];k++;}
-		BufferCodes[k]=CodeOfOneLine[k+10];//copy the last code
+		while (CodeOfOneLine[k+i+10].code !=0xFF &&CodeOfOneLine[k+i+10].code!=0){
+												BufferCodes[k]=CodeOfOneLine[k+i+10];k++;}
+		BufferCodes[k]=CodeOfOneLine[k+i+10];//copy the last code
+		/*PrintCmd("-0-");
+			for (k=0;k<5;k++){
+			StrPrintF(s," code %d [%d] [%d] \n",k,BufferCodes[k].code,(int)BufferCodes[k].value);
+			PrintCmd(s);
+			}
+			for (k=0;k<5;k++){
+			StrPrintF(s," code %d [%d] [%d] \n",k,CodeOfOneLine[k].code,(int)CodeOfOneLine[k].value);
+			PrintCmd(s);
+			}*/
+
 		ReplaceAccuByValue(BufferCodes);
+		//PrintCmd("-1-");
 		Error = TreatParenthese(BufferCodes);
 		if (Error != 0) {StrPrintF (s,"In Integral Error%d\n", Error);PrintCmd(s);goto ErrorOut;}
+		//PrintCmd("-2-");
+
 		Error = CalculOneLine(BufferCodes); //Calcul
+		//PrintCmd("-3-");
 		if (Error != 0) {StrPrintF (s,"Calcul Error %d in Integral \n", Error);PrintCmd(s);goto ErrorOut;}
 		if (BufferCodes[0].code != 1) {PrintCmd("Error finishing function line\n");goto ErrorOut;}
 
@@ -2233,6 +2248,7 @@ int Integration(floactet *CodeOfOneLine, int i,float *ResultY,float *ResultY_cmp
 		Accu[N_AccuX].value=X;
 
 		if (X<b) goto LoopCalculateIntegral;
+		//PrintCmd("-4-");
 
 		*ResultY= S*h;
 		*ResultY_cmplx= S_cmplx*h;
@@ -2293,28 +2309,8 @@ static int CalculOneLine(floactet *CodeListLine){
 			k++;
 			}
 	}	
-	if (CodeListLine[i].code==13 && CodeListLine[i].value==15) {//Integral
-		if(CodeListLine[i+1].code!=6||CodeListLine[i+2].code!=1||CodeListLine[i+3].code!=10
-			||CodeListLine[i+4].code!=1||CodeListLine[i+5].code!=10||CodeListLine[i+6].code!=1
-			||CodeListLine[i+7].code!=10||CodeListLine[i+8].code!=9||CodeListLine[i+9].code!=7)
-			{PrintCmd("Syntaxe Error Integral\n");
-			/*for (k=0;k<11;k++){
-			StrPrintF(s," code %d [%d] [%d] \n",k,CodeListLine[k].code,(int)CodeListLine[k].value);
-			PrintCmd(s);}*/
-			return 6;}//for the accu to appear (code 9) at i+8 position we have to make a special treatment to avoid conversion of the accu for the variable
-		if(Integration(CodeListLine,i,&val,&val_cmplx)!=0) return 5;
-		else {StrPrintF(s,"Integration =%d\n",(int)val);PrintCmd(s);
-				CodeListLine[i].code=1; CodeListLine[i].value=val;
-				CodeListLine[i+1].code =0xFF;
-				CodeListLine[i+1].value =0;}
-			if (AllowComplexe == 0 && val_cmplx !=0) PrintCmd("Your function of complexe type: you need to Toogle Allow complexe\n");
-		k=i+1;
-		while (CodeListLine[k].code !=0xFF && CodeListLine[k].code !=0) {
-			CodeListLine[k]=CodeListLine[k+1];
-			k++;
-			}
-		}
 
+		
 	if (CodeListLine[i].code==13 &&CodeListLine[i+1].code==1) {//Math Function
 		if (CodeListLine[i].value==1 ) {val=RMath_exp(CodeListLine[i+1].value);}//exp
 		if (CodeListLine[i].value==2 ) {val=RMath_ln(CodeListLine[i+1].value);}	//ln		
@@ -2331,7 +2327,8 @@ static int CalculOneLine(floactet *CodeListLine){
 		if (CodeListLine[i].value==13 ) {val=CodeListLine[i+1].value;PrintCmd("Activate Complexe Calculation in the menu before use!");}
 		if (CodeListLine[i].value==14 ) {val=0;PrintCmd("Activate Complexe Calculation in the menu before use!");}	//Im
 		//if (CodeListLine[i].value==15 ) {//Already taken for integrals}
-		
+
+
 		if (MathError !=0 ) {StrPrintF(s,"Math Error = %d",MathError);PrintCmd(s);return 3;}
 		if (ErrorCode == 0) {CodeListLine[i].code=1; CodeListLine[i].value=val;}
 		k=i+1;
@@ -2368,12 +2365,13 @@ OutForPower:
 	PrintCmd(s);
 	}
 	i++;
-	}
+	}//end loop while(i<NbrMaxOperationOnLine)
 	if (i>0 && imaxLine==0) {ErrorCode =1; goto EndCalculOneLine;} //NoEnd
 	SearchPriority:
 	i=iptrEqualSignP; //We start the calculation from the equal sign +1	
 	while (i<NbrMaxOperationOnLine){//Strong Priority for Power
 		if (CodeListLine[i].code == 13 && CodeListLine[i].value == 9 ) { goto Power;}
+		if (CodeListLine[i].code == 13 && CodeListLine[i].value == 15 ) { goto Integral;}
 		if (CodeListLine[i].code == 0xFF ) goto AfterPower;
 		if (CodeListLine[i].code == 0 ) goto AfterPower;
 		i++;
@@ -2388,6 +2386,31 @@ OutForPower:
 		if (CodeListLine[i].code == 0 ) goto NoPriority;
 		i++;
 		}
+	PrintCmd("Arriving end of line before Math sign\n");
+	goto EndCalculOneLine;	
+
+	Integral:
+			if (CodeListLine[i].code==13 && CodeListLine[i].value==15) {//Integral
+			if(CodeListLine[i+1].code!=6||CodeListLine[i+2].code!=1||CodeListLine[i+3].code!=10
+			||CodeListLine[i+4].code!=1||CodeListLine[i+5].code!=10||CodeListLine[i+6].code!=1
+			||CodeListLine[i+7].code!=10||CodeListLine[i+8].code!=9||CodeListLine[i+9].code!=7)
+			{PrintCmd("Syntaxe Error Integral\n");
+			for (k=0;k<11;k++){
+			StrPrintF(s," code %d [%d] [%d] \n",k,CodeListLine[k].code,(int)CodeListLine[k].value);
+			PrintCmd(s);}
+			return 6;}//for the accu to appear (code 9) at i+8 position we have to make a special treatment to avoid conversion of the accu for the variable
+		if(Integration(CodeListLine,i,&val,&val_cmplx)!=0) return 5;
+			//StrPrintF(s,"Integration =%d\n",(int)val);PrintCmd(s);
+			CodeListLine[i].code=1; CodeListLine[i].value=val;
+			CodeListLine[i+1].code =0xFF;CodeListLine[i+1].value =0;
+			if (AllowComplexe == 0 && val_cmplx !=0) PrintCmd("Your function of complexe type: you need to Toogle Allow complexe\n");
+		/*k=i+1;
+		while (CodeListLine[k].code !=0xFF && CodeListLine[k].code !=0) {
+			CodeListLine[k]=CodeListLine[k+1];
+			k++;
+			}*/
+		}
+		goto SearchPriority;
 		
 	Power:
 		//i points on the sign ^

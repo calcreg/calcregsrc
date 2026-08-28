@@ -1,0 +1,168 @@
+// CalcReg.rcp
+
+
+#include "CalcReg.h"
+
+FORM ID frmadc16 AT (2 2 160 160)
+ 	NOFRAME
+	NOSAVEBEHIND
+	MODAL
+	USABLE
+	MENUID frmadc16
+	HELPID   String001
+
+	BEGIN
+     // TITLE "CalcReg v1.2 DEMO"
+
+      TITLE "CalcReg v1.2"
+ 
+	  FIELD ID fld_prog AT (1 12 124 80) USABLE LEFTALIGN FONT 0 EDITABLE UNDERLINED HASSCROLLBAR  MULTIPLELINES MAXCHARS 5000
+	  FIELD ID fld_cmd AT (0 90 74 70) USABLE LEFTALIGN FONT 0 EDITABLE  MULTIPLELINES  MAXCHARS 50000
+
+	  scrollbar ProgScrollbarId at (right@132 20 7 60) value 0 min 0 max 10
+
+	  FORMBITMAP AT (2 12) BITMAP bitmapIcon
+ 
+
+
+
+    //BUTTON "quit" ID btnexit AT (129 12 28 9) USABLE LEFTANCHOR FRAME FONT 0
+	  //BUTTON "about" ID btnhelp AT (129 22 28 9) USABLE LEFTANCHOR FRAME FONT 0
+      BUTTON "cl^" ID btnCP AT (140 24 14 9) USABLE LEFTANCHOR FRAME FONT 0
+      BUTTON "tst" ID btntest AT (140 34 14 9) USABLE LEFTANCHOR FRAME FONT 0
+      //BUTTON "Dbug" ID btndebug AT (129 42 28 9) USABLE LEFTANCHOR FRAME FONT 0
+      BUTTON "clv" ID btnclear AT (140 44 14 9) USABLE LEFTANCHOR FRAME FONT 0
+      BUTTON "phi" ID btnconst AT (140 54 14 9) USABLE LEFTANCHOR FRAME FONT 0
+      BUTTON "EXE" ID btnstart AT (136 67 20 9) USABLE LEFTANCHOR FRAME FONT 1
+      BUTTON "pad" ID btnkeypad AT (138 79 18 9) USABLE LEFTANCHOR FRAME FONT 0
+
+      BUTTON "tan" ID btntan AT (145  90  14 14) USABLE LEFTANCHOR FRAME FONT 0
+      BUTTON " 9 " ID btn9 AT (145  104 14 14) USABLE LEFTANCHOR FRAME FONT 1
+      BUTTON " 6 " ID btn6 AT (145  118 14 14) USABLE LEFTANCHOR FRAME FONT 1
+      BUTTON " 3 " ID btn3 AT (145  132 14 14) USABLE LEFTANCHOR FRAME FONT 1
+      BUTTON "exe" ID btnexe AT (145 146 14 14) USABLE LEFTANCHOR FRAME FONT 0
+
+      BUTTON "sin" ID btnsin AT (131  90  14 14) USABLE LEFTANCHOR FRAME FONT 0
+      BUTTON " 8 " ID btn8 AT (131  104 14 14) USABLE LEFTANCHOR FRAME FONT 1
+      BUTTON " 5 " ID btn5 AT (131  118 14 14) USABLE LEFTANCHOR FRAME FONT 1
+      BUTTON " 2 " ID btn2 AT (131  132 14 14) USABLE LEFTANCHOR FRAME FONT 1
+      BUTTON " . " ID btnpnt AT (131 146 14 14) USABLE LEFTANCHOR FRAME FONT 1
+
+      BUTTON "cos" ID btncos AT (117  90  14 14) USABLE LEFTANCHOR FRAME FONT 0
+      BUTTON " 7 " ID btn7 AT (117  104 14 14) USABLE LEFTANCHOR FRAME FONT 1
+      BUTTON " 4 " ID btn4 AT (117  118 14 14) USABLE LEFTANCHOR FRAME FONT 1
+      BUTTON " 1 " ID btn1 AT (117  132 14 14) USABLE LEFTANCHOR FRAME FONT 1
+      BUTTON " 0 " ID btn0 AT (117 146 14 14) USABLE LEFTANCHOR FRAME FONT 1
+
+      BUTTON " )" ID btnrp AT (110  90  6 14) USABLE LEFTANCHOR FRAME FONT 0
+      BUTTON " (" ID btnlp AT (103  90  6 14) USABLE LEFTANCHOR FRAME FONT 0
+      BUTTON " / " ID btndiv AT (103  104 12 14) USABLE LEFTANCHOR FRAME FONT 1
+      BUTTON " * " ID btnmul AT (103  118 12 14) USABLE LEFTANCHOR FRAME FONT 1
+      BUTTON " - " ID btnmin AT (103  132 12 14) USABLE LEFTANCHOR FRAME FONT 1
+      BUTTON " + " ID btnpls AT (103 146 12 14) USABLE LEFTANCHOR FRAME FONT 1
+
+      BUTTON "x^" ID btnpow AT (89  90  13 14) USABLE LEFTANCHOR FRAME FONT 0
+      BUTTON "sqr" ID btnsqr AT (89  104 13 14) USABLE LEFTANCHOR FRAME FONT 0
+      BUTTON "exp" ID btnexp AT (89  118 13 14) USABLE LEFTANCHOR FRAME FONT 0
+      BUTTON "ln" ID btnln AT (89  132 13 14) USABLE LEFTANCHOR FRAME FONT 0
+      BUTTON " E " ID btnE AT (89 146 13 14) USABLE LEFTANCHOR FRAME FONT 1
+
+      BUTTON " x " ID btnX AT (75  90  13 14) USABLE LEFTANCHOR FRAME FONT 1
+      BUTTON " , " ID btncoma AT (75  104 13 14) USABLE LEFTANCHOR FRAME FONT 0
+      BUTTON " Trf" ID btnf AT (75  118 13 14) USABLE LEFTANCHOR FRAME FONT 0
+      BUTTON " = " ID btnEq AT (75  132 13 14) USABLE LEFTANCHOR FRAME FONT 0
+      BUTTON " C " ID btnC AT (75 146 13 14) USABLE LEFTANCHOR FRAME FONT 1
+
+	  END
+
+	STRING ID String001 "CalcReg1.2.c Written by Regan B-S. \n www.palmreg.fr.mu\n"\
+	"This software is intended to be handy, easy to use. Just play around, the manual and "\
+	"the examples will give you an idea of how to use it. Stay in touch with the website for newer versions.\n"\
+	"Report bugs at palmreg@venez.fr\n\n"\
+//DEMO
+	//"In this demo version, the Math functions are rough approximations and the coding size is limited\n"\
+	"May 2012\n"
+	//"Limited DEMO VERSION\n"
+
+
+	MENU ID frmadc16
+	begin
+			pulldown "Mode"
+		begin
+			MENUITEM "Save" ID SaveMenuId "S"
+			MENUITEM "Load" ID LoadMenuId "L"
+			MENUITEM SEPARATOR
+			MENUITEM "Debug Show Codes" ID DebugSCMenuId "C"
+			MENUITEM "Debug" ID DebugMenuId "D"
+			MENUITEM "Toogle Gfx display" ID TGfxDspMenuId "T"
+			MENUITEM "Toogle Break" ID TBreakMenuId "B"
+			MENUITEM "Toogle Allow Complexe" ID cmplxMenuId
+			MENUITEM SEPARATOR
+			MENUITEM "EXIT" ID ExitMenuId 			
+		end
+			pulldown "Maths"
+		begin
+			MENUITEM "Polar plot" PolPltMenuId
+			MENUITEM "Numerical Derivation" DerivateMenuId
+			MENUITEM "f(x,y) 3D plot" ThreeDpltMenuId
+			MENUITEM "FFT" FFTMenuId
+		end
+			pulldown "Infos"
+		begin
+			MENUITEM "About" ID AboutMenuId
+			MENUITEM SEPARATOR
+			MENUITEM "Manual" ID ManualMenuId
+		end
+	end
+	
+	
+SMALLICONFAMILY 
+  "images/smic1bpp.bmp" "images/smic2bpp.bmp" 
+  "images/smic4bpp.bmp" "images/smic8bpp.bmp" TRANSPARENCY 255 0 0
+
+
+ICONFAMILY 
+  "images/icon1bpp.bmp" "images/icon2bpp.bmp" 
+  "images/icon4bpp.bmp" "images/icon8bpp.bmp" TRANSPARENCY 255 0 0
+	
+ BITMAPFAMILY bitmapIcon
+  "" "" 
+  ""                    "images/ImageAbout120_80.bmp" COMPRESS
+
+
+
+ALERT ID SureDeleteProg
+   INFORMATION
+   BEGIN
+      TITLE "DELETE PROG"
+      MESSAGE "You will lose the data, are you sure you want to delete program?"
+      BUTTONS "OK" "CANCEL" 
+   END
+
+ALERT ID SureToQuit
+   INFORMATION
+   BEGIN
+      TITLE " Quit "
+      MESSAGE "Do you really want to quit?"
+      BUTTONS "Quit" "No, I just started!" 
+   END
+
+ALERT ID MergeText
+   INFORMATION
+   BEGIN
+      TITLE "Lose or Merge ?"
+      MESSAGE "You will lose data if you don't merge text. So?"
+      BUTTONS "Load" "Merge" 
+   END
+
+ALERT ID nodata
+   INFORMATION
+   BEGIN
+      TITLE "data error"
+      MESSAGE "no data!"
+      BUTTONS "OK" 
+   END
+
+VERSION ID VersionID "1.0.0.2012"
+
+
