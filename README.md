@@ -11,3 +11,10 @@ Then the program has been ported on PC windows under Win API and implemented fur
 Audio creation and filter butterworth analysis as been done with this software.
 A Lot can be done further.
 
+Here are a few screenshots of the display on PalmOS : 
+<p align="center">
+  <img src="images/photocurve3db.jpg" alt="Screenshot 1" width="30%" />
+  <img src="images/photocurve3ds.jpg" alt="Screenshot 2" width="30%" /> 
+  <img src="images/PhotoPolarPlot.jpg" alt="Screenshot 2" width="30%" /> 
+</p>
+
