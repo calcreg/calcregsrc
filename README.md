@@ -11,3 +11,6 @@ Then the program has been ported on PC windows under Win API and implemented fur
 Audio creation and filter butterworth analysis as been done with this software.
 A Lot can be done further.
 
+Click Below to access CalcReg Documentation in pdf format : 
+
+[![CalcReg Preview](CalcRegImage.png)](CalcRegDocumentation.pdf)
