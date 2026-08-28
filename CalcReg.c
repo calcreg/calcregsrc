@@ -1,7 +1,8 @@
-/* CalcReg.c
+/* ---------------------------
+ * CalcReg.c
  * Bussy-Socrate Regan
  * 2012
- */
+-----------------------------*/
 
 /* Includes */
 #include <PalmOS.h>			// system
@@ -10,7 +11,7 @@
 #include <SerialMgrOld.h> 
 #include <StdIOPalm.h>
 #include "CalcReg.h"		// app
-
+#include <FloatMgr.h>
 #include <stdarg.h>
 #include <stddef.h>
 
@@ -37,13 +38,31 @@ static void SerIOReceive(void);
 static void PrintCmd(char * s);
 static void PrintProg(char * s);
 static void Printf(const char * format, ...); //should be Printf and not printf otherwise it conflicts with StdIOPalm.h definition
+//static float sscanf (char *StringNbr,char* s, float *Nbr);
+static float Rsscanf (char *StringNbr,char *s ,float *Nbr);
+static float TenPower (int exp);
+static int strlen(char *s);
+static void Rprintf(float x);
+
+//MathFunctions
+int MathError; //send back a code if error in the Math functions. MathError=1 out of range exponential
+//-------exponential----------  MathError=1 out of range exponential
+#define SizeMathExpTable 100
+static void CreateMathExpTable();
+static float RMath_exp(float x);//value on range: exp(-+SizeMathExpTable) 
+float MathExpTable[SizeMathExpTable];
+
+char MathFunctions[]= "exp_ln_";
+//										1	  2
+
+
 
 char	*strErrSerLibOpen = "Error opening serial library";
 char	*StrBlank = " ";
 
 
-#define MnemoListSize 1000
-#define CodeListSize 1000 // nbr of Codes floactet = octet + float
+#define MnemoListSize 100
+#define CodeListSize 100 // nbr of Codes floactet = octet + float
 
 typedef struct floactet{
 	unsigned char code;
@@ -78,17 +97,21 @@ Code 2 = +
 Code 3 = -
 ...
 Code 9  =  Accumulateur   [9] [nbr Accu]
+Code 10 = Functions (not yet implemented)
 Code 11 = Instruction        [11][Instruction nbr]
 Code 12 = Code for Label [12][CodeOffsetList]
-
+Code 13 = Maths Functions [13][Code Function]
+													exp=1	ln = 2
 */
+
+
 
 #define OpListSize 9 // add the size if add new instructions or special codes in OperatorList
 #define LabelListSize 100
-#define MnemoProgSize 1000
+#define MnemoProgSize 100
 #define NbrMaxAccu 100
 static unsigned char InstructionList[]= "Start_print_goto_<_=>_==_>_";
-//																0       1      2       3   4     5      6
+//																0       1      2       3   4    5    6   
 char blabli[]= {'3',0x1,'4',0x0};
 
 
@@ -119,7 +142,8 @@ static void SerIOReceive(void) {
 	FormPtr 	Frm, frmP;
 	FieldPtr	fptr;
    char ValueStr[100];
-	MemHandle textH;
+	char s[1000];
+   MemHandle textH;
 	MemPtr  progtext;    
 	FieldPtr FieldProgTextPtr;
 	Frm = FrmGetFormPtr(frmadc16);
@@ -127,17 +151,19 @@ static void SerIOReceive(void) {
 	EnableControl(Frm, btnexit, true);
 	EnableControl(Frm, btnstart, false);
 
-     
-   WinDrawLine(0,90,160,90);
-   	printf("cmd:\n");
-   	StrPrintF(ValueStr, "A1=1\nloop:\nA1=A1+1\nA1<10=>goto loop\n");
-	PrintProg(ValueStr);
 	FieldProgTextPtr=(FieldPtr)(FrmGetObjectPtr(Frm, (FrmGetObjectIndex(Frm, fld_prog))));
-	printf("hello\n");
 	progtext = FldGetTextPtr(FieldProgTextPtr); //return the ptr to a the lock memory string of the fld_prog
 	//this text cannot be modified from progtext, because the memory can be reallocated by the system
-	//PrintCmd(progtext); test ok, this prints the progtextstring to the cmd field
+	//PrintCmd(progtext);// test ok, this prints the progtextstring to the cmd field
 	//TestVersionSerialMgr();
+
+	CreateMathExpTable();
+	//Rprintf(RMath_exp(1)); //test
+
+	CalcMain(progtext, StrLen(progtext));
+	
+	if (debug > 0) printf("End\n");
+	//	PrintCmd(ValueStr);
 
 }
 
@@ -170,6 +196,7 @@ static void Printf(const char * format, ...) //we use printf which is redefined 
 
 	PrintCmd(buf); // Prints in the cmd field
 }
+
 
 static void PrintCmd(char * s){
 	FormPtr 	Frm;
@@ -248,7 +275,7 @@ static void StopApplication(void) {
 static Boolean MainFormHandleEvent(EventPtr event) {
 	Boolean		handled = false;
 	EventType	newEvent;
-	
+	char ValueStr[50];
 	if (event->eType == ctlSelectEvent) {
 		switch (event->data.ctlEnter.controlID) {
 			case btnexit:
@@ -259,6 +286,16 @@ static Boolean MainFormHandleEvent(EventPtr event) {
 
    			case btnstart:	
 				SerIOReceive();
+   				break;
+
+			case btndebug:
+				debug=1;
+				SerIOReceive();
+				debug=0;
+   				break;
+   			case btntest:	
+				StrPrintF(ValueStr, "A1=1\nloop:\nprintA1\nA1=A1+1\nA1<10=>goto loop\n\n");
+				PrintProg(ValueStr);
    				break;
 
    		}
@@ -297,13 +334,17 @@ static void EventLoop(void) {
 static void StartApplication(void) {
 	Err			Error;
 	FormPtr		Frm;
-
+	char information[]="cmd:";
+	
 	// Initialize and draw the main form.
 	Frm = FrmInitForm(frmadc16);	
 	FrmSetActiveForm(Frm);
 	FrmDrawForm(Frm);
 
 	EnableControl(Frm, btnexit, true);
+	WinDrawLine(0,90,160,90);
+	WinDrawChars(information, StrLen(information),0,92);
+   	//printf("cmd:");
 
 	Error = SysLibFind("Serial Library", &SerIORef);
 	if (Error) {
@@ -323,7 +364,7 @@ static void StartApplication(void) {
 DWord PilotMain(Word cmd, Ptr cmdPBP, Word launchFlags) {
 	if (cmd == sysAppLaunchCmdNormalLaunch)	{
 		StartApplication();
-		EventLoop();
+    	EventLoop();
 		StopApplication();
 	}
 	return 0;
@@ -350,34 +391,40 @@ DWord PilotMain(Word cmd, Ptr cmdPBP, Word launchFlags) {
 int LineSize=30;
 // int ProgSize;  //receives the size of the WholeMnemoProg
 char InstructionLine[LineSize];
-int Error,i,nbrLine,NbrCodesCopied,OffsetLine;
+int Error,i,a,b,nbrLine,NbrCodesCopied,OffsetLine;
 
-char MnemoList[MnemoListSize]; // octet ascii for mnemo codes
+//char MnemoList[MnemoListSize]; // octet ascii for mnemo codes
 floactet CodeList[CodeListSize]; //Whole List 
 floactet CodeOfOneLine[CodeOneLineSizeMax]; //Code Of One Line
 
 int AccIndex,lblptr, istrt,pos,offsetP,k,K;
-;
+char s[50];
+
 		//fill WholeMnemoProg
 		if (ProgSize!=0) for (i=0;i<ProgSize;i++){WholeMnemoProg[i]=progtext[i];}
-	
-		printf("ProgSize %d octet\n",ProgSize); 
+//		StrPrintF(WholeMnemoProg, "A1=1\nprintA1\nloop:\nA1=A1+1\nA1<4=>goto loop\nprintA1\n");
+		WholeMnemoProg[ProgSize]=0;
+		ProgSize = StrLen(WholeMnemoProg);
+		if (debug>0){StrPrintF(s,"Size=%d bytes\n",ProgSize); 
+		PrintCmd(s);}
+		//PrintCmd(WholeMnemoProg);
+
 		istrt=0; i=0;
 		lblptr=0;
 		while (i<ProgSize){
-			if(WholeMnemoProg[i] == 0x0A || WholeMnemoProg[i] ==0x0D) istrt=i+1;
-				if (WholeMnemoProg[i] == Octet(":") ){
+			if(WholeMnemoProg[i] == 0x0A ) istrt=i+1;
+			if (WholeMnemoProg[i] ==0x0D) istrt=i+1;
+			if (WholeMnemoProg[i] == Octet(":") ){
 					Labels[lblptr].adr=istrt; //situation of the Label in WholeMnemoProg 
-					if (debug > 1) printf("label found Labels[%d].adr= %d\n",lblptr,istrt);
+					if (debug > 1) {StrPrintF(s,"label found Labels[%d].adr= %d\n",lblptr,istrt);PrintCmd(s);}
 					lblptr++;
 				}
-				//printf ("WholeMnemoProg[%d]= %c\n",i,WholeMnemoProg[i]);
 				i++;
 		}
 		NmaxLbl=lblptr;
-		printf ("Program\n %s\n",&WholeMnemoProg[0]);
+		if (debug>0) {StrPrintF(s,"List Program:\n %s\n",&WholeMnemoProg[0]);PrintCmd(s);}
 
-	printf("pass1... ");
+		if (debug >0) printf("pass1... ");
 	nbrLine=0; lblptr=0;
 	CodeListOffset=0;
 	CodeListOffsetMax=0; // Will Gives the Nbre of coding instructions in the coding program
@@ -385,23 +432,30 @@ int AccIndex,lblptr, istrt,pos,offsetP,k,K;
 	offsetP=0;
 	while (offsetP<ProgSize){
 	
-	i=offsetP;
+	i=offsetP; K=0;
 	for (k=0; k<LineSize;k++){ 
-		if (WholeMnemoProg[i+k]!=0x0A || WholeMnemoProg[i+k]!=0) {
-			InstructionLine[i]=WholeMnemoProg[i+k];}
-			K = k;
-	}
+		if (WholeMnemoProg[i+k]==0x0D ) goto OutLoadLine; 
+		if (WholeMnemoProg[i+k]==0x0A ) goto OutLoadLine; 
+		if (WholeMnemoProg[i+k]==0 ) goto OutLoadLine; 
+		InstructionLine[k]=WholeMnemoProg[i+k];
+		}
+	OutLoadLine:
+		InstructionLine[k]=0x0A;
+		InstructionLine[k+1]=0;
+		K=k+1;
+		
+	if (debug>0) PrintCmd(InstructionLine);
 	offsetP=offsetP+K;
 		i=0;
 		while(i<LineSize){if(InstructionLine[i]==0x0D) InstructionLine[i]=0x0A; i++;}//change the return code
 		RemoveSpace(InstructionLine,LineSize); //remove the spaces " " from the line instruction
-		if (debug > 0) 	printf("\n------converting Line -------%s\n", InstructionLine);
+		if (debug > 0) 	{StrPrintF(s,"\n---conv Line ---%s\n", InstructionLine);PrintCmd(s);}
 		if (CheckLabelDef(InstructionLine,LineSize) == 0) { 
 			//if (debug > 2) printf("No label \n");
 			Error = ConvertMnemo(InstructionLine, CodeList); //InstructionLine = Mnemolist for the test
 		}else {
 				Labels[lblptr].n=CodeListOffset;
-				if (debug > 2) printf("label found Labels[%d].n= %d\n",lblptr,CodeListOffset);
+				if (debug > 2) {StrPrintF(s,"lbl [%d].n= %d\n",lblptr,CodeListOffset);PrintCmd(s);}
 				lblptr++;
 		}
 		nbrLine++;
@@ -410,9 +464,10 @@ int AccIndex,lblptr, istrt,pos,offsetP,k,K;
 	CodeList[CodeListOffsetMax].code=0;   //Signal for End of Program
 	CodeList[CodeListOffsetMax].value=-1;
 
-	printf("ok");
-	printf(" %d Mnemo Lines  %d coded floactet  \n", nbrLine,CodeListOffsetMax);
 
+	if (debug >0) {	printf("ok\n");StrPrintF(s," %d Lines,  %d codes  \n", nbrLine,CodeListOffsetMax);
+	PrintCmd(s);}
+	
 	//Up to that point, the codeList contains [12][numerolbl] 
 	//[12][OffsetCodeListPointerlbl]
 	//PutOffsetLabelsInCodeList:	
@@ -423,16 +478,20 @@ int AccIndex,lblptr, istrt,pos,offsetP,k,K;
 	}}
 	if (debug > 0) {
 		printf ("---------------------------\n");
-		for  (i=0;i<CodeListOffsetMax;i++){printf( "   %d [%3.d] [%f]\n",i,CodeList[i].code,CodeList[i].value);}
+		for  (i=0;i<CodeListOffsetMax;i++){
+			a=CodeList[i].code;
+			b=CodeList[i].value;
+			StrPrintF(s, " %d [%d] [%d]\n",i,a,b);PrintCmd(s);
+			}
 		printf ("---------------------------\n");
 		}
 
-	
-	printf("LAUNCHING... \n");
+
+	if (debug > 0) printf("LAUNCHING... \n");
 	CodeListOffset=0;
 	OffsetLine=0;
 LoopCodeProgram: //-----------------------------------Loop-----------------------------------
-	if (debug > 0 ) printf ("-------------starting line code %d-----------\n",CodeListOffset);
+	if (debug > 0 ) {StrPrintF (s,"-starting line code %d--\n",CodeListOffset);PrintCmd(s);}
 
 	TestCondition=0; //each line starts we set the condition test to zero.
 
@@ -472,12 +531,15 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			}else printf("Error Accu no number present to load\n");
 		}}
 
+
 	//Handle Instructions
 	if (CodeOfOneLine[OffsetLine].code==11 ) {//Special Instruction  detected
 		if (CodeOfOneLine[OffsetLine].value==1) {//Print 
 			if (debug > 2 ) printf("print\n");
 				if (CodeOfOneLine[OffsetLine+1].code==1) {
-					printf("%E\n",CodeOfOneLine[OffsetLine+1].value);
+					//StrPrintF(s,"%E\n",CodeOfOneLine[OffsetLine+1].value);PrintCmd(s);
+				//StrPrintF(s,"%d\n",(int)CodeOfOneLine[OffsetLine+1].value);PrintCmd(s);
+				Rprintf(CodeOfOneLine[OffsetLine+1].value);//implementation for display float
 				}
 				if (CodeOfOneLine[OffsetLine+1].code!=1) {
 					printf("error no number to display\n ");
@@ -508,10 +570,12 @@ EndMain:
  }
 
  static int CheckLabelDef(char *InstructionLine,int LineSize){
-	int i=0;
+	int i=0; char s[50];
 	while (i<LineSize && InstructionLine[i] != 0x0A){
 		//printf("InstructionLine[%d]=%c\n",i,InstructionLine[i]);
-		if (InstructionLine[i] == Octet(":") ) {printf ("labels word length:%d \n",i); return (i);}
+		if (InstructionLine[i] == Octet(":") ) {
+			if (debug >0) {StrPrintF (s,"lbl:  %dletters \n",i);PrintCmd(s);} 
+		return (i);}
 		i++;
 	}
 	return 0;
@@ -548,27 +612,34 @@ int ErrorCode=0; // Tells if error, Set to 0 at start
 int opposite=0; // for the -x number at start of the math sentence
 //CodeListOffset Should be initialized outside this program
 int InstructionNumber=0;
-int NbrTest=0;
+int FunctionNumber;
+//int NbrTest=0;
 signed int LabelNbrFound;
 char StringNbr[100];
-int StrtStr,EndStr,p;
+char s[50];
+int StrtStr,EndStr,p,a;
 
 		if (MnemoListLine[i]==Octet("\n") )  {Out=1; goto EndConvertNoData;} //endLine at start or No data
 	StartConvList:
 	//Check for instructions Mnemoniques such as "print", "plot"
 		//printf ("now pointer on %c\n",MnemoListLine[i]);
 
-	for (NbrTest=0; NbrTest<2; NbrTest++){
+		//--- Search for instructions --------
+	//for (NbrTest=0; NbrTest<2; NbrTest++){//Could be more than one instruction on one line
+	InstructionNumber = 1; // Set to 1. If no more instruction takes 0 value.
+	while(InstructionNumber !=0){
 		Iindex=i;
 		//printf("MnemoListLine[%d]=%c\n",i,MnemoListLine[i]);
 		InstructionNumber=HandleInstructions(MnemoListLine,Iindex);
 		i=Iindex;
 		//if (debug > 1) printf("Instruction Number = %d \n",InstructionNumber);
-		if (InstructionNumber !=0) {CodeList[CodeListOffset].code=11;//General Code Instruction
+		if (InstructionNumber !=0) {CodeList[CodeListOffset].code=11;	//General Code Instruction
 		CodeList[CodeListOffset].value=InstructionNumber;
 		CodeListOffset++;
 		}
 	}
+	
+	//--- check label ---
 		LabelNbrFound=TestForLabels(MnemoListLine,i);
 		if (LabelNbrFound != -1 ) {
 			if (debug >1) printf("label [%d] \n",LabelNbrFound);
@@ -592,7 +663,25 @@ int StrtStr,EndStr,p;
 			CodeListOffset++;
 			goto StartConvList;
 			}//End Coding Parenthese 
-			
+		
+		
+		//---- Handle Detection of Math Function ------
+//	FunctionNumber=1;//Set to 1, if no more instructions functionNumber is taking 0 value
+//	while (FunctionNumber!=0){
+		Iindex=i;
+		//printf("MnemoListLine[%d]=%c\n",i,MnemoListLine[i]);
+		FunctionNumber=HandleMathFunctions(MnemoListLine,Iindex);
+		i=Iindex;
+		if (FunctionNumber !=0) {
+			if (debug > 0) printf("function coded\n");
+			CodeList[CodeListOffset].code=13;	//General Code Math Instruction
+			CodeList[CodeListOffset].value=FunctionNumber; 	//Specific code (example: exp=1, ln =2,...)
+			CodeListOffset++;
+			goto StartConvList;
+		}//end coding search function
+//	}
+		
+		
 		//detect Accu
 		if (MnemoListLine[i]==OperatorList[7] ) {//detect A 
 			i++; //get the number now
@@ -607,7 +696,7 @@ int StrtStr,EndStr,p;
 					CodeList[CodeListOffset].value = Nbr; // Floating point Value is set
 					if (Nbr>NbrMaxAccu) {printf("Accu number too big\n");ErrorCode=4; goto EndConvert;} 
 					CodeListOffset++;
-					if (debug > 0) printf("Accu A%f \n",Nbr);
+					if (debug > 0) {StrPrintF(s,"Accu A%d \n",(int) Nbr);PrintCmd(s);}
 					Nbr=0;// Reinitialise  Nbr for next value
 					goto EndNbrAccu;// i points on the operator
 				}
@@ -626,15 +715,22 @@ int StrtStr,EndStr,p;
 
 			
 		for (iop=0;iop<OpListSize;iop++){
-			if (MnemoListLine[i] == OperatorList[iop]) goto OpCodeFound;		
+			if (MnemoListLine[i] == OperatorList[iop]) {
+			CodeList[CodeListOffset].code = iop+2;       // +2  so that "+"=2
+			CodeList[CodeListOffset].value = 0; 			// No values for operators
+			CodeListOffset++;
+			i++; // then i points next number
+			CodeListOffsetMax=CodeListOffset;
+			goto StartConvList;
+			}
 		}
-
+		
 			
 		//--- Number Handling here --- 
 	HandleNbr:
 		/*
 		val= MnemoListLine[i]-Octet("0");
-		if (debug > 0) {if (val >0 ) printf ("val = %d \n",val); else printf ( "sign detected \n");}
+		if (debug > 0) {if (val >0 ) printf ("val = %d \n",(int) val); else printf ( "sign detected \n");}
 		if (val >= 0 && val <=9) Nbr = Codage*Nbr + val ; 
 
 		else {
@@ -650,6 +746,7 @@ int StrtStr,EndStr,p;
 		i++;
 		goto HandleNbr;
 		*/
+// System with sscanf to get the floating point nbr but need implement a function for sscanf
 		val= MnemoListLine[i]-Octet("0");
 		if (val >= 0 && val <=9) StrtStr=i;
 		i++;
@@ -662,13 +759,12 @@ int StrtStr,EndStr,p;
 		EndStr=i; 
 		for (p=0; p<(EndStr-StrtStr) ; p++){StringNbr[p]=MnemoListLine[StrtStr+p];}
 		StringNbr[p]=0;
-		sscanf (StringNbr,"%f",&Nbr);
-		if (debug>0) printf("StringNbr= [%s], Nbr = %f \n",StringNbr,Nbr);
+		Rsscanf (StringNbr,"%f",&Nbr); // personal implementation sscanf not on PalmOS unfortunately
 		if (opposite==1)  {opposite=0; Nbr= -Nbr;} 
+		if (debug>0) {StrPrintF(s,"StringNbr= [%s], Nbr = %d\n",StringNbr,(int)Nbr);PrintCmd(s);}
 		CodeList[CodeListOffset].code = 1;       // It is a number: code=0
 		CodeList[CodeListOffset].value = Nbr; // Floating point Value is set
 		CodeListOffset++;
-		if (debug > 1) printf("Le nombre est %f \n",Nbr);
 		Nbr=0;// Reinitialise  Nbr for next value
 
 	EndNbr:
@@ -703,7 +799,7 @@ int StrtStr,EndStr,p;
 			CodeListOffset++;
 			i++; // then i points next number
 			CodeListOffsetMax=CodeListOffset;
-			if (MnemoListLine[i]==Octet("\n") )  {Out=1; }//endLine
+		//	if (MnemoListLine[i]==Octet("\n") )  {Out=1;goto EndNbr; }//endLine
 	}
 		
 	EndConvert:
@@ -746,18 +842,19 @@ int k,j;
 	}
 	return -1; //message of error
  }
- 
+//--------- Gives the Instruction code --------- 
  int HandleInstructions(char *MnemoListLine, int i){//return the number instruction starting on line
 	int LengthInstructionMax = 30;// exemple: length "print" = 5
 	int j=0; int k=0;
 	int NInstr=0; int Ok=0;
+	char s[50];
+	
 	while( j < sizeof(InstructionList) ){
 		//printf("InstructionList[%d] = %c\n",j,InstructionList[j]);
 		if (MnemoListLine[i] == InstructionList[j]){
-			if (debug==1)printf("j= %d, Mnemo[%d]=%c\n",j,i,MnemoListLine[i]);
 			k=0;
 			LoopTestInstruction:
-			if (debug ==1 )printf("Mnemo[%d+%d]=%c\n",i,k,MnemoListLine[i+k]);
+			if (debug >0 ){StrPrintF(s,"Instruction ? %c\n",MnemoListLine[i+k]);PrintCmd(s);}
 
 				if (MnemoListLine[i+k] != InstructionList[j+k]) goto NotThisInstruction;
 				if (k>LengthInstructionMax) goto NotThisInstruction;
@@ -774,6 +871,39 @@ InstructionFound:
 	if (Ok == 0) NInstr=0; //If none instruction found then send 0 back 
 	return NInstr; //Contain the number of the instruction
  }
+
+//----------- Gives the maths function code ----------- 
+	int HandleMathFunctions(char *MnemoListLine, int i){//return the number instruction starting on line
+	int LengthInstructionMax = 30;// exemple: length "print" = 5
+	int j=0; int k=0;
+	int NInstr=0; int Ok=0;
+	char s[50];
+	
+	while( j < sizeof(MathFunctions) ){// the list
+		if (MnemoListLine[i] == MathFunctions[j]){
+			k=0;
+			LoopTestFunction:
+			if (debug > 0 ){StrPrintF(s,"Math Func ? %c\n",MnemoListLine[i+k]);PrintCmd(s);}
+
+				if (MnemoListLine[i+k] != MathFunctions[j+k]) goto NotThisFunction;
+				if (k>LengthInstructionMax) goto NotThisFunction;
+				if (MathFunctions[j+k+1]== Octet("_") ) {
+					Ok=1; Iindex=i+k+1;NInstr++;//NInstr is increased 'cause we start at 1 the list (exp=1)
+					if (debug > 0 ){StrPrintF(s,"MathFunction Nbr %d\n",NInstr);PrintCmd(s);}
+					goto FunctionFound;}
+				k++;
+				goto LoopTestFunction;
+		}
+	NotThisFunction:
+	while (InstructionList[j+k]!=Octet("_") && k< LengthInstructionMax){k++;}
+	NInstr++; j=j+k;k=0;	
+	j++;
+	}
+FunctionFound:
+	if (Ok == 0) NInstr=0; //If none instruction found then send 0 back 
+	return NInstr; //Contain the number of the instruction
+ }
+
  
 int FillCodeOfOneLine(floactet *CodeList,floactet *CodeOfOneLine){
 	//CodeListOffset is set outside this subroutine
@@ -814,19 +944,20 @@ int iptrstrt=0; int Aind;
  
  static int TreatParenthese(floactet * CodeList){
  /* ErrorCode = 1 Different number of left and right parenthese should be equal
-     ErrorCode = 2 Error calculation in the  parenthese
+    ErrorCode = 2 Error calculation in the  parenthese
 
-	 1. detect deepest parenthese, 
+    1. detect deepest parenthese, 
         and place iptr on the deepest parenthese copy the part in a buffer floactet line code,
-	 2. give that job to CalculOneLine(CodeInParenthese)
-	 3. Copy the code result in the Codelist removing the concerned parenthese
-	 4. Start again the detection parenthese for extra parenthese
+    2. give that job to CalculOneLine(CodeInParenthese)
+    3. Copy the code result in the Codelist removing the concerned parenthese
+    4. Start again the detection parenthese for extra parenthese
 	 */
  int i,iptr,iptrEnd;
  int CountLevelPar,LevelParMax;
  int ErrorCode=0;
  int Error=0;
  floactet BufferLineCode[NbrMaxOperationOnLine];
+	char s[50];
 
  //counts the max level parenthese (((1+1)+3)-2) := 3level
  //and get iptr and iptrEnd the pointer indexes left right on the deepest level parenthese
@@ -837,6 +968,7 @@ int iptrstrt=0; int Aind;
 	iptr=0;
 	iptrEnd=0;
     i=0;
+	
  while (i<NbrMaxOperationOnLine){ 
 	if (CodeList[i].code==6) {
 		CountLevelPar++; //detection of "("
@@ -862,9 +994,11 @@ int iptrstrt=0; int Aind;
 	BufferLineCode[i].code=0xFF;BufferLineCode[i].value=0; //add the "\n" in the buffer
 	Error = CalculOneLine(BufferLineCode);//Go to calculate the BufferOneLine
 	if (Error != 0) {printf ("Error calculation in the parenthese = %d\n", Error); ErrorCode=2;} 
-	if (debug == 1) {printf("Parenthese Result BufferLineCode:\n");
-							printf("        [%d]   [%f]\n",BufferLineCode[0].code,BufferLineCode[0].value);
-							printf("        [%d]   [%f]\n",BufferLineCode[1].code,BufferLineCode[1].value);
+	if (debug >0) {printf("Parenthese Result BufferLineCode:\n");
+							StrPrintF(s,"  [%d]   [%d]\n",BufferLineCode[0].code,(int)BufferLineCode[0].value);
+							PrintCmd(s);
+							StrPrintF(s,"  [%d]   [%d]\n",BufferLineCode[1].code,(int)BufferLineCode[1].value);
+							PrintCmd(s);
 	}
 	CodeList[iptr]=BufferLineCode[0]; //copy the result
 	i=iptr+1;
@@ -898,17 +1032,36 @@ static int  CalculOneLine(floactet * CodeListLine){//Must be one line only
 	*/
 									   
 	//Search for priority *,/,(,  
-	int i; int imaxLine=0;
+	int i,k; int imaxLine=0;
 	float val,x1,x2;
 	int ErrorCode=0;
 	int iptrEqualSignP; //Used to save the position of the equal sign in the line
-	
+	char s[50];
 	i=0;
 	imaxLine=0; iptrEqualSignP=0;
 	while (i<NbrMaxOperationOnLine){
 	if (CodeListLine[i].code == 0xFF) {imaxLine=i; goto SearchPriority;}
 	if (CodeListLine[i].code == 8) iptrEqualSignP=i+1; //detect and save equal code position+1 
 
+	
+	if (CodeListLine[i].code==13 && CodeListLine[i+1].code==1) {//Math Function
+		if (CodeListLine[i+1].value==1 ) {val=RMath_exp(CodeListLine[i+1].value);}
+			//if (CodeListLine[i+1].value==2 ) {val=RMath_ln(CodeListLine[i+1].value);}			
+		if (ErrorCode == 0) {CodeListLine[i].code=1; CodeListLine[i].value=val;}
+		k=i+1;
+		while (CodeListLine[k].code !=0xFF && CodeListLine[k].code !=0) {
+		CodeListLine[k]=CodeListLine[k+1];
+			StrPrintF(s," code %d [%d] [%d] \n",k,CodeListLine[k].code,(int)CodeListLine[k].value);
+			PrintCmd(s);
+			k++;
+			}
+			StrPrintF(s," code %d [%d] [%d] \n",k,CodeListLine[k].code,(int)CodeListLine[k].value);
+			PrintCmd(s);
+		CodeListLine[k]=CodeListLine[k+1];//copy the last code of 0xFF or 0
+		printf("autoloop exit\n"); return 1;
+		}
+
+		
 	if (CodeListLine[i+1].code==11 &&CodeListLine[i+1].value==3) {//Test "<"
 		if (CodeListLine[i].code !=1 && CodeListLine[i+2].code !=1){ErrorCode = 5; goto EndCalculOneLine;}
 		else { if ( CodeListLine[i].value < CodeListLine[i+2].value) {
@@ -919,8 +1072,9 @@ static int  CalculOneLine(floactet * CodeListLine){//Must be one line only
 	if (CodeListLine[i].code == 11) iptrEqualSignP=i+1; //detect instruction and save code position+1 
 
 	
-	if (debug == 1) {
-	printf ("            Code %d  [%d]   [%f] \n",i,CodeListLine[i].code,CodeListLine[i].value);
+	if (debug > 0) {
+	StrPrintF (s," Code %d  [%d]   [%d] \n",i,CodeListLine[i].code, (int) CodeListLine[i].value);
+	PrintCmd(s);
 	}
 	i++;
 	}
@@ -989,11 +1143,107 @@ static int  CalculOneLine(floactet * CodeListLine){//Must be one line only
 			CodeListLine[iptrEqualSignP].code=1; //Put value after the equal sign
 			CodeListLine[iptrEqualSignP].value=val;
  EndCalculOneLine:
-			if (debug == 1) {
-				printf ("The line value is %f \n",val);
-				printf("Results : Code 1  [%d]   [%f]\n",	CodeListLine[iptrEqualSignP].code,CodeListLine[iptrEqualSignP].value);
-				printf("Results : Code 2  [%d]   [%f]\n",	CodeListLine[iptrEqualSignP+1].code,CodeListLine[iptrEqualSignP+1].value);
+			if (debug > 0) {
+				StrPrintF (s, "Line value is %d \n",(int) val); PrintCmd(s);
+				//printf("Results : Code 1  [%d]   [%f]\n",	CodeListLine[iptrEqualSignP].code,CodeListLine[iptrEqualSignP].value);
+				//printf("Results : Code 2  [%d]   [%f]\n",	CodeListLine[iptrEqualSignP+1].code,CodeListLine[iptrEqualSignP+1].value);
 				}
 	return ErrorCode;
  }
 
+
+ static float Rsscanf (char *s,char *c,float *Nbr){
+	//int size=StrLen(s);
+	int size=strlen(s);
+	//printf("size=%d",size);
+	float val=0;
+	float savenbr=0;
+	float nbr=0; float number;
+	int Exp=0;int i=0; int ie; int exposant;
+	float neg=1;int ip=0;
+	for (i=0;i<size;i++){
+		if (s[i]==Octet("E")) {savenbr=nbr*neg; neg=1;Exp=1;nbr=0; ie=i; i++;}
+		if (s[i]==Octet(".")) {ip=i;i++;}
+		if (s[i]==Octet("+")) {i++;}
+		if (s[i]==Octet(" ")) {i++;}
+		if (s[i]==Octet("-")) {neg=-1;i++;}
+		val = s[i]-Octet("0");
+		if (val <=9 && val >=0 ) nbr=nbr*10+val; 
+		}
+		nbr=nbr*neg;
+
+		//synthèse du nombre
+	if (Exp==1){exposant = nbr ; number = savenbr;
+						if(ip!=0) number = number / TenPower(ie-ip-1);
+	}else{ number = nbr; if(ip!=0) number = nbr / TenPower (i-ip-1);}
+	if (Exp==1) number = number *TenPower (exposant);
+	Nbr[0]=number;
+	return number;
+	}
+
+static void Rprintf(float x){
+	int Pres=3; int i;
+	char s[20],s2[20],*c;
+	float X,alfa,precision;
+	int n=0; int opp=0;
+
+	precision=TenPower(-Pres);
+	if (x<0) {x=-x;opp=1;}	
+	X=x;
+	if (x>=precision)while(X>=precision){X=X/10; n++;}
+	if (x< precision){while(X<=precision){X=X*10; n--;}n++;}
+
+	alfa=x*TenPower(2*Pres+1-n);
+	StrPrintF(s,"%d",(int)alfa);
+	
+	if (opp==1) s2[0]=Octet("-"); 
+	else s2[0]=Octet(" ");
+	s2[1]=s[0];	s2[2]=Octet(".");
+	i=1;
+	while(s[i]!=0){s2[i+2]=s[i]; i++;}
+	s2[i+2]=Octet("E");
+	c=s2+i+3;
+	StrPrintF(c,"%d\n",n-4);
+	PrintCmd(s2);
+	}
+	
+static int strlen(char *s){
+	int i;
+	for (i=0;i<20;i++){if (s[i]==0) return i;}
+	return 0;//error
+	}
+	
+static float TenPower (int exp){//10^exp, with exp pos or neg
+		float n=1;int i; 
+		if (exp >=0) {for (i=0;i<exp;i++) n=n*10;}
+		else{ for (i=0;i<-exp;i++) n=n/10;}
+		return n;
+		}
+ 
+ static float RMath_exp(float x){//value on range: exp(-+SizeMathExpTable) 
+	//SizeMathExpTable = 100 most likely to set
+	int a;
+	int b;
+	float m,ea,eb;
+	
+	if (x<0) a=(int)(-x);
+	else a=(int) x;
+	b=a+1;
+	if (a+1>SizeMathExpTable) {MathError=1; return 0;}//The error will be collected at the loop program
+	ea= MathExpTable[a];
+	eb= MathExpTable[b];
+	m=(eb-ea)/(float)(b-a);//coeff directeur approximation linéaire
+	if (x>=0) return (m*(x-(float)a)+ea);
+	else return 1/(m*(x-(float)a)+ea);
+	}
+	
+static void CreateMathExpTable(){
+	float e=1.718281828;
+	float x=1;//set x to 1
+	int i;
+	for (i=0;i<SizeMathExpTable;i++){
+		MathExpTable[i]=x;
+		x=x*e;
+		}
+	}
+	
