@@ -1,0 +1,10 @@
+rm CalcReg.exe
+gcc -c compatibility.c -mwindows
+gcc -c RMathlibPC.c -mwindows
+gcc -c ManualPC.c -mwindows
+gcc -c OscilloPC.c -mwindows
+gcc -c CalcRegPC.c -mwindows
+
+gcc -c maths.c -mwindows
+gcc -c main.c -mwindows
+gcc -o CalcReg.exe main.o maths.o -mwindows
