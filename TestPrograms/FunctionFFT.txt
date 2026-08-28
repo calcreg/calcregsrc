@@ -1,0 +1,29 @@
+//FFT of OSC(x)
+
+gfxdim 0,18,-1,1,0.05
+
+
+a=0
+
+b=50
+x=0
+
+k=0
+
+F2(x) =sin(x)
+Trf(x)=F2(x)
+
+gfxdim 0,2,-30,30,0.01
+
+x=0
+
+F1(k)=Int(a,b,0.25,x)exp(i*k*x)*F2(x)
+
+//print F1(0)
+
+//print F1(0.5)
+
+Trf(k)=Re (F1(k))
+
+Trf(k)=Im (F1(k))
+

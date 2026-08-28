@@ -1,0 +1,9 @@
+//Test function Precision2
+
+//should be near y=x-1
+
+gfxdim -3,3,-5,5,0.1
+
+x=-3
+
+Trf(x)=ln ( exp (x) )-1 
