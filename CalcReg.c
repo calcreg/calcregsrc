@@ -36,6 +36,7 @@ static void EnableControl (FormPtr Frm, Word ControlID, Boolean State);
 static void EnableField (FormPtr Frm, Word FieldID, Boolean State);
 static void SerIOReceive(void);
 static void PrintCmd(char * s);
+static void DeleteCmd();
 static void PrintProg(char * s);
 static void Printf(const char * format, ...); //should be Printf and not printf otherwise it conflicts with StdIOPalm.h definition
 //static float sscanf (char *StringNbr,char* s, float *Nbr);
@@ -47,13 +48,23 @@ static void Rprintf(float x);
 //MathFunctions
 int MathError; //send back a code if error in the Math functions. MathError=1 out of range exponential
 //-------exponential----------  MathError=1 out of range exponential
-#define SizeMathExpTable 100
+#define SizeMathExpTable 500
 static void CreateMathExpTable();
 static float RMath_exp(float x);//value on range: exp(-+SizeMathExpTable) 
 float MathExpTable[SizeMathExpTable];
 
-char MathFunctions[]= "exp_ln_";
-//										1	  2
+//-------logarithme neperien----------  MathError=2 out of range Ln
+#define SizeMathLnTable 102 //Not below 100 !
+static void CreateMathLnTable();
+static float RMath_ln(float x);//value on range: x>0 
+static void GetMantisseExponant(float x, int *exponant, float*mantisse);
+float MathLnTable[SizeMathLnTable];
+
+//-------logarithme Square root----------  MathError=2 out of range Ln
+static float RMath_sqrt(float x);
+
+char MathFunctions[]= "exp_ln_sqrt_";
+//										1	  2     3
 
 
 
@@ -101,7 +112,8 @@ Code 10 = Functions (not yet implemented)
 Code 11 = Instruction        [11][Instruction nbr]
 Code 12 = Code for Label [12][CodeOffsetList]
 Code 13 = Maths Functions [13][Code Function]
-													exp=1	ln = 2
+														exp=1
+														 ln = 2
 */
 
 
@@ -156,9 +168,8 @@ static void SerIOReceive(void) {
 	//this text cannot be modified from progtext, because the memory can be reallocated by the system
 	//PrintCmd(progtext);// test ok, this prints the progtextstring to the cmd field
 	//TestVersionSerialMgr();
-
-	CreateMathExpTable();
-	//Rprintf(RMath_exp(1)); //test
+	
+	//Rprintf(RMath_ln(1)); //test
 
 	CalcMain(progtext, StrLen(progtext));
 	
@@ -214,6 +225,18 @@ static void PrintProg(char * s){
 	FldPtr = (FieldPtr)(FrmGetObjectPtr(Frm, (FrmGetObjectIndex(Frm, fld_prog))));
 	FldInsert(FldPtr, s, StrLen(s));
 }
+
+static void DeleteCmd(){
+	FormPtr 	Frm;
+	FieldPtr 	FldPtr;
+	
+	Frm = FrmGetFormPtr(frmadc16);
+	FldPtr = (FieldPtr)(FrmGetObjectPtr(Frm, (FrmGetObjectIndex(Frm, fld_cmd))));
+	FldDelete(FldPtr, 0, 5000);//Size of the cmd 5000 maxchars see CalcReg.rcp
+	// FldDelete (FieldType *fldP, Uint 16 start , UInt16 end)
+
+}
+
 
 
 //--------------------------------------------------------------
@@ -294,10 +317,12 @@ static Boolean MainFormHandleEvent(EventPtr event) {
 				debug=0;
    				break;
    			case btntest:	
-				StrPrintF(ValueStr, "A1=1\nloop:\nprintA1\nA1=A1+1\nA1<10=>goto loop\n\n");
+				StrPrintF(ValueStr, "A1=exp(ln1)\nprintA1\nA1=1\nloop:\nprintA1\nA1=A1+1\nA1<10=>goto loop\n\n");
 				PrintProg(ValueStr);
    				break;
-
+   			case btnclear:
+				DeleteCmd();
+				break;
    		}
 		handled = true;
 	}
@@ -334,7 +359,9 @@ static void EventLoop(void) {
 static void StartApplication(void) {
 	Err			Error;
 	FormPtr		Frm;
-	char information[]="cmd:";
+	char information[]="cmd:                                    ";
+	char information1[]="creating math library";
+
 	
 	// Initialize and draw the main form.
 	Frm = FrmInitForm(frmadc16);	
@@ -343,9 +370,11 @@ static void StartApplication(void) {
 
 	EnableControl(Frm, btnexit, true);
 	WinDrawLine(0,90,160,90);
+	WinDrawChars(information1, StrLen(information1),0,92);
+	CreateMathExpTable();
+	CreateMathLnTable();
 	WinDrawChars(information, StrLen(information),0,92);
-   	//printf("cmd:");
-
+	
 	Error = SysLibFind("Serial Library", &SerIORef);
 	if (Error) {
 		FrmCustomAlert (AlertGenericAlert, strErrSerLibOpen, "can't open library","can't open library" );
@@ -786,6 +815,9 @@ int StrtStr,EndStr,p,a;
 			if (MnemoListLine[i]==Octet("<") )  {
 			goto StartConvList; //The code will be put by instruction found
 			}
+			if (MnemoListLine[i]==Octet(">") )  {
+			goto StartConvList; //The code will be put by instruction found
+			}
 			
 		for (iop=0;iop<OpListSize;iop++){
 			if (MnemoListLine[i] == OperatorList[iop]) goto OpCodeFound;		
@@ -895,7 +927,7 @@ InstructionFound:
 				goto LoopTestFunction;
 		}
 	NotThisFunction:
-	while (InstructionList[j+k]!=Octet("_") && k< LengthInstructionMax){k++;}
+	while (MathFunctions[j+k]!=Octet("_") && k< LengthInstructionMax){k++;}
 	NInstr++; j=j+k;k=0;	
 	j++;
 	}
@@ -944,13 +976,13 @@ int iptrstrt=0; int Aind;
  
  static int TreatParenthese(floactet * CodeList){
  /* ErrorCode = 1 Different number of left and right parenthese should be equal
-    ErrorCode = 2 Error calculation in the  parenthese
+     ErrorCode = 2 Error calculation in the  parenthese
 
-    1. detect deepest parenthese, 
+	 1. detect deepest parenthese, 
         and place iptr on the deepest parenthese copy the part in a buffer floactet line code,
-    2. give that job to CalculOneLine(CodeInParenthese)
-    3. Copy the code result in the Codelist removing the concerned parenthese
-    4. Start again the detection parenthese for extra parenthese
+	 2. give that job to CalculOneLine(CodeInParenthese)
+	 3. Copy the code result in the Codelist removing the concerned parenthese
+	 4. Start again the detection parenthese for extra parenthese
 	 */
  int i,iptr,iptrEnd;
  int CountLevelPar,LevelParMax;
@@ -1045,26 +1077,32 @@ static int  CalculOneLine(floactet * CodeListLine){//Must be one line only
 
 	
 	if (CodeListLine[i].code==13 && CodeListLine[i+1].code==1) {//Math Function
-		if (CodeListLine[i+1].value==1 ) {val=RMath_exp(CodeListLine[i+1].value);}
-			//if (CodeListLine[i+1].value==2 ) {val=RMath_ln(CodeListLine[i+1].value);}			
+		if (CodeListLine[i].value==1 ) {val=RMath_exp(CodeListLine[i+1].value);}//exp
+		if (CodeListLine[i].value==2 ) {val=RMath_ln(CodeListLine[i+1].value);}	//ln		
+		if (CodeListLine[i].value==3 ) {val=RMath_sqrt(CodeListLine[i+1].value);}	//sqrt		
 		if (ErrorCode == 0) {CodeListLine[i].code=1; CodeListLine[i].value=val;}
 		k=i+1;
 		while (CodeListLine[k].code !=0xFF && CodeListLine[k].code !=0) {
-		CodeListLine[k]=CodeListLine[k+1];
-			StrPrintF(s," code %d [%d] [%d] \n",k,CodeListLine[k].code,(int)CodeListLine[k].value);
-			PrintCmd(s);
+			CodeListLine[k]=CodeListLine[k+1];
 			k++;
 			}
+/*			for (k=0;k<5;k++){
 			StrPrintF(s," code %d [%d] [%d] \n",k,CodeListLine[k].code,(int)CodeListLine[k].value);
 			PrintCmd(s);
-		CodeListLine[k]=CodeListLine[k+1];//copy the last code of 0xFF or 0
-		printf("autoloop exit\n"); return 1;
+			}*/
 		}
 
 		
 	if (CodeListLine[i+1].code==11 &&CodeListLine[i+1].value==3) {//Test "<"
 		if (CodeListLine[i].code !=1 && CodeListLine[i+2].code !=1){ErrorCode = 5; goto EndCalculOneLine;}
 		else { if ( CodeListLine[i].value < CodeListLine[i+2].value) {
+					TestCondition=1; }
+					i=i+3;goto EndCalculOneLine;
+					}
+	}
+		if (CodeListLine[i+1].code==11 &&CodeListLine[i+1].value==6) {//Test ">"
+		if (CodeListLine[i].code !=1 && CodeListLine[i+2].code !=1){ErrorCode = 5; goto EndCalculOneLine;}
+		else { if ( CodeListLine[i].value > CodeListLine[i+2].value) {
 					TestCondition=1; }
 					i=i+3;goto EndCalculOneLine;
 					}
@@ -1186,7 +1224,7 @@ static void Rprintf(float x){
 	char s[20],s2[20],*c;
 	float X,alfa,precision;
 	int n=0; int opp=0;
-
+	if (x==0) {printf(" 0\n"); return;}
 	precision=TenPower(-Pres);
 	if (x<0) {x=-x;opp=1;}	
 	X=x;
@@ -1194,6 +1232,8 @@ static void Rprintf(float x){
 	if (x< precision){while(X<=precision){X=X*10; n--;}n++;}
 
 	alfa=x*TenPower(2*Pres+1-n);
+	if ( (alfa*10-10*(UInt32)alfa) >5) alfa=alfa+1; //if the truncate properly.
+	
 	StrPrintF(s,"%d",(int)alfa);
 	
 	if (opp==1) s2[0]=Octet("-"); 
@@ -1222,28 +1262,150 @@ static float TenPower (int exp){//10^exp, with exp pos or neg
  
  static float RMath_exp(float x){//value on range: exp(-+SizeMathExpTable) 
 	//SizeMathExpTable = 100 most likely to set
-	int a;
-	int b;
-	float m,ea,eb;
+	int a,Inv;
+	float m,ea,eb,ec,A,b,c,Px ;
+	Inv=0;
+
+	//x=2*x;//to be consistant with e^(1/2)
+	x=4*x;//to be consistant with e^(1/4)
+	if (x<0) {x=-x;Inv=1;}//Invert for e(-x) 
+
+	a=(int) (x);
 	
-	if (x<0) a=(int)(-x);
-	else a=(int) x;
-	b=a+1;
 	if (a+1>SizeMathExpTable) {MathError=1; return 0;}//The error will be collected at the loop program
 	ea= MathExpTable[a];
-	eb= MathExpTable[b];
-	m=(eb-ea)/(float)(b-a);//coeff directeur approximation linéaire
-	if (x>=0) return (m*(x-(float)a)+ea);
-	else return 1/(m*(x-(float)a)+ea);
+	eb= MathExpTable[a+1];
+	ec= MathExpTable[a+2];
+	m=eb-ea;//coeff directeur approximation linéaire
+	A=a; b=a+1;c=a+2;
+	Px= (x-b)*(x-c)*ea/2-(x-A)*(x-c)*eb+(x-A)*(x-b)*ec/2;//Polynome  interpolateur Lagrange
+	if (Inv==0) return Px;
+	else return 1/Px;
+		
+	//if (Inv==0) return (m*(x-(float)a)+ea); //linear
+	//else return 1/(m*(x-(float)a)+ea);//
 	}
 	
 static void CreateMathExpTable(){
-	float e=1.718281828;
+	//float e=2.718281828;
+	//float e2=1.648721271; //e^(1/2)
+	float e4=1.284025417; //e^(1/4)
 	float x=1;//set x to 1
 	int i;
+	if (debug>0) printf("Create exp\n");
 	for (i=0;i<SizeMathExpTable;i++){
 		MathExpTable[i]=x;
-		x=x*e;
+		x=x*e4; //e^(1/2)
 		}
+	}
+	
+	
+static void CreateMathLnTable(){
+	int k,l,OK,bug=0;
+	float dx,x,a,b,N,n,alfa=1,x0;
+	char s[50];
+	
+	if (debug>0) printf("Create Ln\n");
+
+	for (k=0;k<SizeMathLnTable;k++){MathLnTable[k]=0;}//clean to zero
+	//fill base ln numbers.
+	MathLnTable[0]=-1E20;//-inf
+	MathLnTable[1]= 0;
+	MathLnTable[2]= 0.693147181;
+	MathLnTable[3]= 1.098612289;
+	MathLnTable[4]= 1.386294361;
+	MathLnTable[5]= 1.609437912;
+	MathLnTable[6]= 1.791759469;
+	MathLnTable[7]= 1.945910149;
+	MathLnTable[8]= 2.079441542;
+	MathLnTable[9]= 2.197224577;
+	MathLnTable[10]= 2.302585093;
+	MathLnTable[11]= 2.397895273;
+	MathLnTable[13]= 2.564949357;
+	MathLnTable[17]= 2.833213344;
+	MathLnTable[19]= 2.944438979;
+	MathLnTable[23]= 3.135494216;
+	MathLnTable[29]= 3.367295830;
+	MathLnTable[31]= 3.433987204;
+	MathLnTable[37]= 3.610917913;
+	MathLnTable[41]= 3.713572067;
+	MathLnTable[43]= 3.761200116;
+	MathLnTable[47]= 3.850147602;
+	MathLnTable[53]= 3.970291914;
+	MathLnTable[61]= 4.110873864;
+	MathLnTable[67]= 4.204692619;
+	MathLnTable[59]= 4.077537444;
+	MathLnTable[71]= 4.262679877;
+	MathLnTable[73]= 4.290459441;
+	MathLnTable[79]= 4.369447852;
+	MathLnTable[89]= 4.488636370;
+	MathLnTable[94]= 4.543294782;
+	MathLnTable[97]= 4.574710979;
+
+	//by multiplication create the other multiples 
+	//first littles for calculations of 14,15,..20
+	for (k=2;k<4;k++){for (l=2;l<11;l++){if(k*l<SizeMathLnTable)MathLnTable[k*l]=MathLnTable[k]+MathLnTable[l];}
+		}
+	//full calculation of multiples
+	for (k=2;k<11;k++){for (l=2;l<47;l++){if(k*l<SizeMathLnTable)MathLnTable[k*l]=MathLnTable[k]+MathLnTable[l];}
+		}
+	/* //add the nbr premier (non multiples like 17)
+		for (k=2;k<SizeMathLnTable-1;k++){//No calculation after 10*20
+			if (MathLnTable[k]==0){StrPrintF(s,"missing ln(%d)\n",k);
+													PrintCmd(s);}
+		}//check forgottens !  */
+					
+	}
+
+static float RMath_ln(float x){//value on range: x>0 
+	//SizeMathLnTable = 101 but we use 100 data
+	int a,exponant;
+	float m,lna,lnb,lnc,n,mantisse,A,b,c,Px;
+	float ln10=2.302585093;
+	n=10;// the ratio is 10 for use ln(0) to ln(100) table
+	if (x<0) {MathError=2; return 0;} //The error will be collected at the loop program
+
+	GetMantisseExponant(x, &exponant, &mantisse);
+	a = (int) (10*mantisse); //we choose the technic
+	
+	if (a+1>SizeMathLnTable) {MathError=2; return 0;}//The error will be collected at the loop program
+	lna= MathLnTable[a];
+	//Rprintf(lna);
+	lnb= MathLnTable[a+1];
+	//Rprintf(lnb);
+	m=lnb-lna;//coeff directeur approximation linéaire
+
+	//lnc= MathLnTable[a+2];
+
+	//A=a/10; b=a/10+1;c=a/10+2;
+	//Px= (mantisse-b)*(mantisse-c)*lna/2-(mantisse-A)*(mantisse-c)*lnb+(mantisse-A)*(mantisse-b)*lnc/2+ ((float)exponant-1)* ln10;//Polynome  interpolateur Lagrange
+	//return Px;
+
+	 //! we don't take x, we take the mantisse.
+	return (m*(mantisse-(float)a/10)+lna) + ((float)exponant-1)* ln10;   // ln(x=a10^b)= ln(a)+b ln10
+	
+	}
+
+static void GetMantisseExponant(float x, int *exponant, float*mantisse){
+	//works only for positive numbers x.
+	int Pres=3; int i;
+	float X,precision;
+	int n=0; 
+	char s[50];
+
+	if (x==0) {exponant[0]=0; mantisse[0]=0; return;}
+	precision=TenPower(-Pres);
+	X=x;
+	if (x>=precision)while(X>=precision){X=X/10; n++;}
+	if (x< precision){while(X<=precision){X=X*10; n--;}n++;}
+	
+	mantisse[0]=x*TenPower(Pres+1-n);
+	exponant[0]=n-4;
+	//StrPrintF(s,"mantisse*1000= %d, exponant%d\n",(int)(1000*mantisse[0]),(int) n-4);
+	//PrintCmd(s);
+	}
+	
+static float RMath_sqrt(float x){//value on range: x>0
+	return RMath_exp(0.5*RMath_ln(x));
 	}
 	
