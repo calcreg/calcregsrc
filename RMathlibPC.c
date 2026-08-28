@@ -1,18 +1,18 @@
-/*  ---------------------
- *
- *  This is Custom Math Library
- *
- *  BUSSY-SOCRATE REGAN 
- *
- *  -------------------------*/
+
 
 
 /* Includes */
 #include <windows.h>			// system
 #include <Stdio.h>
 
-
+//compatibilityReg.c
 extern void WinDrawLine(int , int, int,int);
+extern void SelectionStylo(COLORREF);
+
+//windows stuff
+extern HWND hmywin;
+extern HDC hDC; 
+
 
 //#include "CalcReg.h"		// app
 
@@ -123,10 +123,10 @@ float Inc3D=0.2;
 
 
 //Drawing Zone Square
-float DrawZoneX=75;
-float DrawZoneY=90;
-float DrawZoneH=70;
-float DrawZoneW=85;
+float DrawZoneX=320;//125;
+float DrawZoneY=25;
+float DrawZoneH=300;
+float DrawZoneW=450-195;//450
 
 
 extern int GridSet; //for the grid =0 grid off, =1 grid on color Red
@@ -266,7 +266,7 @@ int i;
 	
 void Rprintf(float x){
 	REPrintf(x);
-	PrintCmd("\n");
+	//PrintCmd("\n");
 }
 
 void REPrintf(float x){
@@ -285,12 +285,12 @@ void REPrintf(float x){
 
 	//alfa=x*TenPower(Ndigit+Pres+1-n);
 	//if ( (alfa*10-10*(int)alfa) >5) alfa=alfa+1; //if ... to truncate properly.
-	//StrPrintF(s,"%d%d",(int)alfa/1000,1000*alfa-1000*(int)alfa);
+	//sprintf(s,"%d%d",(int)alfa/1000,1000*alfa-1000*(int)alfa);
 
 	alfa=x*TenPower(Ndigit+1-n);//rajout
 	if (FunctionPrecision == 1) FloatToString(alfa,s,7);					//rajout
 	else FloatToString(alfa,s,5);
-	//StrPrintF(s,"%d",(UInt)alfa);
+	//sprintf(s,"%d",(UInt)alfa);
 	
 	if (opp==1) s2[0]=Octet("-"); 
 	else s2[0]=Octet(" ");
@@ -305,7 +305,7 @@ void REPrintf(float x){
 	//c=s2+i+3;
 	c=s2+i+2;
 	if(alfa>=10000) n++;
-	StrPrintF(c,"%d",n-(Pres+1));
+	sprintf(c,"%d",n-(Pres+1));
 	PrintCmd(s2);
 	}
 
@@ -313,7 +313,7 @@ void REPrintf(float x){
 void FloatToString(float value, char *buffer, int Rounding)
 {
 
-	strprintf(buffer,"%f",value);
+	sprintf(buffer,"%f",value);
 /*	
 long iValue;
 float dDecimal;
@@ -332,7 +332,7 @@ if (dDecimal < 0.00000001)
  
 // Convert integer portion to string
 StrIToA(sResult, iValue);
-if (StrLen(sResult) < 1)
+if (strlen(sResult) < 1)
   StrCopy(sResult, "0");
 StrCat(sResult, ".");
  
@@ -348,8 +348,8 @@ if (dDecimal - iDecValue >= 0.5)
 StrIToA(sDecimal, iDecValue);
  
 // Add leading zeros if neccessary
-if (StrLen(sDecimal) < Rounding)
-  for (i = 1; i <= Rounding - StrLen(sDecimal); i++)
+if (strlen(sDecimal) < Rounding)
+  for (i = 1; i <= Rounding - strlen(sDecimal); i++)
   StrCat(sResult, "0");
 StrCat(sResult, sDecimal);
  
@@ -426,11 +426,11 @@ void SaveProg()
 		index=0;
 		h = DmQueryRecord (dbP,0);
 		if (h!=0) {DmRemoveRecord(dbP,0);}
-		h = DmNewRecord (dbP, &index, StrLen(progtext) );
+		h = DmNewRecord (dbP, &index, strlen(progtext) );
 		if( h !=0 )Mem = MemHandleLock(h);
 		else {PrintCmd("Can't save prog");return;}
 
-		DmWrite(Mem,0,progtext,StrLen(progtext) );
+		DmWrite(Mem,0,progtext,strlen(progtext) );
 		if (Error == errNone) PrintCmd ("done\n");
 		else PrintCmd("an error occured while writing\n");
 
@@ -460,13 +460,13 @@ void LoadProg()
 	else {PrintCmd("Cannot Load prog\n");return;}
 	SetUpTextProg(0);
 
-	h2=MemHandleNew(StrLen(Mem)+1);
+	h2=MemHandleNew(strlen(Mem)+1);
 	if (h2 !=0)Mem2=MemHandleLock(h2);
 	else {PrintCmd("Mem Allocation failed\n");goto Freemh;}
 
 	if (FrmAlert (MergeText) == 0){DeleteProg();}
-	StrPrintF(Mem2,"%s",Mem);//to insert the 0 at the end
-	Mem2[(int)StrLen(Mem2)-1]=0; //there was a fake character to remove...
+	sprintf(Mem2,"%s",Mem);//to insert the 0 at the end
+	Mem2[(int)strlen(Mem2)-1]=0; //there was a fake character to remove...
 	PrintProg(Mem2);
 	MemHandleFree(h2);
 Freemh:
@@ -486,7 +486,7 @@ void Printf(const char * format, ...) //we use printf which is redefined as Prin
 	static char buf[200];
 
 	va_start(args, format);
-	StrPrintF(buf, format, args);
+	sprintf(buf, format, args);
 	va_end(args);
 	PrintCmd(buf); // Prints in the cmd field
 }
@@ -496,16 +496,8 @@ void LowPerformance(){
 }
 
 void PrintCmd(char * s) {
-/*
-	FormPtr 	Frm;
-	FieldPtr 	FldPtr;
-	
-	if (StartInfoDone==1) {DeleteCmd();StartInfoDone=0;}
-	Frm = FrmGetFormPtr(frmadc16);
-	FldPtr = (FieldPtr)(FrmGetObjectPtr(Frm, (FrmGetObjectIndex(Frm, fld_cmd))));
-	FldInsert(FldPtr, s, StrLen(s));
-	*/
-	printf("%s",s);
+	//if (StartInfoDone==1) {DeleteCmd();StartInfoDone=0;}
+	Print_In_Cmd_Win(s); //See compatibilityReg.c
 }
 
  char Octet(char * StringPointer){
@@ -522,7 +514,7 @@ void DeleteCmd(){
 	FldDelete(FldPtr, 0, 50000);//Size of the cmd 5000 maxchars see CalcReg.rcp
 	// FldDelete (FieldType *fldP, Uint 16 start , UInt16 end)
 	*/
-	printf("delete cmd");
+	//printf("delete cmd");
 }
  
 float RMath_abs(float x){
@@ -695,9 +687,9 @@ float RMath_sqrt(float x){
 		h=h/10;
 		if (h>H) goto Loop;
 	//result sqrt(mantisse)*TenPower(exponant/2), but exponant/2 can be 1.5 or 2.5...
-		//StrPrintF(s,"exponant= %d\n",exponant); PrintCmd(s);
-		//StrPrintF(s,"mantisse : ");PrintCmd(s);Rprintf(mantisse);
-		//StrPrintF(s,"sqrt(mantisse) : ");PrintCmd(s);Rprintf(t);
+		//sprintf(s,"exponant= %d\n",exponant); PrintCmd(s);
+		//sprintf(s,"mantisse : ");PrintCmd(s);Rprintf(mantisse);
+		//sprintf(s,"sqrt(mantisse) : ");PrintCmd(s);Rprintf(t);
 	Result:
 		if (exponant > 0 ) {
 		if (exponant-2*(int)(exponant/2) == 0) return t*TenPower((int) exponant/2 );
@@ -715,7 +707,7 @@ float RMath_sqrt(float x){
 
 
  float Rsscanf (char *s,char *c,float *Nbr){
-	int size=StrLen(s);
+	int size=strlen(s);
 	float val=0;
 	float savenbr=0;
 	float nbr=0; float number;
@@ -1182,65 +1174,40 @@ void TracerAxis(int centerx,int centery,int width, int height){
 	Line(0,DimYmin,0,DimYmax,color);
 	if (StepX !=0){
 		for (k=0;k<(DimXmax-DimXmin)/StepX;k++){
-		Line(-k*StepX,0,-k*StepX,(DimYmax-DimYmin)/DrawZoneH,color);
-		Line(k*StepX,0,k*StepX,(DimYmax-DimYmin)/DrawZoneH,color);
+		Line(-k*StepX,0,-k*StepX,5*(DimYmax-DimYmin)/DrawZoneH,color);
+		Line(k*StepX,0,k*StepX,5*(DimYmax-DimYmin)/DrawZoneH,color);
 		}
 		}
 	if (StepX !=0){
 		for (k=0;k<(DimYmax-DimYmin)/StepX;k++){
-		Line(0,-k*StepX,(DimXmax-DimXmin)/DrawZoneW,-k*StepX,color);
-		Line(0,k*StepX,(DimXmax-DimXmin)/DrawZoneW,k*StepX,color);
+		Line(0,-k*StepX,5*(DimXmax-DimXmin)/DrawZoneW,-k*StepX,color);
+		Line(0,k*StepX,5*(DimXmax-DimXmin)/DrawZoneW,k*StepX,color);
 		}
 		}
 	}
 
 void Line(float x1, float y1, float x2, float y2,float color){
+	COLORREF	colpen  ;
+	HPEN	hpen	;
+
 /*Drawingzone Square
 #define DrawZoneX 90
 #define DrawZoneY 90
 #define DrawZoneH 70
 #define DrawZoneW 70*/
-	////chgPOs2Win32
-	/*RGBColorType MyPenColor,OldPenColor,OldPenColor2;
 
-	MyPenColor.r = 0;
-	MyPenColor.g = 0; 
-	MyPenColor.b = 0;
+	colpen   = 0x000000;
+	hpen	= CreatePen(PS_SOLID,1,colpen);
+	SelectObject(hDC,hpen);
 
-	if (color == 1){
-	MyPenColor.r = 0xFF;//Red
-	MyPenColor.g = 0x0A; 
-	MyPenColor.b = 0x0A;
-	}
-	if (color == 2){
-	MyPenColor.r = 0x0A;
-	MyPenColor.g = 0xFF; //Green Only
-	MyPenColor.b = 0x0A;
-	}
-	if (color == 3){
-	MyPenColor.r = 0x0A;
-	MyPenColor.g = 0x0A; 
-	MyPenColor.b = 0xFF;//Blue
-	}
-	if (color == 4){
-	MyPenColor.r = 0x0F;
-	MyPenColor.g = 0xFF; 
-	MyPenColor.b = 0xFF;//Yellow
-	}
-	if (color == 5){
-	MyPenColor.r = 0xFF;
-	MyPenColor.g = 0x0F; 
-	MyPenColor.b = 0xFF;//Violet
-	}
-	if (color == 6){
-	MyPenColor.r = 0xFF;
-	MyPenColor.g = 0xFF; 
-	MyPenColor.b = 0x0F;//Brown
-	}
+	if (color == 1)SelectionStylo(0x0A0AFF);//red
+	if (color == 2)SelectionStylo(0x0AFF0A);//green
+	if (color == 3)SelectionStylo(0xFF0A0A);//blue
+	if (color == 4)SelectionStylo(0x0A0AFF);//yellow
+	if (color == 5)SelectionStylo(0xFF0FFF);//
+	if (color == 6)SelectionStylo(0x0FFFFF);//
+
 	
-	WinSetForeColorRGB(&MyPenColor,&OldPenColor);
-	*/
-	//chgPOs2Win32
 	//x2-x1 =160
 	//y2-y1=160
 	//resizing according to gfxdim values

@@ -1,12 +1,3 @@
-/* ------------------
- *
- *  This is the Oscillo Layer
- *
- *  BUSSY-SOCRATE REGAN
- *
- *  ------------------------*/
-
-
 
 /* Includes */
 #include <windows.h>			// system

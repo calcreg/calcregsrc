@@ -1,0 +1,29 @@
+bonjour
+fabien
+cava
+x>0 at start !
+print 1+2
+gfxdim -7,5,-4,5,0.2
+box3d 4,4,4,0.4
+h=0
+a=0
+loop:
+x=4
+y=-4
+Trf(x,y)=3*exp(-(x^2+y^2)/2.5)*cos(2*a*(x^2+y^2))
+h=h+1
+a=a+0.1
+h<1 =>goto loop
+end
+
+x=-3
+Trf(x)=2*sin(x)
+x=-3
+Trf(x)=2*x*cos(x)
+print 2+2.5
+print 1
+
+end
+
+
+

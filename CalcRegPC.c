@@ -50,6 +50,9 @@ typedef struct NbrCmplx{
 	float cmplx;
 }NbrCmplx;
 	
+//compatibilityReg.c
+extern void WinEraseRectangleReg(int,int,int,int);
+
 
 extern void PrintCmd(char * s) ;
 extern void DeleteCmd() ;
@@ -332,6 +335,8 @@ void Execute(void) {
 	floactet *CodeList;
 	int sizetxt;
 	FILE *fp;
+	extern HDC hDC;
+	extern HWND hEditP;
 	
 	GridSet=0;//init
 	ColorGraph=1;
@@ -342,12 +347,26 @@ void Execute(void) {
 	if (progtext==0) {PrintCmd("Keep clicking  on Test <tst> to view different program examples...\nclick <exec> to launch them.");return;}
 	//this text cannot be modified from progtext, because the memory can be reallocated by the system
 	*/
-		progtext=(char*)malloc (1000*sizeof(char));
-		if (progtext == 0) {printf("can't open progtext\n");goto FreeMemories;}
-		for (i=0;i<1000;i++) progtext[i]=0; //initialise data
-		if ( (fp=fopen ("CalcRegProg.txt","r") )==NULL){printf("\n Error can't open file\n"); goto FreeMemories;}
-		MnemoProgSize = fread (progtext,1000,sizeof(char),fp);
-		if (MnemoProgSize == 0) {printf("file empty\n");goto FreeMemories;}
+		
+		//Start Special Part for Win32
+		DWORD 	dwTextLength = GetWindowTextLength(hEditP);
+		// No need to bother if there's no text.
+		progtext=(char*)malloc ((dwTextLength+1)*sizeof(char));
+		if (progtext == 0) {
+			//printf("can't open progtext\n");
+			MessageBox(NULL, "Can't open progtext!", "Error!",
+			MB_ICONEXCLAMATION | MB_OK);
+			goto FreeMemories;
+			}
+		GetWindowText(hEditP, progtext, dwTextLength+1);
+		//End Special Part for Win32
+		
+		MnemoProgSize =strlen(progtext);
+		if (MnemoProgSize == 0) {
+			//printf("file empty\n");
+			MessageBox(NULL, "loading file empty!", "Error", MB_OK | MB_ICONEXCLAMATION);
+			goto FreeMemories;
+			}
 		
 	if (strstr(progtext,"longjumeau") !=0  ) CodageIdentity2=1;
 	MnemoProgSize=strlen(progtext);
@@ -996,9 +1015,7 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 		}
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==8) {//grid
 			if (CodeOfOneLine[OffsetLine+1].code==1) {
-			//RctSetRectangle(rP,DrawZoneX+1,DrawZoneY,DrawZoneW,DrawZoneH);//Define the erasing rectangle dimensions	
-			//WinEraseRectangle(rP,0);
-			printf("Rectangle to be set\n");
+			WinEraseRectangleReg(DrawZoneX+1,DrawZoneY,DrawZoneW,DrawZoneH);//Define the erasing rectangle dimensions	
 			StepX=CodeOfOneLine[OffsetLine+1].value;
 			TracerAxis(DrawZoneX+DrawZoneW/2,DrawZoneY+DrawZoneH/2,DrawZoneW, DrawZoneH);
 			ColorGraph=1; //Set Color Graph to init
@@ -1203,8 +1220,7 @@ EndMain:
 			if (X0<DimXmin || X0>=DimXmax) X0=DimXmin;
 			FunctionStart=0;
 			if (GridSet == 0){
-			//RctSetRectangle(rP,DrawZoneX,DrawZoneY,DrawZoneW,DrawZoneH);
-			//WinEraseRectangle(rP,0);
+			WinEraseRectangleReg(DrawZoneX,DrawZoneY,DrawZoneW,DrawZoneH);
 			printf("TraceFunctionOneVariable rectangle to be set!\n");
 			TracerAxis(DrawZoneX+DrawZoneW/2,DrawZoneY+DrawZoneH/2,DrawZoneW, DrawZoneH);
 			}
@@ -1279,7 +1295,7 @@ EndMain:
 			if (GridSet == 0){
 			//RctSetRectangle(rP,DrawZoneX,DrawZoneY,DrawZoneW,DrawZoneH);
 			//WinEraseRectangle(rP,0);
-			printf("TraceFunctionTwoVariable rectangle to be set!\n");
+			WinEraseRectangleReg(DrawZoneX,DrawZoneY,DrawZoneW,DrawZoneH);
 			Tracer3DAxis();
 			}
 			

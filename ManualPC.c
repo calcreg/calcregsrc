@@ -1,11 +1,4 @@
-/* -----------------------------
- *
- * This is the live Documentation
- * of CalcReg
- *
- * BUSSY-SOCRATE REGAN
- *
- * ------------------------------
+
 
 /* Includes */
 #include <windows.h>			// system
@@ -29,7 +22,7 @@ void decodeCopyRight();
 
 extern void decode(char *txt, int size);
 extern void PrintCmd(char * s) ;
-
+extern void Print_In_Prog_Win(char *s);
 extern int StartInfoDone;
 
 int CodedWordConverted = 0;
@@ -240,9 +233,7 @@ void decodeCopyRight(){
 	}
  
 void PrintProg(char * s){
-	printf("PrintProg not yet implemented\n----\n");
-	printf ("%s",s);
-	printf ("----\n");
+	Print_In_Prog_Win(s); //See compatibilityReg.c
 }
 
 void DeleteProg(){
@@ -270,7 +261,8 @@ void SetUpTextProg(int position){
 	else maxValue = 0;
 	SclSetScrollBar (scrollBarPtr,pos, 0, maxValue,fieldHeight-1);
 */
-	printf ("SetUpProg not implemented\n");
+	//printf ("SetUpProg not implemented\n");
+	return;
 }
 
 void DisplayManual(){
