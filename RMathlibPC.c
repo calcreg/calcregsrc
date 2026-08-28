@@ -1,4 +1,9 @@
-
+/* --------------- 
+ *  Custom Math Lib
+ *
+ * BUSSY-SOCRATE REGAN
+ *
+ *  --------------
 
 
 /* Includes */
@@ -34,7 +39,7 @@ extern void SetUpTextProg(int position);
 extern void DeleteProg();
 extern void PrintProg(char * s);
 extern float Oscilloscope(float a);
-
+extern void Delete_Cmd_Win();
 
 //-------exponential----------  MathError=1 out of range exponential
 //#define SizeMathExpTable 1600
@@ -122,7 +127,7 @@ float Xmin3d=-3,Xmax3d=3,Ymin3d=-3,Ymax3d=3,Zmin3d=-3,Zmax3d=3;
 float Inc3D=0.2;
 
 
-//Drawing Zone Square
+//Drawing Zone Square -------- Be careful it is redefined in CalcRegMain for window-resizing
 float DrawZoneX=320;//125;
 float DrawZoneY=25;
 float DrawZoneH=300;
@@ -266,7 +271,7 @@ int i;
 	
 void Rprintf(float x){
 	REPrintf(x);
-	//PrintCmd("\n");
+	PrintCmd("\n");
 }
 
 void REPrintf(float x){
@@ -496,7 +501,7 @@ void LowPerformance(){
 }
 
 void PrintCmd(char * s) {
-	//if (StartInfoDone==1) {DeleteCmd();StartInfoDone=0;}
+	if (StartInfoDone==1) {DeleteCmd();StartInfoDone=0;}
 	Print_In_Cmd_Win(s); //See compatibilityReg.c
 }
 
@@ -515,6 +520,7 @@ void DeleteCmd(){
 	// FldDelete (FieldType *fldP, Uint 16 start , UInt16 end)
 	*/
 	//printf("delete cmd");
+	Delete_Cmd_Win();
 }
  
 float RMath_abs(float x){
@@ -1109,13 +1115,8 @@ void Tracer3DAxis(){
 
 	GridSet=1;
 	//HideKeyPad(); //hide the keypad
-	
-	//MyPenColor.r = 0;
-	//MyPenColor.g = 0; 
-	//MyPenColor.b = 0;
-	
-	//WinSetForeColorRGB(&MyPenColor,&OldPenColor);
-	
+	SelectionStylo(0x000000);//noir
+		
 //	Line(0,0,Dx(Xmax3d,0,0),Dy(Xmax3d,0,0),color);
 //	Line(0,0,Dx(0,Ymax3d,0),Dy(0,Ymax3d,0),color);
 //	Line(0,0,Dx(0,0,Zmax3d),Dy(0,0,Zmax3d),color);
@@ -1144,20 +1145,11 @@ float Dy(float x, float y, float z){
 }	
 	
 void TracerAxis(int centerx,int centery,int width, int height){
-	//RGBColorType MyPenColor,OldPenColor,OldPenColor2;
-	//FormPtr 	Frm;
-	//FieldPtr 	FldPtr;
 	int k;
 	float color=0;
 	GridSet=1;
 	//HideKeyPad(); //hide the keypad
-	
-	//MyPenColor.r = 0;
-	//MyPenColor.g = 0; 
-	//MyPenColor.b = 0;
-	
-	//WinSetForeColorRGB(&MyPenColor,&OldPenColor);
-
+	SelectionStylo(0x000000);//noir
 
 	WinDrawLine(centerx-width/2,centery-height/2, centerx+width/2, centery-height/2);	
 	WinDrawLine(centerx-width/2,centery+height/2, centerx+width/2, centery+height/2);	

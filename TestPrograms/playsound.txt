@@ -1,0 +1,21 @@
+//Play sin and change frequency 
+x=0
+y=0
+freq=1000
+loop:
+x=key(0)
+x==1=> bsr moins
+x==3=> bsr plus
+// freq,amplitude,duration
+playsound freq,0.02,0.1
+x==9 =>goto out
+goto loop
+out:
+print freq
+end
+moins:
+freq = freq-10
+rts
+plus:
+freq = freq+10
+rts

@@ -1,0 +1,21 @@
+gfxdim 0,50,-2.6,2.6,1
+
+
+h=0
+
+loop:
+
+h=h+1
+
+getserial 28800,0
+
+x=0
+
+grid 10
+
+Trf(x)=OSC(x)
+
+wait 20
+
+h<100 =>goto loop
+

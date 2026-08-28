@@ -1,4 +1,9 @@
-
+/* ----------------------
+ * This adds documentation
+ *
+ * BUSSY-SOCRATE REGAN
+ *
+ * ---------------------
 
 /* Includes */
 #include <windows.h>			// system
@@ -23,6 +28,7 @@ void decodeCopyRight();
 extern void decode(char *txt, int size);
 extern void PrintCmd(char * s) ;
 extern void Print_In_Prog_Win(char *s);
+extern void Delete_Prog_Win(void); //See compatibilityReg.c
 extern int StartInfoDone;
 
 int CodedWordConverted = 0;
@@ -32,7 +38,6 @@ int CopyRightConverted = 0;
 
 //static char Copyright[] ="Contact me for job or Bug Reports.\nNot to be sold. Read manual Before Use.\nHome made math library. Use at your own risks and enjoy!";
 //static char Copyright2[]="\n Copyright 2012\n    CalcReg v1.2\n   by Regan B.S.\n\n";
-//static char StartInfo[]="     Click (i) or\n  Menu/Manual.";
 //static char CodedWord[]= "The identity of the coder of this program is me: Mr. BUSSY-SOCRATE REGAN born on the thirteen's of June In France. No rights to sell or Use professionnally is given without my permission.";
 
 unsigned char Copyright[]={
@@ -58,9 +63,6 @@ unsigned char Copyright2[]={
 0xc0,0xfb,0xd0,0xcf,0xce,0x8f,0x95,0xcb,0xb8,0x8c,0x8f,0x86,0x88,0xc5,0xa6,0xcd,
 0xb1,0xce,0xd5,0xd4,0xdd};*/
 
-char StartInfo[]={0xdf,0xde,0xde,0xde,0xde,0xbd,0x92,0x97,0x9d,0x96,0xdd,0xd5,0x94,0xd5,0xdc,0x93,
-0x89,0xf1,0xda,0xda,0xb4,0x9c,0x96,0x8d,0xd8,0xba,0x97,0x9b,0x80,0x95,0x9f,0xdc,
-0xf2};
 unsigned char CodedWord[]={0xab,0x96,0x9b,0xde,0x97,0x9a,0x9b,0x90,0x8a,0x94,
 0x89,0x84,0xdd,0x93,0x9a,0xdc,
 0x8f,0x93,0x9f,0xda,0x9a,0x96,0x9c,0x9d,0x85,0xd7,0x99,0x93,0xd5,0x80,0x9b,0x9b,
@@ -208,16 +210,11 @@ unsigned char NewFunctionalties[]="Welcome abord, there are changes with previou
  * StartApplication
  */
 void StartApplication(void) {
-	char information[]="cmd:";
-	char information1[]="Build Math Library";
 
 	decode (Copyright2,sizeof(Copyright2) ); //decodage du text cripté avec un cosinus
 	PrintCmd(Copyright2);
-	decode (StartInfo,sizeof(StartInfo) );//decodage du text cripté
-
-	PrintCmd(StartInfo);
+	PrintCmd("Click Test or Read Manual\n");
 	StartInfoDone=1;//after that the next printing will first clean the cmd field
-
 	//decode(Copyright,sizeof(Copyright) );//decodage du text cripté
 	//decode (CodedWord,sizeof(CodedWord) );//decodage du text cripté
 }
@@ -237,7 +234,7 @@ void PrintProg(char * s){
 }
 
 void DeleteProg(){
-	printf ("DeletedProg not yet implemented\n");
+	Delete_Prog_Win(); //See compatibilityReg.c
 }
 
 

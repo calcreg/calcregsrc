@@ -1,0 +1,50 @@
+//Un+1=F1(Un)
+
+F1(x)=sqrt(x+2)
+
+
+U0=-1 
+//first term
+
+N=10 
+//max rank
+
+Un=F1(U0)
+
+n=1
+
+x=-2
+
+gfxdim -2,3,-2,3,0.3
+
+Trf(x)=x
+
+x=-2
+
+Trf(x)=F1(x)
+
+X=U0
+
+Y=Un
+
+line X,0,X,Y,3
+
+loop:
+
+line X,Y,Y,Y,3
+
+n=n+1
+
+X=Un
+
+Y=F1(Un)
+
+Un=Y
+
+print Un
+
+line X,0,X,Y,3
+
+n<N=>goto loop
+
+print Un

@@ -1,0 +1,7 @@
+
+
+x=0
+loop:
+x=key(0)
+x==0 =>goto loop
+print x

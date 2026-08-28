@@ -1,0 +1,13 @@
+//3D plot of f(x,y)
+
+//x>0 at start !
+
+gfxdim -7,5,-4,5,0.2
+
+box3d 4,4,4,0.4
+
+x=4
+
+y=-4
+
+Trf(x,y)=3*exp(-(x^2+y^2)/2.5)*cos(0.5*(x^2+y^2))

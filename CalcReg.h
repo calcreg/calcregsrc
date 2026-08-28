@@ -35,7 +35,8 @@
 //  scrollbar
 #define ProgScrollbarId 4000
 #define CmdScrollbarId 4001
-
+//Pen
+#define penDownEvent 4010
 
 //----------- menus  ------------
 #define AboutMenuId 3000

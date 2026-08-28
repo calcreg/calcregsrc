@@ -1,0 +1,17 @@
+x=0
+
+bsr prog 
+//branch subroutine
+
+end
+
+
+prog:
+
+x=x+1
+
+print x
+
+x<10 =>goto prog
+
+rts //return from subroutine

@@ -2,7 +2,7 @@
  *
  * Windows Events
  * Mouse, clicks, ...
- *
+ * 
  * BUSSY-SOCRATE REGAN
  *
  * ----------------------*/
@@ -14,9 +14,10 @@
 #include "CalcReg.h"
 
 int MainFormHandleEvent(int event);
+
 static int Rmin (int x1,int x2);
 static int Rmax (int x1,int x2);
-static int Rabs(int x1);
+int Rabs(int x1);
 
 extern void Execute(void);
 
@@ -29,12 +30,7 @@ extern void HideKeyPad();
 extern void ShowKeyPad();
 extern void DeleteProg();
 extern void PrintProg(char * s);
-extern void PrvIRDataReceive( void ) ;
 extern void Rprintf(float x);
-
-
-
-
 
 extern int testProg;
 extern int displayval;
@@ -47,6 +43,7 @@ extern float DimXmin,DimXmax,DimYmin,DimYmax,IncX;
 extern float DrawZoneX, DrawZoneY,DrawZoneW,DrawZoneH;
 int GfxMove=1,GfxZoom=0,Pset=0; //at the begining the movability is set
 int GfxDerivate=0; // If =1 then Draw the function with its derivated
+int Button=0; //for the keyboard in CalcRegPC
 
 /*
  * MainFormHandleEvent
@@ -55,7 +52,7 @@ int MainFormHandleEvent(int event) {
 	char ValueStr[300];
 	int size, handled;
 	extern HWND hEditP;
-	
+
 	float newDimXmin,newDimXmax,newDimYmin,newDimYmax;
 	handled=0; //false=0 true =1
 	if (event !=0) {
@@ -137,19 +134,18 @@ int MainFormHandleEvent(int event) {
 				
    			case btntest:
 				DeleteProg();
-				if( testProg == 0 ) wsprintf(ValueStr, "gfxdim -3,3,-10,3,0.1 \0x0d0ax=-3");//\nTrf(x)= -x + 1\nx=-3\nTrf(x)= -x^2 + 1\n");
-				if( testProg == 1 ) sprintf(ValueStr, "gfxdim -6,6,-1.2,1.2,0.1\nx=-6\nTrf(x)=sin (x)\nTrf(x)= cos (x) \n");
-				if( testProg == 2 ) sprintf(ValueStr, "gfxdim -7,5,-4,5,0.2\nbox3d 4,4,4,0.2\nx=4\ny=-4\nTrf(x,y)=3-3*exp(-(x^2+y^2)/2.5)*cos(0.9*(x^2+y^2))\n");
-				if( testProg == 3 ) sprintf(ValueStr, "//Test function Precision1\n//Should be near zero\ngfxdim -3,3,-0.0015,0.0015,0.07\nx=-3\nTrf(x)=-0.001\nTrf(x)=0.001\nTrf(x)=x - ln ( exp (x) ) \n");
-				if( testProg == 4 ) sprintf(ValueStr, "//Test function Precision2\n//should be near y=x-1\ngfxdim -3,3,-5,5,0.1\nx=-3\nTrf(x)=ln ( exp (x) )-1 \n");
-				if( testProg == 5 ) sprintf(ValueStr, "//Test function Precision3\n//should be  near y=1\ngfxdim -15,15,0.9998,1.0001,0.1\nx=-15\nTrf(x)=0.9999\nTrf(x)=1.00001\nTrf(x)= (cos(x))^2+(sin(x))^2\n");
-				if( testProg == 6 ) sprintf(ValueStr, "gfxdim -2,2,-1.1,1.1,0.05\nx=-3\nTrf(x)= exp(-x^2)*cos(10*x)\n");
-				if( testProg == 7 ) sprintf(ValueStr, "gfxdim -10,10,-10,10,0.05\ngrid3\nx0=-10\ny0=exp x0\nloop:\nx1=x0+1\ny1=exp x1\nline x0,y0,x1,y1,3\nx0=x1\ny0=y1\nx0<10=>goto loop\n");
-				if( testProg == 8 ) sprintf(ValueStr, "gfxdim -3,3,-1,3,0.1\nx=-3\nTrf(x)=x*exp (x)\nTrf(x)= x + 1\nTrf(x)= 1- 2*x\n");
-				if( testProg == 9 ) sprintf(ValueStr, "x=-3+i\nF1(x)=x\nprint Re(F1(x))\nprint Im(F1(x))\nF1(x)\n");
-				if( testProg == 10 ) sprintf(ValueStr,"x=0\nbsr prog //branch subroutine\nend\n\nprog:\nx=x+1\nprint x\nx<10 =>goto prog\nrts //return from subroutine\n");
-				PrintProg(ValueStr);
-				SetUpTextProg(0);
+				if( testProg == 0 ) PrintProg( "gfxdim -3,3,-10,3,0.1\nx=-3\nTrf(x)= -x + 1\nx=-3\nTrf(x)= -x^2 + 1\n");
+				if( testProg == 1 ) PrintProg( "gfxdim -6,6,-1.2,1.2,0.1\nx=-6\nTrf(x)=sin (x)\nTrf(x)= cos (x) \n");
+				if( testProg == 2 ) PrintProg( "gfxdim -7,5,-4,5,0.2\nbox3d 4,4,4,0.2\nx=4\ny=-4\nTrf(x,y)=3-3*exp(-(x^2+y^2)/2.5)*cos(0.9*(x^2+y^2))\n");
+				if( testProg == 3 ) PrintProg( "//Test function Precision1\n//Should be near zero\ngfxdim -3,3,-0.0015,0.0015,0.07\nx=-3\nTrf(x)=-0.001\nTrf(x)=0.001\nTrf(x)=x - ln ( exp (x) ) \n");
+				if( testProg == 4 ) PrintProg( "//Test function Precision2\n//should be near y=x-1\ngfxdim -3,3,-5,5,0.1\nx=-3\nTrf(x)=ln ( exp (x) )-1 \n");
+				if( testProg == 5 ) PrintProg( "//Test function Precision3\n//should be  near y=1\ngfxdim -15,15,0.9998,1.0001,0.1\nx=-15\nTrf(x)=0.9999\nTrf(x)=1.00001\nTrf(x)= (cos(x))^2+(sin(x))^2\n");
+				if( testProg == 6 ) PrintProg( "gfxdim -2,2,-1.1,1.1,0.05\nx=-3\nTrf(x)= exp(-x^2)*cos(10*x)\n");
+				if( testProg == 7 ) PrintProg( "gfxdim -10,10,-10,10,0.05\ngrid3\nx0=-10\ny0=exp x0\nloop:\nx1=x0+1\ny1=exp x1\nline x0,y0,x1,y1,3\nx0=x1\ny0=y1\nx0<10=>goto loop\n");
+				if( testProg == 8 ) PrintProg( "gfxdim -3,3,-1,3,0.1\nx=-3\nTrf(x)=x*exp (x)\nTrf(x)= x + 1\nTrf(x)= 1- 2*x\n");
+				if( testProg == 9 ) PrintProg( "x=-3+i\nF1(x)=x\nprint Re(F1(x))\nprint Im(F1(x))\nF1(x)\n");
+				if( testProg == 10 ) PrintProg("x=0\nbsr prog //branch subroutine\nend\n\nprog:\nx=x+1\nprint x\nx<10 =>goto prog\nrts //return from subroutine\n");
+
 				testProg++;
 				if (testProg >10) testProg=0;
    				break;
@@ -166,13 +162,13 @@ int MainFormHandleEvent(int event) {
 				PrintProg("x");
    				break;
    			case btn9:	
-				PrintProg("9");
+				Button=9;
    				break;
    			case btn6:	
-				PrintProg("6");
+				Button=6;
    				break;
    			case btn3:	
-				PrintProg("3");
+				Button=3;
    				break;
    			case btnexe:
 				displayval=1;
@@ -183,13 +179,13 @@ int MainFormHandleEvent(int event) {
 				PrintProg("sin(");
    				break;
 	   		case btn8:	
-				PrintProg("8");
+				Button=8;
    				break;
 	   		case btn5:	
-				PrintProg("5");
+				Button=5;
    				break;
 	   		case btn2:	
-				PrintProg("2");
+				Button=2;
    				break;
 	   		case btnpnt:	
 				PrintProg(".");
@@ -198,13 +194,13 @@ int MainFormHandleEvent(int event) {
 				PrintProg("cos(");
    				break;
 	   		case btn7:	
-				PrintProg("7");
+				Button=7;
    				break;
 	   		case btn4:	
-				PrintProg("4");
+				Button=4;
    				break;
 	   		case btn1:	
-				PrintProg("1");
+				Button=1;
    				break;
 	   		case btn0:	
 				PrintProg("0");
@@ -256,22 +252,7 @@ int MainFormHandleEvent(int event) {
 		handled = 1;
 	}
 /*PalmOs Handling Pen
-		if (event->eType == penDownEvent) {
-			XpenDown=event->screenX; 
-			YpenDown=event->screenY;
-			if (Rabs(XpenDown-(DrawZoneX+DrawZoneW/2))<DrawZoneW/2 &&
-				Rabs(YpenDown-(DrawZoneY+DrawZoneH/2))<DrawZoneH/2) {
-				if (Pset ==1){
-					PrintCmd("X=");
-					newDimXmin= (XpenDown-DrawZoneX)/DrawZoneW*(DimXmax-DimXmin)+DimXmin;
-					Rprintf(newDimXmin);
-					PrintCmd("Y=");
-					newDimYmin= (-YpenDown+DrawZoneY+DrawZoneH)/DrawZoneH*(DimYmax-DimYmin)+DimYmin;
-					Rprintf(newDimYmin);
-					Pset=0;//reinitialise
-					}
-				}			
-			}
+
 		if (event->eType == penUpEvent) {
 			XpenUp=event->screenX; 
 			YpenUp=event->screenY;
@@ -320,6 +301,7 @@ int MainFormHandleEvent(int event) {
 	return handled;
 }
 
+
 static int Rmin(int x1,int x2){
 	if (x1>x2) return x2;
 	else return x1;
@@ -328,7 +310,7 @@ static int Rmax(int x1,int x2){
 	if (x1<x2) return x2;
 	else return x1;
 	}
-static int Rabs(int x1){
+int Rabs(int x1){
 		if (x1<0) return -x1;
 		else return x1;
 		}

@@ -1,0 +1,41 @@
+//Play sin and change frequency 
+x=0
+y=1
+freq=14860
+loop:
+x=key(0)
+x==1=> bsr un
+x==2=> bsr dix
+x==3=>bsr cent
+x==4=>bsr mille
+x==5=>bsr dixmille
+x==8=>bsr chg
+// freq,amplitude,duration
+freq < 0 =>freq =10
+clscmd
+print freq
+playsound freq,1,1
+x==9 =>goto out
+goto loop
+out:
+print freq
+end
+chg:
+y=-y
+rts
+un:
+freq = freq+y
+rts
+dix:
+freq = freq+10*y
+rts
+cent:
+freq = freq+100*y
+rts
+mille:
+freq = freq+1000*y
+rts
+dixmille:
+freq = freq+10000*y
+rts
+

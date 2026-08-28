@@ -1,0 +1,38 @@
+//Polar plot r(t)=F2(t)
+
+
+F2(t)=(4*cos(t/4))^2
+
+pi=3.1415927
+
+AngleTot=4*pi
+
+inc=0.07
+
+gfxdim -20,20,-15,15,0.1
+
+
+
+
+grid3
+
+t=0
+
+y0=0
+
+y=0
+
+F0(y)=F2(y)*cos(y)
+
+F1(y)=F2(y)*sin(y)
+
+loop:
+y=y0+pi*inc
+
+line F0(y0),F1(y0),F0(y),F1(y),3
+
+y0=y
+
+y0<AngleTot =>goto loop
+
+

@@ -1,15 +1,15 @@
 /* -----------------------
- *
+ * 
  * Core of CalcReg
- *
+ * 
  * BUSSY-SOCRATE REGAN
- *
- *
+ * 
  * ----------------------*/
 
 #include <windows.h>
 #include <stdio.h>
 #include<stdlib.h>
+
 #include "CalcReg.h"
 
 //--------------------------------------------
@@ -52,7 +52,7 @@ typedef struct NbrCmplx{
 	
 //compatibilityReg.c
 extern void WinEraseRectangleReg(int,int,int,int);
-
+extern HDC hDC;
 
 extern void PrintCmd(char * s) ;
 extern void DeleteCmd() ;
@@ -149,7 +149,8 @@ extern float RMath_abs(float x);
 // in Functions.c
 extern int CalculFunctionComplexe(floactet *CodeListLine,int i);
 
-
+//playsound
+extern int PlaySoundReg(float ,float ,float );
 
 //serial-Oscillo
 //extern Boolean  waitfordata(int NbrTrialToGet);
@@ -182,12 +183,19 @@ extern float DrawZoneW;
 extern int RedrawingGfx;
 extern int GfxZoom,GfxMove;
 
+//key or mouse rectangle
+extern int Button;
+
+//Sound
+float SoundFrequency,SoundAmplitude,SoundDuration;
+
+
 #define OpListSize 9 // add the size if add new instructions or special codes in OperatorList
 static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListSize
-static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_";
-//									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25
-static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_box3d_getserial_wait_bsr_rts_putserial_";
-//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16
+static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_";
+//									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26
+static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_box3d_getserial_wait_bsr_rts_putserial_playsound_clscmd_";
+//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18
 //char blabli[]= { {'hello'},0x1,{'hi'},0x0};
 
 //--------------labels
@@ -260,9 +268,9 @@ Code ?? = FAccu Functions [15][Nbr n FAccu] [9][var X Accu] [1][a]] Derivative d
 //x<10=>goto loop
 //getserial Baudrate,SerFlag
 //putserial Baudrate,SerFlag,bytedata
-
+//key(0) or key(1) value from keyboard(0) or the mouse board rectangle(1)
 //wait nbrticks
-
+//clscmd    clears the cmd window
 //MathFunctions
 extern int MathError; //send back a code if error in the Math functions. MathError=1 out of range exponential
 extern int FunctionPrecision; //For the precision of  the functions
@@ -291,7 +299,7 @@ int StartInfoDone=0;
 int GfxBigDisplay=-1;
 int CountBreak=0; //init
 int DispBrk=0;
-int BreakActivated=1; //init brk activated, -1 for disabled at start
+int BreakActivated=-1; //init brk 1 activated, -1 for disabled at start
 int StopProgram=0;
 extern int GfxDerivate; //if =1 Then Draw function with its derivated
 
@@ -314,7 +322,6 @@ extern  char CodedWord[];
 extern  char StartInfo[];
 extern char Philosophy[];
 extern char NewFunctionalties[];
-
 
 
 void RCPrintf(floactet F){
@@ -424,7 +431,7 @@ void Execute(void) {
 		
 		LastValCalculated.value=0; //init
 		LastValCalculated.cmplx=0;//init
-
+		Button = 0; //init the button for key();
 //------------ start -------
 	CalcMain(CodeList);
 //------------ end --------
@@ -740,18 +747,37 @@ int doMainMenu (int command)
 
  
 int CheckForBreak(){
-/*PalmOs
 //Break point here to stop program from running indefinitly
-Int16 pScreenX,pScreenY;
-Boolean pPenDown;
+	MSG Msg;
+	RECT prc;
+	prc.top = 15;
+	prc.left=20;
+	prc.bottom = prc.top+10;
+	prc.right = prc.left+40;
 	CountBreak++;
-	if (CountBreak<30 && DispBrk==0){WinDrawChars("Brk",3,BrkX,BrkY);DispBrk=1;}
-	if (CountBreak>30 && DispBrk==1){WinDrawChars("       ",7,BrkX,BrkY);DispBrk=0;}
-	if (CountBreak>60 ){DispBrk=0;CountBreak=0;}
-	EvtGetPen (&pScreenX,&pScreenY,&pPenDown);
-	if (pPenDown == 1) if ( pScreenX>BrkX && pScreenY<BrkY+10 ){PrintCmd("Break.\n");StopProgram=1;return 1;}
-*/
-	return 0;
+/*	if (CountBreak<200 && DispBrk==0){
+	DrawText(hDC, ".", -1, &prc, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
+		DispBrk=1;
+		}
+	if (CountBreak>200 && DispBrk==1){
+	DrawText(hDC, "..", -1, &prc, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
+	DispBrk=2;
+		}
+	if (CountBreak>400 && DispBrk==2){
+	DrawText(hDC, "...", -1, &prc, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
+	DispBrk=0;
+		}*/
+	if (CountBreak>400 ){
+	DispBrk=0;CountBreak=0;
+	if (GetMessage(&Msg, NULL, 0, 0)>0){
+		TranslateMessage(&Msg);
+		DispatchMessage(&Msg);
+		}
+	}
+	if (StopProgram == 1) {
+			PrintCmd("Break.\n");
+		}
+	return StopProgram;
 }
 
 /* ----------------------  Below is the program for the calcReg ---------------------------- 
@@ -1107,6 +1133,25 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			OffsetLine=0;
 			}else{PrintCmd("putserial!\n");goto EndMain;}
 		}	
+//-------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==17) {//playsound
+			if (CodeOfOneLine[OffsetLine+1].code==1&& CodeOfOneLine[OffsetLine+2].code==10 &&
+			CodeOfOneLine[OffsetLine+3].code==1&& CodeOfOneLine[OffsetLine+4].code==10 &&
+			CodeOfOneLine[OffsetLine+5].code==1) {
+			SoundFrequency=CodeOfOneLine[OffsetLine+1].value;
+			SoundAmplitude=CodeOfOneLine[OffsetLine+3].value;
+			SoundDuration=CodeOfOneLine[OffsetLine+5].value;
+			PlaySoundReg(SoundFrequency,SoundAmplitude,SoundDuration);
+
+			OffsetLine=0;
+			}else{PrintCmd("playsound!\n");goto EndMain;}
+		}	
+//------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==18) {//clscmd
+			DeleteCmd();
+			OffsetLine=0;
+			}
+		
 //------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==14) {//bsr 
 			if (debug > 0 ) {PrintCmd("bsr \n");}
@@ -2213,7 +2258,13 @@ static int CalculOneLine(floactet *CodeListLine){
 		if (CodeVal==22 ) {val=RMath_ach(CodeListLine[i+1].value);goto KeepOn;}	//ach
 		if (CodeVal==23 ) {val=RMath_abs(CodeListLine[i+1].value);goto KeepOn;}	//abs
 		if (CodeVal==24 ) {val=0;PrintCmd("Activate Complexe before use mod(z)\n");MathError=8;goto KeepOn;}	//mod(z)
-		if (CodeVal==25 ) {val=0;PrintCmd("Activate Complexe before use arg(z)\n");MathError=8;}	//arg(z)
+		if (CodeVal==25 ) {val=0;PrintCmd("Activate Complexe before use arg(z)\n");MathError=8;goto KeepOn;}	//arg(z)
+		if (CodeVal==26 ) {
+								MSG Msg;
+								GetMessage(&Msg, NULL, 0, 0);
+								TranslateMessage(&Msg);
+								DispatchMessage(&Msg);
+								val=Button;Button=0;}	//key
 
 	KeepOn:
 		if (MathError !=0 ) {sprintf(s,"Math Error = %d\n",MathError);PrintCmd(s);return 3;}

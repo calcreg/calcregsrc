@@ -1,0 +1,7 @@
+gfxdim -6,6,-1.2,1.2,0.1
+
+x=-6
+
+Trf(x)=sin (x)
+
+Trf(x)= cos (x) 

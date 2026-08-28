@@ -1,0 +1,14 @@
+//Test function Precision3
+
+//should be  near 
+y=1
+
+gfxdim -15,15,0.9998,1.0001,0.1
+
+x=-15
+
+Trf(x)=0.9999
+
+Trf(x)=1.00001
+
+Trf(x)= (cos(x))^2+(sin(x))^2
