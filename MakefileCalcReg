@@ -1,0 +1,13 @@
+echo "deleting .prc file"
+rm CalcReg.prc
+m68k-palmos-multigen.exe -b app_segments CalcReg.def
+m68k-palmos-gcc   -c  app_segments.s -o app_segments.o
+m68k-palmos-gcc  -O2 -c  RMathlib.c 
+m68k-palmos-gcc  -O2 -c CalcReg.c 
+m68k-palmos-gcc  -O2 -o CalcReg.tmp RMathlib.o CalcReg.o app_segments.o app_segments.ld     
+m68k-palmos-obj-res CalcReg.tmp
+/usr/pilrc-3.2/pilrc.exe  CalcReg.rcp
+build-prc CalcReg.def CalcReg.tmp  *.grc *.bin
+rm *.bin
+rm *.grc
+
