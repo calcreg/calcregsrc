@@ -1,0 +1,27 @@
+gfxdim -0.1,3,-1.5,1.5,0.1
+
+//defM1,1,10
+t=0
+dt=0.1
+freq=440
+n=44100
+j=0
+x1=0
+y1 = 1
+x2=0
+y2=0
+loop:
+M1(1,j)=cos(2*pi*freq*j*dt/n)
+x2=x1+dt
+//y2=M1(1,j)
+line x1, y1,x2,y2,1
+y2=y1
+x2=x1
+
+j=j+1
+x1=x1+dt
+x1 < 3 =>goto loop
+print 1
+end
+
+print M1(i,j)+2

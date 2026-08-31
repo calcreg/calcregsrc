@@ -35,6 +35,12 @@ typedef struct floactet{
 	float cmplx;
 }floactet;
 
+typedef struct Matrix{
+	int n;	//n line
+	int p;	//p column
+	float * ptr; //pointer on the matrix
+	}Matrix;
+
 typedef struct lbl{
 	int n;			//offset pointé par le label dans le programme CodeList
 	int adr;	// Adresse du label dans la liste de mnemonique
@@ -100,12 +106,14 @@ int CheckForBreak();
 static int ConvertMnemo(char * MnemoList, floactet * CodeList); //convert Mnemo in codes
 static int CalculOneLine(floactet *CodeList);
 static int CalculOneLineReel(floactet *CodeList);
+static int CalculOneLineReelMatrix(floactet *CodeList);
 static int CalculOneLineComplexe(floactet *CodeList);
 static int TreatParenthese(floactet *CodeList);
 static int FillCodeOfOneLine(floactet *CodeList,floactet *CodeOfOneLine);
 static int HandleInstructions(char *MnemoList,int i);
 static void RemoveSpace(char * InstructionLine, int Size);
 static void ReplaceAccuByValue(floactet *CodeOfOneLine);
+static int ReplaceMAccuByValue(floactet *CodeOfOneLine);
 static int CheckLabelDef(char *InstructionLine, int Size);
 static signed int TestForLabels(char *WholeProg, int index);
 static  int CalcMain(floactet *CodeList);
@@ -146,11 +154,21 @@ extern float RMath_ash(float x);
 extern float RMath_ach(float x);
 extern float RMath_abs(float x);
 
+//Matrix
+extern int MatrixPower(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine);
+extern int MatrixSubAddition(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSignP,int imaxLine);
+extern int MatrixMultiplication(Matrix *MAccu,floactet *CodeListLine,int i, int imaxLine);
+extern int MatrixDivision(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine);
+extern int MathFunctionMatrices (Matrix *MAccu, floactet *CodeListLine,int i);
+
+
+
 // in Functions.c
 extern int CalculFunctionComplexe(floactet *CodeListLine,int i);
 
 //playsound
 extern int PlaySoundReg(float ,float ,float );
+extern int PlaySoundMatrix(Matrix *, int NumM, float ,float );
 
 //serial-Oscillo
 //extern Boolean  waitfordata(int NbrTrialToGet);
@@ -187,15 +205,15 @@ extern int GfxZoom,GfxMove;
 extern int Button;
 
 //Sound
-float SoundFrequency,SoundAmplitude,SoundDuration;
+float SoundFrequency,SoundAmplitude,SoundDuration,SamplesPerSecond;
 
 
 #define OpListSize 9 // add the size if add new instructions or special codes in OperatorList
 static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListSize
 static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_";
 //									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26
-static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_box3d_getserial_wait_bsr_rts_putserial_playsound_clscmd_";
-//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18
+static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_box3d_getserial_wait_bsr_rts_putserial_playsound_clscmd_defM_playsndM_fillM_";
+//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21
 //char blabli[]= { {'hello'},0x1,{'hi'},0x0};
 
 //--------------labels
@@ -218,6 +236,13 @@ int FAccu[50];//NbrMaxFAccu
 int NbrFVar; //total exact number of Faccu allocated
 int MaxSizeFVarName=50; //Size maximum for variable names
 floactet *CodeListAdr; //To transport CodeList out of CalcMain 
+
+//--------------- MAccu Matrix
+int NbrMaxMatrix = 2*25; //always a multiple of 2  
+//half is available for program, 
+//the other half is for the temporary calculation
+Matrix MAccu[50];
+
 
 //------WholeMnemoProg
 //MemHandle MemHdleProg;//Handle on the WholeMnemoProg
@@ -255,7 +280,7 @@ Code 13 = Maths Functions [13][Code Function]
 														Int  = 15
 														acos ,..asin,...abs, mod(z),arg(z)
 Code 14 = FAccu Functions [14][Nbr of the FAccu Function defined in line FAccu[NbrFAccu] ]
-Code ?? = FAccu Functions [15][Nbr n FAccu] [9][var X Accu] [1][a]] Derivative dFn(a)/d(x)
+Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 														 */
 
 //loop:
@@ -271,6 +296,9 @@ Code ?? = FAccu Functions [15][Nbr n FAccu] [9][var X Accu] [1][a]] Derivative d
 //key(0) or key(1) value from keyboard(0) or the mouse board rectangle(1)
 //wait nbrticks
 //clscmd    clears the cmd window
+//defM 1,5,3    Create matrix M1 with dimension n=5, p=3;
+//fillM 2,1.5,3  fill matrix M2 from value 1.5 to 3
+
 //MathFunctions
 extern int MathError; //send back a code if error in the Math functions. MathError=1 out of range exponential
 extern int FunctionPrecision; //For the precision of  the functions
@@ -308,7 +336,8 @@ extern int SerialReady; //Serial device opened =1, closed =0
 extern int BaudRate;
 extern int SerFlag;
 extern unsigned char SerialDataToSend[];
-
+//audio device
+extern int AudioDeviceState;
 //----------------------------------
 
 int bla = 0; //This position is troublesome
@@ -371,7 +400,8 @@ void Execute(void) {
 		MnemoProgSize =strlen(progtext);
 		if (MnemoProgSize == 0) {
 			//printf("file empty\n");
-			MessageBox(NULL, "loading file empty!", "Error", MB_OK | MB_ICONEXCLAMATION);
+			//MessageBox(NULL, "loading file empty!", "Error", MB_OK | MB_ICONEXCLAMATION);
+			PrintCmd("No program in Prog window!\n Click Test or read manual\n");
 			goto FreeMemories;
 			}
 		
@@ -432,10 +462,17 @@ void Execute(void) {
 		LastValCalculated.value=0; //init
 		LastValCalculated.cmplx=0;//init
 		Button = 0; //init the button for key();
+		//init matrix stuff
+		for (i=0;i<NbrMaxMatrix;i++)MAccu[i].ptr=0; // no matrix available yet
+
 //------------ start -------
 	CalcMain(CodeList);
 //------------ end --------
+	//close audio device eventually
+	if (AudioDeviceState == 1) {CloseAudioDevice();AudioDeviceState = 0;}
 
+	//free matrix memories
+	for (i=0;i<NbrMaxMatrix;i++) if (MAccu[i].ptr!=0) free (MAccu[i].ptr);
 	free(CodeList);
 	
 	if (displayval==1) {if (AllowComplexe !=1)Rprintf(LastValCalculated.value); //display for little digital calculator
@@ -465,7 +502,7 @@ FreeMemories:
 }
 
 
-int CreateVariablesList(char *text){
+int CreateVariablesList(char *text){ // à revoir ! 
   //The first use of this function is to enumerate the Accu var. The spaces don't need to be removed
   //before. But for the exact acquisition of the name of the var, the spaces must be taken away.
   //Which means a use of this function after the spaces have been removed in the WholeMnemoProg.
@@ -497,11 +534,15 @@ int CreateVariablesList(char *text){
 	for (k=0;k<MaxPossibleSize;k++){AccuVar[k].n=-1;AccuVar[k].adr=-1;}//full load -1;
 	N_Accu=0; //Now we work out the real number of Accu used and fill the information.
 	istrLine=0;
+
+	// La programmation ci-dessous est à revoir: 
+	// la recherche est faite plusieurs fois 
 	for (i=0;i<strlen(text);i++){
 		if (text[i]== 0x0A && text[i+1]==0x0D) istrLine=i+2;
 		if (text[i]== 0x0A && text[i+1]!=0x0D) istrLine=i+1;
-		if(istrLine == 0 || (i-istrLine)>0 ) if (text[i]==Octet("=") && text [i+1] !=Octet (">")) {//there should be at least one Letter.
+		if(istrLine == 0 || (i-istrLine)>0 ) 	if (text[i]==Octet("=") && text [i+1] !=Octet (">")) {//there should be at least one Letter.
 				if (text[i-1]== Octet(")") ) goto NotNew; //Avoiding f(x)=... it is not a variable
+				if(text[istrLine] == 'M' ) goto NotNew; //Avoiding Matrix... it is not a variable
 
 				for(k=0;k<MaxPossibleSize;k++){
 						if(CompareVarNames(text,istrLine,AccuVar[k].adr) == 0 ) goto NotNew;
@@ -803,7 +844,7 @@ static floactet CodeOfOneLine[CodeOneLineSizeMax]; //Code Of One Line
 static int SubRoutineStack[MaxSubRoutine];
 static int PointerSubRoutine=0;
 
-int AccIndex,lblptr, istrt,pos,offsetP,k,K,OkLine,CodeListOffsetSave,CounterLineCode;
+int nbits,NumM,Mn,Mp,AccIndex,lblptr, istrt,pos,offsetP,k,K,OkLine,CodeListOffsetSave,CounterLineCode;
 float x1,y1,x2,y2,color;
 float X0,X1,Y0,Y1,Y;
 
@@ -920,11 +961,14 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 		CounterLineCode++;
 		if (CodeList[CodeListOffset].code==0) goto EndMain;
 	}//skip enter : this needs to be here for the Error treatment line detection
-	
+
+	//Now we empty the temporary Matrices
+	//free temporary matrix memories<=> NumM aboves NbrMaxMatrix/2
+	for (i=NbrMaxMatrix/2;i<NbrMaxMatrix;i++) if (MAccu[i].ptr!=0) {free (MAccu[i].ptr);MAccu[i].ptr=0;}
+
 	NbrCodesCopied=FillCodeOfOneLine(CodeList,CodeOfOneLine);//transfert one line 
 	CodeListOffsetSave=CodeListOffset;
 	CounterLineCode++;
-
 
 	
 	if (CodeOfOneLine[0].code == 11 &&CodeOfOneLine[0].value==0) {goto EndMain;}//end
@@ -974,7 +1018,8 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 	
 	
 	ReplaceAccuByValue(CodeOfOneLine);
-
+	Error = ReplaceMAccuByValue(CodeOfOneLine); //get matrix values
+	if (Error !=0) goto EndMain;
 	Error = TreatParenthese(CodeOfOneLine);													//parenthese
 	if (Error != 0) {sprintf(s,"Parenthese Error = %d \n", Error);PrintCmd(s);goto EndMain;}
 	if(StopProgram == 1) goto EndMain;
@@ -1007,7 +1052,48 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			}else PrintCmd("Error Accu, Missing value to load!\n");
 		}}
 
-
+	//handle M n°(n,p)= ...   Matrix and  M n°= ... M
+	if (CodeOfOneLine[OffsetLine].code==15 ) {//MAccu detected
+		NumM = (int)CodeOfOneLine[OffsetLine].value;
+		//sprintf(s,"NumM = %d\n",NumM); PrintCmd(s);
+		//for (i=0; i<7;i++) {sprintf(s,"%d  [%d][%d]\n",i,(int)CodeOfOneLine[OffsetLine+i].code,(int)CodeOfOneLine[OffsetLine+i].value);PrintCmd(s);}
+		if (CodeOfOneLine[OffsetLine+1].code == 6 ){ 
+				if (CodeOfOneLine[OffsetLine+2].code == 1 && 
+					CodeOfOneLine[OffsetLine+3].code == 10 && 
+						CodeOfOneLine[OffsetLine+4].code == 1 && 
+							CodeOfOneLine[OffsetLine+5].code == 7 &&
+								CodeOfOneLine[OffsetLine+6].code == 8 ){ 
+				if (CodeOfOneLine[OffsetLine+7].code == 1){
+					Mn= (int)CodeOfOneLine[OffsetLine+2].value;
+					Mp= (int)CodeOfOneLine[OffsetLine+4].value;
+					if (Mn<1 || Mn>MAccu[NumM].n) {PrintCmd("index Matrix Out of range");Error=6; goto EndMain;}
+					if (Mp<1 || Mp>MAccu[NumM].p) {PrintCmd("index Matrix Out of range");Error=6; goto EndMain;}
+					if (MAccu[NumM].ptr !=0){ MAccu[NumM].ptr[(Mn-1)*MAccu[NumM].p+Mp-1]=CodeOfOneLine[OffsetLine+7].value;}
+						else {PrintCmd("Matrix not defined!\n");Error = 6; goto EndMain;}
+			if (debug >0 ) {
+				sprintf(s,"M%d (%d,%d)",NumM,Mn,Mp);PrintCmd(s);}
+			}else PrintCmd("Error Accu, Missing value to load!\n");
+			}else PrintCmd("Error Matrix definition !\n");
+		}else{
+				//treat the case of Mn°= .... M
+					if (CodeOfOneLine[OffsetLine+1].code == 8 && 
+						CodeOfOneLine[OffsetLine+2].code == 15){
+						int NumM2= (int) CodeOfOneLine[OffsetLine+2].value;
+						if (MAccu[NumM].n != MAccu[NumM].n ||
+								MAccu[NumM].p != MAccu[NumM].p){
+									PrintCmd("Matrices incompatible sizes!\n");
+									Error = 6;goto EndMain;}
+						int j;
+						for (j=0;j<MAccu[NumM].n*MAccu[NumM].p;j++)
+							MAccu[NumM].ptr[j]=MAccu[NumM2].ptr[j]; 
+					}else{
+							PrintCmd("Should be Matrix =Matrix\n not equal to scalar or else !\n");
+							Error =6;
+							goto EndMain;
+							}
+				}
+	}
+	
 	//Handle Instructions
 	if (CodeOfOneLine[OffsetLine].code!=11 ) goto OutInstructionHere;//Special Instruction  detected
 
@@ -1146,11 +1232,54 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			OffsetLine=0;
 			}else{PrintCmd("playsound!\n");goto EndMain;}
 		}	
+//-------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==20) {//playsndM
+			if (CodeOfOneLine[OffsetLine+1].code==1&& CodeOfOneLine[OffsetLine+2].code==10 &&
+			CodeOfOneLine[OffsetLine+3].code==1&& CodeOfOneLine[OffsetLine+4].code==10 &&
+			CodeOfOneLine[OffsetLine+5].code==1) {
+			NumM=(int)CodeOfOneLine[OffsetLine+1].value;//n°Matrix MAccu to play
+			SamplesPerSecond=CodeOfOneLine[OffsetLine+3].value;
+			nbits=CodeOfOneLine[OffsetLine+5].value;
+			PlaySoundMatrix(MAccu, NumM,SamplesPerSecond,nbits);
+
+			OffsetLine=0;
+			}else{PrintCmd("playsndM!\n");goto EndMain;}
+		}	
 //------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==18) {//clscmd
 			DeleteCmd();
 			OffsetLine=0;
 			}
+//------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==19) {//defM
+			if (CodeOfOneLine[OffsetLine+1].code==1&& CodeOfOneLine[OffsetLine+2].code==10 &&
+			CodeOfOneLine[OffsetLine+3].code==1&& CodeOfOneLine[OffsetLine+4].code==10 &&
+			CodeOfOneLine[OffsetLine+5].code==1) {
+			NumM=(int)CodeOfOneLine[OffsetLine+1].value;
+			MAccu[NumM].n=(int)CodeOfOneLine[OffsetLine+3].value;
+			MAccu[NumM].p=(int)CodeOfOneLine[OffsetLine+5].value;
+			//create matrix
+			MAccu[NumM].ptr = (float*)malloc(MAccu[NumM].n*MAccu[NumM].p*sizeof(float) );
+			if (MAccu[NumM].ptr == 0) {Error = 1; PrintCmd("Error Allocation for Matrix!\n");goto EndMain;}
+			OffsetLine=0;
+			}else{PrintCmd("Matrix!\n");goto EndMain;}
+		}	
+		
+//------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==21) {//fillM
+			if (CodeOfOneLine[OffsetLine+1].code==1&& CodeOfOneLine[OffsetLine+2].code==10 &&
+			CodeOfOneLine[OffsetLine+3].code==1&& CodeOfOneLine[OffsetLine+4].code==10 &&
+			CodeOfOneLine[OffsetLine+5].code==1) {
+			NumM = (int)CodeOfOneLine[OffsetLine+1].value;
+			float strtM = CodeOfOneLine[OffsetLine+3].value;
+			float endM = CodeOfOneLine[OffsetLine+5].value;
+			int sizeM=MAccu[NumM].n*MAccu[NumM].p;
+			//fill matrix
+			if (MAccu[NumM].ptr == 0) {Error = 1; PrintCmd("Can't fill Matrix, not defined!\n");goto EndMain;}
+			for (i=0;i<sizeM;i++) MAccu[NumM].ptr[i]= strtM+i*(endM-strtM)/(sizeM-1);
+			OffsetLine=0;
+			}else{PrintCmd("Fill Matrix!\n");goto EndMain;}
+		}	
 		
 //------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==14) {//bsr 
@@ -1640,6 +1769,43 @@ int StrtStr,EndStr,p,a,BackFromAccu=0;
 				//goto ComeBackFromAccu;
 			}//End Coding Accu
 
+		//detect MAccu
+		if (MnemoListLine[i]=='M' ) {//detect Matrix 
+			i++; //get the number now
+			val = MnemoListLine[i]-Octet("0");
+			if (val<0 && val>9)  {ErrorCode=2; goto EndConvert;}//missing number behind Accu
+			Nbr=0;
+			HandleNbrMAccu:
+				val= MnemoListLine[i]-Octet("0");
+				if (val >= 0 && val <=9) Nbr = Codage*Nbr + val ; 
+				else {
+					if (opposite == 1) {CodeList[CodeListOffset].code = 1;CodeList[CodeListOffset].value = 0;
+					CodeList[CodeListOffset+1].code = 3;CodeList[CodeListOffset+1].value = 0;
+					CodeListOffset=CodeListOffset+2; opposite=0;} //we've put 0-Accu
+					CodeList[CodeListOffset].code = 15; //code of the MAccu
+					CodeList[CodeListOffset].value = Nbr; 
+					CodeList[CodeListOffset].cmplx = 0; 
+					if (Nbr>NbrMaxMatrix) {PrintCmd("Matrix Number too big! 50 Max\n");ErrorCode=4; goto EndConvert;} 
+					CodeListOffset++;
+					if (debug > 0) {sprintf(s,"Accu A%d \n",(int) Nbr);PrintCmd(s);}
+					Nbr=0;// Reinitialise  Nbr for next value
+					goto EndNbrMAccu;// i points on the operator
+				}
+				i++;
+				goto HandleNbrMAccu;
+			EndNbrMAccu:				
+				if (MnemoListLine[i]==Octet("\n") )  {//Check Endline
+				Out=1; 
+				CodeList[CodeListOffset].code = 0xFF;       // EndLine coding
+				CodeList[CodeListOffset].value = 0; 
+				CodeListOffset++;
+				CodeListOffsetMax=CodeListOffset;
+				}
+				BackFromAccu=1;
+				goto StartConvList; //Return in the loop
+			}//End Coding MAccu
+
+
 			if (MnemoListLine[i] == ')') {
 			CodeList[CodeListOffset].code = 7;       // +2  so that "+"=2
 			CodeList[CodeListOffset].value = 0; 			// No values for operators
@@ -1880,11 +2046,13 @@ int i=0;
 int iptrstrt=0,Aind;
 signed int Ainteg=-1;
 
-  while (i<NbrMaxOperationOnLine ){ 
-	if (CodeOfOneLine[i].code==0xFF) goto StartOperate;
-	if (CodeOfOneLine[i].code == 8) {iptrstrt=i+1; goto StartOperate;} //8 is the code of "="
-	i++;
-  }
+	if (CodeOfOneLine[0].code == 15) goto StartOperate; //If Mx(i,j) then change accu i and j into numbers 
+
+	while (i<NbrMaxOperationOnLine ){ 
+		if (CodeOfOneLine[i].code==0xFF) goto StartOperate;
+		if (CodeOfOneLine[i].code == 8) {iptrstrt=i+1; goto StartOperate;} //8 is the code of "="
+		i++;
+	}
   StartOperate:
 	i=iptrstrt;
 	while (i<NbrMaxOperationOnLine && CodeOfOneLine[i].code!=0xFF){ 
@@ -1903,6 +2071,44 @@ signed int Ainteg=-1;
 	i++;
 	} 
  }
+
+static int ReplaceMAccuByValue(floactet *CodeOfOneLine){//Replace Matrix by values
+int i=0,k;
+int iptrstrt=0,Aind, Mn,Mp,NumM;
+
+  while (i<NbrMaxOperationOnLine ){ 
+	if (CodeOfOneLine[i].code==0xFF) goto StartOperate;
+	if (CodeOfOneLine[i].code == 8) {iptrstrt=i+1; goto StartOperate;} //8 is the code of "="
+	i++;
+  }
+  StartOperate:
+	i=iptrstrt;
+	while (i<NbrMaxOperationOnLine && CodeOfOneLine[i].code!=0xFF){ 
+		if (CodeOfOneLine[i].code == 15 && CodeOfOneLine[i+1].code ==6){ //15 is the Code for MAccu Matrix
+			if(debug > 0) {sprintf(s,"MAccu =%d\n",(int)CodeOfOneLine[i].value); PrintCmd(s);}
+			if(CodeOfOneLine[i+2].code!=1 ||
+				CodeOfOneLine[i+3].code!=10 ||CodeOfOneLine[i+4].code!=1 ||
+				CodeOfOneLine[i+5].code!=7 ) {PrintCmd("Syntaxe Matrix!\n");
+				return 9;
+				}else {
+				NumM = (int) CodeOfOneLine[i].value;
+				if (MAccu[NumM].ptr == 0) {PrintCmd("Matrix not defined!\n");return 9;}
+				Mn= (int) CodeOfOneLine[i+2].value;
+				Mp= (int) CodeOfOneLine[i+4].value;
+				if (Mn < 1 || Mn > MAccu[NumM].n ||Mp<1 || Mp >MAccu[NumM].p){ 
+					PrintCmd("Out of Range Matrix index!\n"); return 9;}
+				CodeOfOneLine[i].code = 1; 
+				CodeOfOneLine[i].value = MAccu[NumM].ptr[(Mn-1)*MAccu[NumM].p+Mp-1];
+				}
+		k=i+1;
+		while (CodeOfOneLine[k].code !=0xFF && CodeOfOneLine[k].code !=0) {
+			CodeOfOneLine[k]=CodeOfOneLine[k+5];
+			k++;}
+		}	
+		i++;
+	}
+	return 0;
+}
  
  
  static int TreatParenthese(floactet * CodeList){
@@ -1939,7 +2145,8 @@ signed int Ainteg=-1;
     i=0;
 	
  while (i<NbrMaxOperationOnLine){
-	if (CodeList[i].code==13 && CodeList[i].value == 15) {goto EndHandleParenthese;}
+	if (CodeList[i].code==13 && CodeList[i].value == 15) {goto EndHandleParenthese;}//for Int
+	if (CodeList[i].code==15 &&CodeList[i+1].code==6) {i=i+6;} //to avoid handling Matrix Mn°(n,p)=
 	if (CodeList[i].code==6) {
 		CountLevelPar++; //detection of "("
 		//if(LevelParMax<CountLevelPar) {//this was not working for (1)=(1)
@@ -1957,7 +2164,7 @@ signed int Ainteg=-1;
 	}
  CountParDone:
 	//At the end of the counting left right, CountLevelPar should be 0
-	if (CountLevelPar !=0) {ErrorCode = 1; goto EndHandleParenthese;}
+	if (CountLevelPar !=0) {PrintCmd("Parenthese CountLevelPar !=0 \n");ErrorCode = 1; goto EndHandleParenthese;}
 	if (LevelParMax == 0) goto EndHandleParenthese; //no or no more parenthese
 	
 	// Copy little line between parenthese in BufferLineCode
@@ -1967,10 +2174,9 @@ signed int Ainteg=-1;
 	if(StopProgram == 1) {free(BufferLineCode);return 0;}
 	if (Error != 0) {sprintf (s,"Error in Parenthese = %d\n", Error);PrintCmd(s); ErrorCode=2;} 
 	if (debug >0) {PrintCmd("Parenthese Result BufferLineCode:\n");
-							sprintf(s,"  [%d]   [%d]\n",BufferLineCode[0].code,(int)BufferLineCode[0].value);
-							PrintCmd(s);
-							sprintf(s,"  [%d]   [%d]\n",BufferLineCode[1].code,(int)BufferLineCode[1].value);
-							PrintCmd(s);
+		int j;					for (j=0;j<6;j++){
+							sprintf(s," %d [%d]   [%d]\n",j,(int)BufferLineCode[j].code,(int)BufferLineCode[j].value);
+							PrintCmd(s);}
 	}
 	CodeList[iptr]=BufferLineCode[0]; //copy the result
 	i=iptr+1;
@@ -2181,11 +2387,285 @@ ErrorOut:
 	}
 	
 static int CalculOneLine(floactet *CodeListLine){
-	int Error;
+	int Error,i;
+	//ToDo: for matrix detection on a line we have let an information at the
+	//end of the line [0xFF][1] means there is a matrix in this line
+	//the information is deposited in ConvertMnemo
+	i=0;
+	while (CodeListLine[i].code!=0xFF){
+		if (CodeListLine[i].code==15) 
+			if (CodeListLine[i+1].code!=6){
+				//PrintCmd("Detection matrix\n");
+				Error = CalculOneLineReelMatrix(CodeListLine);
+				return Error;}
+		i++;
+	}
+			
 	if (AllowComplexe ==1) Error = CalculOneLineComplexe(CodeListLine);
 	else Error = CalculOneLineReel(CodeListLine);
 	return Error;
 	}
+	
+//------------------------------  Calcul with Matrix -------------------------
+
+ static int  CalculOneLineReelMatrix(floactet * CodeListLine){//Must be one line only
+	/* Error Code return   0  Calculation Done
+									   1  No  End in the Line
+									   2  Syntaxe error should find numbers around the math operator
+									   3  Division by zero prohibited
+									   4 Should be no parenthese at the stage of this program
+										  The treatment of the parenthese should be done previously.
+									   5 Bad syntax for test condition
+								       6 Syntaxe Error
+									   7 Serial Device Not Opened (Oscilloscope)
+									   8 Complexe only
+									   9 Matrix Error
+	The calculation is done after the equal sign if there is one,
+	the pointer  iptrEqualSignP points the code 	after equal sign code 8.
+	We use here the same iptrEqualSign for the Instruction code 11... to perform the calculation
+	behind the instruction (exemple: print 1*2)
+	*/
+									   
+	//Search for priority *,/,(,  
+	int i,k; int imaxLine=0, NumM,Mn,Mp;
+	float CodeVal,val,x1,x2,a,b,h,val_cmplx;
+	int ErrorCode=0,NbrAccu;
+	int iptrEqualSignP; //Used to save the position of the equal sign in the line
+	
+	if (BreakActivated==1) if( CheckForBreak() == 1) return; //test for break test
+
+	
+	i=0;
+	imaxLine=0; iptrEqualSignP=0;
+	while (i<NbrMaxOperationOnLine){
+	if (CodeListLine[i].code == 0xFF) {imaxLine=i; goto SearchPriority;}
+	if (CodeListLine[i].code == 8) iptrEqualSignP=i+1; //detect and save equal code position+1 
+
+	//The way FAccu is handled is that in the LAUNCHING codes it only detects the definition Fi(x)=... then skips
+	//here (just below we are not in that case, we only replace the calculated values by CalculFAccuComplexe 
+	if (CodeListLine[i].code==14 &&CodeListLine[i+1].code==1) {//FAccu insertion
+		if(debug > 0) {sprintf(s,"OffsetAdr FAccu =%d\n",FAccu[(int)CodeListLine[i].value]); PrintCmd(s);}
+		if(CalculFAccuComplexe(CodeListLine, i,&val,&val_cmplx)!=0) return 6;
+		//if(CalculFAccu( CodeListLine, (int)CodeListLine[i].value, CodeListLine[i+1].value,&val)!=0) return 5;
+		else {CodeListLine[i].code=1; CodeListLine[i].value=val;}
+		k=i+1;
+		while (CodeListLine[k].code !=0xFF && CodeListLine[k].code !=0) {
+			CodeListLine[k]=CodeListLine[k+1];
+			k++;
+			}
+	}	
+
+	if (CodeListLine[i].code==13 &&CodeListLine[i+1].code==15) {
+		MathFunctionMatrices(MAccu, CodeListLine,i);//Math Function for Matrices
+		}
+		
+	if (CodeListLine[i].code==13 &&CodeListLine[i+1].code==1) {//Math Function
+		CodeVal=CodeListLine[i].value;
+		if (CodeVal==1 ) {val=RMath_exp(CodeListLine[i+1].value);goto KeepOn;}//exp
+		if (CodeVal==2 ) {val=RMath_ln(CodeListLine[i+1].value);goto KeepOn;}	//ln		
+		if (CodeVal==3 ) {val=RMath_sqrt(CodeListLine[i+1].value);goto KeepOn;}	//sqrt		
+	  //if (CodeVal==4 ) {AlreadyTaken for the function f(x);}	//function f(x)
+		if (CodeVal==5 ) {val=RMath_sin(CodeListLine[i+1].value);goto KeepOn;}	//sin
+		if (CodeVal==6 ) {val=RMath_cos(CodeListLine[i+1].value);goto KeepOn;}	//cos
+		if (CodeVal==7 ) {val=RMath_tan(CodeListLine[i+1].value);goto KeepOn;}	//tan
+		if (CodeVal==8 ) {val=fact((int)CodeListLine[i+1].value);goto KeepOn;}	//factoriel
+		if (CodeVal==9 ) {goto OutForPower;}	//Power
+		if (CodeVal==10 ) {val=RMath_ch(CodeListLine[i+1].value);goto KeepOn;}	//ch
+		if (CodeVal==11 ) {val=RMath_sh(CodeListLine[i+1].value);goto KeepOn;}	//sh
+		if (CodeVal==12 ) {val=RMath_th(CodeListLine[i+1].value);goto KeepOn;}	//th
+		if (CodeVal==13 ) {val=CodeListLine[i+1].value;PrintCmd("Activate Complexe before use!\n");MathError=8;}
+		if (CodeVal==14 ) {val=0;PrintCmd("Activate Complexe before use!\n");MathError=8;}	//Im
+		//if (CodeVal==15 ) {//Already taken for integrals}
+		if (CodeVal==16 ) {if (SerialReady ==0) MathError = 7; val=Oscilloscope(CodeListLine[i+1].value);goto KeepOn;}
+		if (CodeVal==17 ) {val=RMath_acos(CodeListLine[i+1].value);goto KeepOn;}	//acos
+		if (CodeVal==18 ) {val=RMath_asin(CodeListLine[i+1].value);goto KeepOn;}	//asin
+		if (CodeVal==19 ) {val=RMath_ath(CodeListLine[i+1].value);goto KeepOn;}	//atanh
+		if (CodeVal==20 ) {val=RMath_atan(CodeListLine[i+1].value);goto KeepOn;}	//atan
+		if (CodeVal==21 ) {val=RMath_ash(CodeListLine[i+1].value);goto KeepOn;}	//ash
+		if (CodeVal==22 ) {val=RMath_ach(CodeListLine[i+1].value);goto KeepOn;}	//ach
+		if (CodeVal==23 ) {val=RMath_abs(CodeListLine[i+1].value);goto KeepOn;}	//abs
+		if (CodeVal==24 ) {val=0;PrintCmd("Activate Complexe before use mod(z)\n");MathError=8;goto KeepOn;}	//mod(z)
+		if (CodeVal==25 ) {val=0;PrintCmd("Activate Complexe before use arg(z)\n");MathError=8;goto KeepOn;}	//arg(z)
+		if (CodeVal==26 ) {
+								MSG Msg;
+								GetMessage(&Msg, NULL, 0, 0);
+								TranslateMessage(&Msg);
+								DispatchMessage(&Msg);
+								val=Button;Button=0;}	//key
+
+	KeepOn:
+		if (MathError !=0 ) {sprintf(s,"Math Error = %d\n",MathError);PrintCmd(s);return 3;}
+		if (ErrorCode == 0) {CodeListLine[i].code=1; CodeListLine[i].value=val;}
+		k=i+1;
+		while (CodeListLine[k].code !=0xFF && CodeListLine[k].code !=0) {
+			CodeListLine[k]=CodeListLine[k+1];
+			k++;
+			}
+		}
+OutForPower:
+		
+	if (CodeListLine[i+1].code==11 &&CodeListLine[i+1].value==5) {//Test "=="
+		if (CodeListLine[i].code !=1 && CodeListLine[i+2].code !=1){ErrorCode = 5; goto EndCalculOneLine;}
+		else { if ( CodeListLine[i].value == CodeListLine[i+2].value) {
+					TestCondition=1; }
+					i=i+3;goto EndCalculOneLine;
+					}
+	}
+		if (CodeListLine[i+1].code==11 &&CodeListLine[i+1].value==3) {//Test "<"
+		if (CodeListLine[i].code !=1 && CodeListLine[i+2].code !=1){ErrorCode = 5; goto EndCalculOneLine;}
+		else { if ( CodeListLine[i].value < CodeListLine[i+2].value) {
+					TestCondition=1; }
+					i=i+3;goto EndCalculOneLine;
+					}
+	}
+		if (CodeListLine[i+1].code==11 &&CodeListLine[i+1].value==6) {//Test ">"
+		if (CodeListLine[i].code !=1 && CodeListLine[i+2].code !=1){ErrorCode = 5; goto EndCalculOneLine;}
+		else { if ( CodeListLine[i].value > CodeListLine[i+2].value) {
+					TestCondition=1; }
+					i=i+3;goto EndCalculOneLine;
+					}
+	}
+	if (CodeListLine[i].code == 11) iptrEqualSignP=i+1; //detect instruction and save code position+1 
+
+	
+	if (debug > 0) {
+	sprintf (s," Code %d  [%d]   [%d] \n",i,CodeListLine[i].code, (int) CodeListLine[i].value);
+	PrintCmd(s);
+	}
+	i++;
+	}//end loop while(i<NbrMaxOperationOnLine)
+	if (i>0 && imaxLine==0) {ErrorCode =1; goto EndCalculOneLine;} //NoEnd
+	SearchPriority:
+	i=iptrEqualSignP; //We start the calculation from the equal sign +1	
+	while (i<NbrMaxOperationOnLine){//Strong Priority for Power
+		if (CodeListLine[i].code == 13 && CodeListLine[i].value == 9 ) { goto Power;}
+		if (CodeListLine[i].code == 13 && CodeListLine[i].value == 15 ) { goto Integral;}
+		if (CodeListLine[i].code == 0xFF ) goto AfterPower;
+		if (CodeListLine[i].code == 0 ) goto AfterPower;
+		i++;
+		}
+	AfterPower:
+	i=iptrEqualSignP; //We start the calculation from the equal sign +1	
+	while (i<NbrMaxOperationOnLine){
+		if (CodeListLine[i].code == 4 ) goto Multiplication;
+		if (CodeListLine[i].code == 5 ) goto Division;
+		if (CodeListLine[i].code == 6 ) {ErrorCode=4; goto EndCalculOneLine;}
+		if (CodeListLine[i].code == 0xFF ) goto NoPriority;
+		if (CodeListLine[i].code == 0 ) goto NoPriority;
+		i++;
+		}
+	PrintCmd("Arriving end of line before Math sign\n");
+	goto EndCalculOneLine;	
+
+	Integral:
+			if (CodeListLine[i].code==13 && CodeListLine[i].value==15) {//Integral
+			if(CodeListLine[i+1].code!=6||CodeListLine[i+2].code!=1||CodeListLine[i+3].code!=10
+			||CodeListLine[i+4].code!=1||CodeListLine[i+5].code!=10||CodeListLine[i+6].code!=1
+			||CodeListLine[i+7].code!=10||CodeListLine[i+8].code!=9||CodeListLine[i+9].code!=7)
+			{PrintCmd("Syntaxe Error Integral\n");
+			//for (k=0;k<11;k++){
+			//sprintf(s," code %d [%d] [%d] \n",k,CodeListLine[k].code,(int)CodeListLine[k].value);
+			//PrintCmd(s);}
+			return 6;}//for the accu to appear (code 9) at i+8 position we have to make a special treatment to avoid conversion of the accu for the variable
+		if(Integration(CodeListLine,i,&val,&val_cmplx)!=0) return 5;
+			//sprintf(s,"Integration =%d\n",(int)val);PrintCmd(s);
+			CodeListLine[i].code=1; CodeListLine[i].value=val;
+			CodeListLine[i+1].code =0xFF;CodeListLine[i+1].value =0;
+			if (AllowComplexe == 0 && val_cmplx !=0) PrintCmd("Your function of complexe type: you need to Toogle Allow complexe\n");
+		}
+		goto SearchPriority;
+//----------- start modify for matrices		
+	Power:
+		//i points on the sign ^
+		i-- ; //place on the left number
+		if (CodeListLine[i].code==15 || CodeListLine[i+2].code == 15) 
+			{ErrorCode=MatrixPower(MAccu,CodeListLine,i,imaxLine);
+					i=iptrEqualSignP; //reinitialise position after the equal sign	
+					goto SearchPriority; // Back to seek for operation priority
+			}
+		if (CodeListLine[i].code!=1 || CodeListLine[i+2].code != 1) {PrintCmd("How possible ?? Power\n");ErrorCode=2; goto EndCalculOneLine; }
+		val = RMath_Pow(CodeListLine[i].value,CodeListLine[i+2].value);
+		CodeListLine[i].code=1; //number
+		CodeListLine[i].value=val; // new value
+		i++;
+		if (debug > 0) {sprintf (s,"Power Result : %d\n",(int)val); PrintCmd(s);}	
+		while (i+2<=imaxLine){
+			CodeListLine[i].code=CodeListLine[i+2].code;
+			CodeListLine[i].value=CodeListLine[i+2].value;
+			i++;
+			}
+		i=iptrEqualSignP; //reinitialise position after the equal sign	
+		goto SearchPriority; // Back to seek for operation priority
+
+	Multiplication:
+		//i points on the multiplie *
+		i-- ; //place on the left number
+		if (CodeListLine[i].code==15 || CodeListLine[i+2].code == 15) 
+				{ErrorCode=MatrixMultiplication(MAccu,CodeListLine,i,imaxLine);
+						i=iptrEqualSignP; //reinitialise position after the equal sign	
+						goto SearchPriority; // Back to seek for operation priority
+				}
+		if (CodeListLine[i].code!=1 || CodeListLine[i+2].code != 1) {PrintCmd("How possible ?? multiplication\n");ErrorCode=2; goto EndCalculOneLine; }
+		val = CodeListLine[i].value * CodeListLine[i+2].value;
+		CodeListLine[i].code=1; //number
+		CodeListLine[i].value=val; // new value
+		i++;
+		//if (debug ==1) PrintCmd ("multiplication result : %f \n",val);	
+		while (i+2<=imaxLine){
+			CodeListLine[i].code=CodeListLine[i+2].code;
+			CodeListLine[i].value=CodeListLine[i+2].value;
+			i++;
+			}
+		i=iptrEqualSignP; //reinitialise position after the equal sign	
+		goto SearchPriority; // Back to seek for operation priority
+		
+	Division:
+		//i points on the multiplie *
+		i-- ; //place on the left number
+		if (CodeListLine[i].code==15 || CodeListLine[i+2].code == 15) 
+				{ErrorCode=MatrixDivision(MAccu,CodeListLine,i,imaxLine);
+						i=iptrEqualSignP; //reinitialise position after the equal sign	
+						goto SearchPriority; // Back to seek for operation priority
+				}
+		if (CodeListLine[i].code!=1 || CodeListLine[i+2].code != 1) {PrintCmd("How possible ?? division\n"); ErrorCode=2; goto EndCalculOneLine; }
+		if (CodeListLine[i+2].value!=0) val = CodeListLine[i].value / CodeListLine[i+2].value;
+		else {ErrorCode = 3; goto EndCalculOneLine;}//division by zero prohibited; 
+
+		CodeListLine[i].code=1; //number
+		CodeListLine[i].value=val; // new value
+		i++;
+		//if (debug ==1) printf ("division result : %f \n",val);	
+		while (i+2<=imaxLine){
+			CodeListLine[i].code=CodeListLine[i+2].code;
+			CodeListLine[i].value=CodeListLine[i+2].value;
+			i++;
+			}
+		i=iptrEqualSignP;	
+		goto SearchPriority; // Back to seek for operation priority
+	
+	NoPriority:
+		i=iptrEqualSignP; //start after the equal sign
+		if (CodeListLine[i].code==15 && CodeListLine[i+1].code == 0xFF) {goto EndCalculOneLine; }// Matrix ready 
+		val=0;
+		//We handle now the addition of scalar with matrices
+		ErrorCode=MatrixSubAddition(MAccu,CodeListLine,i,iptrEqualSignP,imaxLine);
+		if (ErrorCode !=0) {PrintCmd("SubaddMatrix treatment  generated Error\n");}
+ EndCalculOneLine:
+			LastValCalculated.value=val; //After all passages LastValCalculated keeps the value
+			if (debug > 0) {sprintf (s, "Matrix result number is %d \n",(int) CodeListLine[iptrEqualSignP].value); PrintCmd(s);} 
+			if (val == 13061976) {CodageIdentity=1; PrintCmd("et...né...où?\n");}
+	return ErrorCode;
+ }
+
+
+
+//--------------------------------End Calcul with Matrix -------------------	
+	
+
+	
+	
+	
+	
 	
  static int  CalculOneLineReel(floactet * CodeListLine){//Must be one line only
 	/* Error Code return   0  Calculation Done
@@ -2198,6 +2678,7 @@ static int CalculOneLine(floactet *CodeListLine){
 								       6 Syntaxe Error
 									   7 Serial Device Not Opened (Oscilloscope)
 									   8 Complexe only
+									   9 Matrix Syntaxe
 	The calculation is done after the equal sign if there is one,
 	the pointer  iptrEqualSignP points the code 	after equal sign code 8.
 	We use here the same iptrEqualSign for the Instruction code 11... to perform the calculation
@@ -2205,7 +2686,7 @@ static int CalculOneLine(floactet *CodeListLine){
 	*/
 									   
 	//Search for priority *,/,(,  
-	int i,k; int imaxLine=0;
+	int i,k; int imaxLine=0, NumM,Mn,Mp;
 	float CodeVal,val,x1,x2,a,b,h,val_cmplx;
 	int ErrorCode=0,NbrAccu;
 	int iptrEqualSignP; //Used to save the position of the equal sign in the line
@@ -2221,7 +2702,7 @@ static int CalculOneLine(floactet *CodeListLine){
 
 	if (CodeListLine[i].code==14 &&CodeListLine[i+1].code==1) {//FAccu insertion
 		if(debug > 0) {sprintf(s,"OffsetAdr FAccu =%d\n",FAccu[(int)CodeListLine[i].value]); PrintCmd(s);}
-		if(CalculFAccuComplexe(CodeListLine, i,&val,&val_cmplx)!=0) return 5;
+		if(CalculFAccuComplexe(CodeListLine, i,&val,&val_cmplx)!=0) return 6;
 		//if(CalculFAccu( CodeListLine, (int)CodeListLine[i].value, CodeListLine[i+1].value,&val)!=0) return 5;
 		else {CodeListLine[i].code=1; CodeListLine[i].value=val;}
 		k=i+1;
@@ -2230,8 +2711,7 @@ static int CalculOneLine(floactet *CodeListLine){
 			k++;
 			}
 	}	
-
-		
+	
 	if (CodeListLine[i].code==13 &&CodeListLine[i+1].code==1) {//Math Function
 		CodeVal=CodeListLine[i].value;
 		if (CodeVal==1 ) {val=RMath_exp(CodeListLine[i+1].value);goto KeepOn;}//exp
@@ -2418,12 +2898,14 @@ OutForPower:
 		if (CodeListLine[i+2].code != 1) {ErrorCode =2; goto EndCalculOneLine; }		
 		val = CodeListLine[i].value;
 		while(i<imaxLine){
+			if (CodeListLine[i+1].code == 0xFF) goto FinalStep; // Line Finished		
 			x2 = CodeListLine[i+2].value;
 			if (CodeListLine[i+1].code==2) val=x2+val;
 			if (CodeListLine[i+1].code==3) val=val-x2;
 			i=i+2;
 			}
 			//Put Final calculation results
+		FinalStep:
 			CodeListLine[iptrEqualSignP].code=1; //Put value after the equal sign
 			CodeListLine[iptrEqualSignP].value=val;
  EndCalculOneLine:
@@ -2622,12 +3104,14 @@ static int  CalculOneLineComplexe(floactet * CodeListLine){//Must be one line on
 		if (CodeListLine[i].code != 1) {ErrorCode =2; goto EndCalculOneLine; }// Should be a number !		
 		if (CodeListLine[i+2].code != 1) {ErrorCode =2; goto EndCalculOneLine; }		
 		while(i<imaxLine){
+			if (CodeListLine[i+1].code == 0xFF) goto FinalStep; // Line Finished		
 			x2 = CodeListLine[i+2].value; x2_cmplx = CodeListLine[i+2].cmplx;
 			if (CodeListLine[i+1].code==2) {val=x2+val; val_cmplx=x2_cmplx+val_cmplx;}
 			if (CodeListLine[i+1].code==3) {val=val-x2;  val_cmplx=val_cmplx-x2_cmplx;}
 			i=i+2;
 			}
 			//Put Final calculation results
+		FinalStep:
 			CodeListLine[iptrEqualSignP].code=1; //Put value after the equal sign
 			CodeListLine[iptrEqualSignP].value=val;
 			CodeListLine[iptrEqualSignP].cmplx=val_cmplx;

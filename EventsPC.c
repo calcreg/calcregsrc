@@ -134,7 +134,8 @@ int MainFormHandleEvent(int event) {
 				
    			case btntest:
 				DeleteProg();
-				if( testProg == 0 ) PrintProg( "gfxdim -3,3,-10,3,0.1\nx=-3\nTrf(x)= -x + 1\nx=-3\nTrf(x)= -x^2 + 1\n");
+				if (testProg == 0 ) PrintProg("defM0,1,10\ndefM1,1,10\nfillM0,0,2\nM1=M0\nprint M1(1,5)\nM1=cos(M0)\nprint M1(1,1)\n");
+				//if( testProg == 0 ) PrintProg( "gfxdim -3,3,-10,3,0.1\nx=-3\nTrf(x)= -x + 1\nx=-3\nTrf(x)= -x^2 + 1\n");
 				if( testProg == 1 ) PrintProg( "gfxdim -6,6,-1.2,1.2,0.1\nx=-6\nTrf(x)=sin (x)\nTrf(x)= cos (x) \n");
 				if( testProg == 2 ) PrintProg( "gfxdim -7,5,-4,5,0.2\nbox3d 4,4,4,0.2\nx=4\ny=-4\nTrf(x,y)=3-3*exp(-(x^2+y^2)/2.5)*cos(0.9*(x^2+y^2))\n");
 				if( testProg == 3 ) PrintProg( "//Test function Precision1\n//Should be near zero\ngfxdim -3,3,-0.0015,0.0015,0.07\nx=-3\nTrf(x)=-0.001\nTrf(x)=0.001\nTrf(x)=x - ln ( exp (x) ) \n");

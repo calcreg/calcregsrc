@@ -8,8 +8,8 @@ extern HWND hEditP,hEditC;
 
 	void Print_In_Prog_Win(char *s); 
 	void Print_In_Cmd_Win(char *s); 
-	void Delete_Cmd_Win();
-
+	void Delete_Cmd_Win(void);
+	void Delete_Prog_Win(void);
 
 	void WinDrawLine(int x1, int y1, int x2, int y2){
 		MoveToEx(hDC,x1,y1,NULL);//chgPOs2Win32
@@ -67,6 +67,7 @@ extern HWND hEditP,hEditC;
 	}
 	
 void Delete_Prog_Win(void){
+//SetWindowText(hEditP, 0);
 }	
 void Delete_Cmd_Win(void){
 //SetWindowText(hEditC, "---");

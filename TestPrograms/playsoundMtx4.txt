@@ -1,0 +1,74 @@
+gfxdim -0.5,100,-1.2,1.2,0.05
+grid10
+Nsp=96000 //samples /s
+f=440 //Hz
+dt=1/Nsp
+duration=2 // seconds
+le=duration/dt
+pi=3.1415927
+sign=1
+defM0,1,le
+defM1,1,le
+fillM0,0,duration //0 to 2s
+
+lp:
+clavier=key(0)
+clavier==9 =>goto fin
+clavier==1 =>bsr plusun
+clavier==2 =>bsr plusdix
+clavier==3 =>bsr pluscent
+clavier==4 =>bsr plusmille
+clavier==5 =>bsr plusdixmille
+clavier==7 =>bsr chgsign
+clavier == 8=>bsr jouer
+goto lp
+fin:
+print 0
+end
+
+chgsign:
+sign=-sign
+rts
+
+plusun:
+f=f+1*sign
+rts
+plusdix:
+f=f+10*sign
+rts
+pluscent:
+f=f+100*sign
+rts
+plusmille:
+f=f+1000*sign
+rts
+plusdixmille:
+f=f+10000
+rts
+
+
+jouer:
+w=2*pi*f
+M1=0.5*cos(w*M0)+0.5*sin(4*w*M0)
+bsr draw
+playsndM1,Nsp,8
+clscmd
+print f
+rts
+
+draw:
+grid10
+t=1
+x=1
+loop:
+z=x*t
+a=M1(1,z)
+y=x
+x=x+1
+z=x*t
+b=M1(1,z)
+line y,a,x,b,3
+x<100 =>goto loop
+rts
+
+end

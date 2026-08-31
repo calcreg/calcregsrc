@@ -30,7 +30,7 @@
 	extern Rprintf(float);
 HINSTANCE	hinst=NULL;
 HWND		btn_close,btn_line,btn_test,btn_ell,btn_brk;
-HWND		btn_gfxmove,btn_gfxwork,btn_start,btn_read,btn_gfxplus,btn_gfxmoins,btn_gfxderivate,btn_gfxpset;
+HWND		btn_ClCmd,btn_ClProg,btn_gfxmove,btn_gfxwork,btn_start,btn_read,btn_gfxplus,btn_gfxmoins,btn_gfxderivate,btn_gfxpset;
 HWND		btn_1,btn_2,btn_3,btn_4,btn_5,btn_6,btn_7,btn_8,btn_9,hmywin;
 HDC			hDC;
 RECT		drawrect,wndrect;
@@ -142,10 +142,12 @@ void ObjectCreation(HWND hwnd)
 	btn_gfxmove = CreateWindow("BUTTON","M",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+300,wndrect.top+85,12,14,hwnd,0,hinst,NULL);			
 
 	//btn_brk = CreateWindow("BUTTON","Break",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+45,50,25,hwnd,0,hinst,NULL);			
+	//btn_ClProg = CreateWindow("BUTTON","clr prog",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+15,50,25,hwnd,0,hinst,NULL);			
 	btn_test = CreateWindow("BUTTON","Test",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+75,50,25,hwnd,0,hinst,NULL);			
 	btn_start = CreateWindow("BUTTON","EXE",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+105,50,25,hwnd,0,hinst,NULL);			
-
 	btn_close = CreateWindow("BUTTON","Close",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+180,50,25,hwnd,0,hinst,NULL);
+	btn_ClCmd = CreateWindow("BUTTON","Clear",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+205,50,25,hwnd,0,hinst,NULL);			
+
 	btn_1 = CreateWindow("BUTTON","1",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+286,18,18,hwnd,0,hinst,NULL);			
 	btn_2 = CreateWindow("BUTTON","2",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+28,wndrect.top+286,18,18,hwnd,0,hinst,NULL);			
 	btn_3 = CreateWindow("BUTTON","3",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+46,wndrect.top+286,18,18,hwnd,0,hinst,NULL);			
@@ -323,6 +325,8 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			if(btn_close==(HWND)lParam) CloseProc(hwnd);
 			if(btn_brk==(HWND)lParam) StopProgram=1;
 			if(btn_start==(HWND)lParam) MainFormHandleEvent(btnstart);
+			if(btn_ClCmd==(HWND)lParam) MainFormHandleEvent(btnclear);
+			if(btn_ClProg==(HWND)lParam) MainFormHandleEvent(btnC);
 			if(btn_test==(HWND)lParam) MainFormHandleEvent(btntest);
 			if(btn_gfxplus==(HWND)lParam) MainFormHandleEvent(btngfxplus);
 			if(btn_gfxmoins==(HWND)lParam) MainFormHandleEvent(btngfxmoins);

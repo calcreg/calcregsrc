@@ -1,0 +1,17 @@
+gfxdim -10,10,-1,256,0.05
+grid10
+Nsp=96000 //samples /s
+f=440 //Hz
+dt=1/Nsp
+duration=2 // seconds
+le=duration/dt
+pi=3.1415927
+
+defM0,1,le
+defM1,1,le
+
+w=2*pi*f
+fillM0,0,duration //0 to 2s
+M1=cos(w*M0)
+playsndM1,Nsp,8
+end

@@ -1,0 +1,18 @@
+gfxdim -10,10,-1,256,0.05
+grid10
+Nsp=96000 //samples /s
+f=1440 //Hz
+dt=1/Nsp
+duration=2 // seconds
+le=duration/dt
+pi=3.1415927
+
+defM0,1,le
+defM1,1,le
+j=0
+k=0
+loop:
+j=j*2
+k=k+1
+k<10000 =>goto loop
+print 0

@@ -1,12 +1,12 @@
 rm CalcReg.exe
 //gcc -c ManualPC.c -mwindows
-//gcc -c RMathlibPC.c -mwindows
+gcc -c RMathlibPC.c -mwindows
 //gcc -c OscilloPC.c -mwindows
 gcc -c CalcRegPC.c -mwindows
-gcc -c EventsPC.c -mwindows
+//gcc -c EventsPC.c -mwindows
 //gcc -c compatibilityReg.c -mwindows
 gcc -c MultimediaSound.c -luser32 -lwinmm -mwindows
       
-gcc -c CalcRegMain.c -mwindows
-gcc -o CalcReg.exe CalcRegMain.o MultimediaSound.o EventsPC.o RMathlibPC.o OscilloPC.o CalcRegPC.o ManualPC.o compatibilityReg.o -luser32 -lwinmm -mwindows
+//gcc -c CalcRegMain.c -mwindows
+gcc -o CalcReg.exe CalcRegMain.o MultimediaSound.o EventsPC.o RMathlibPC.o OscilloPC.o CalcRegPC.o ManualPC.o compatibilityReg.o -lm -luser32 -lwinmm -mwindows
 

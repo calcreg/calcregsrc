@@ -1,0 +1,23 @@
+gfxdim -10,10,-1,10,0.05
+grid3
+defM0,4,20
+x0=-10
+y0=exp x0
+j=1
+loop:
+x1=x0+1
+y1=exp x1
+line x0,y0,x1,y1,3
+M0(1,j)=x0 -0.5
+M0(2,j)=y0+0.4
+M0(3,j)=x1 -0.5
+M0(4,j)=y1+0.4
+x0=x1
+y0=y1
+j=j+1
+j<21=>goto loop
+j=1
+loop2:
+line M0(1,j),M0(2,j),M0(3,j),M0(4,j),1
+j=j+1
+j<21 =>goto loop2

@@ -1,0 +1,10 @@
+
+defM0,1,11
+defM1,1,11
+fillM0,0,3.1415927
+M1=2*M0
+print M1(1,6)
+
+M1=sin(2*M0)
+print M1(1,6)
+

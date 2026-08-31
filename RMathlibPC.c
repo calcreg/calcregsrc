@@ -1,9 +1,9 @@
-/* --------------- 
+/* ---------------
  *  Custom Math Lib
  *
  * BUSSY-SOCRATE REGAN
  *
- *  --------------
+ *  --------------*/
 
 
 /* Includes */
@@ -20,6 +20,12 @@ extern HDC hDC;
 
 
 //#include "CalcReg.h"		// app
+//matrix
+typedef struct Matrix{
+	int n;	//n line
+	int p;	//p column
+	float * ptr; //pointer on the matrix
+	}Matrix;
 
 
 typedef struct floactet{
@@ -112,6 +118,15 @@ float Dy(float x, float y, float z);
 void Line(float x1, float y1, float x2, float y2, float Color); //line x1,y1,x2,y2,color 0black 1red 2green 3blue
 void FloatToString(float value, char *buffer, int Rounding);
 
+//Matrix
+
+int MatrixPower(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine);
+int MatrixSubAddition(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSignP,int imaxLine);
+int MatrixMultiplication(Matrix *MAccu,floactet *CodeListLine,int i, int imaxLine);
+int MatrixDivision(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine);
+int MathFunctionMatrices (Matrix *MAccu, floactet *CodeListLine,int i);
+
+
 
 //Math dimensions of the square for drawing (the hardware display is rearranged afterwards)
 float DimXmin=-3;
@@ -170,16 +185,334 @@ int FunctionPrecision=1; //High Precision
 float pi= 3.141592654,Infinite=1E+40;
 int Nsin=9,Ncos=9,Natan=15,Nln=70,Nsqrt=10; //Order to calculate the functions
 float HlowPrecision=0.00001; //Low precision 1E-05;
-
 //beyond Nsincos=7 the precision is 1E-04
 //The ln needs high N beyond 20 at least for precision better than 1E-3
 
+
+	char s[50];
+
+
 //------------------------------------------------------------------------------------- 
 //-------------------------------------------------------------------------------------
+//-------------------------   Coding For matrices --------------------------
 
+int MatrixPower(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine){
+	int Error=0;
+	return Error;
+}
+int MatrixSubAddition(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSignP,int imaxLine){
+	//Sum or substract 2 following matrix separated by + - sign.
+	//We end up by saving the resulting matrix in the CodeListLine
+	//Remember to reactivate the changing VarNames to Accu because
+	//of the problem M1= is interpreted as an accumulateur definition
+	//and correct that. simply by checking if it is M n° 0<n°<9
+	int Error=0,m,j,NumM,l,ResM;
+	float val=0;
+	extern int NbrMaxMatrix;
+	//We create the resulting matrix anyway
+	//As result demanded is a matrix
+		for (m=NbrMaxMatrix/2; m<NbrMaxMatrix; m++)if (MAccu[m].ptr == 0) goto FoundFreeMatrix;
+		PrintCmd("Not enough available matrices for solving!\n");
+		return 9; //Matrix error
+		FoundFreeMatrix:
+		ResM=m;//this will receive the final matrix calculation
+		//init ResM : We search in the CodeListLine One matrix to get the size
+		//Matrices should appear only in addition as the multiplication 
+		//and division should be already done 
+		for (j=i;j<imaxLine;j++){
+			if (CodeListLine[j].code == 0xFF) {PrintCmd("no matrix???\n");return 9;}
+			if (CodeListLine[j].code == 15) {
+				MAccu[ResM].n=MAccu[(int)CodeListLine[j].value].n;
+				MAccu[ResM].p=MAccu[(int)CodeListLine[j].value].p;
+				MAccu[ResM].ptr = (float *) malloc (MAccu[ResM].n*MAccu[ResM].p*sizeof(float) );
+				if (MAccu[ResM].ptr == 0 ) {PrintCmd ("Error couldn't allocate memory for temporary matrix\n"); return 9;}
+				goto ResMtxReady;
+				}
+		}
+		ResMtxReady: //at this point ResM exists and contains the right size
+		
+		if (CodeListLine[i].code == 1){//load first data as matrix
+			val = CodeListLine[i].value;
+			for (j=0;j<MAccu[ResM].n*MAccu[ResM].p;j++)MAccu[ResM].ptr[j]=val;
+			}
+		if (CodeListLine[i].code == 15){
+			NumM = CodeListLine[i].value;
+			//copy NumM to ResM
+			for (j=0;j<MAccu[ResM].n*MAccu[ResM].p;j++)MAccu[ResM].ptr[j]=MAccu[NumM].ptr[j];
+		}
+		//at this point ResM contains the first data
+		if (CodeListLine[i+1].code==0xFF) {
+			//This case is important because we get the scalar from upper 
+			//treatment into matrix ResM 
+			goto FinalStep; //no more calculation is necessary , returning no Error
+		}
+		while(i<imaxLine){
+			if (CodeListLine[i+1].code == 0xFF) {goto FinalStep;}//finished
 
+			if (CodeListLine[i+2].code==1) {
+				if (CodeListLine[i+1].code==2) {//ResM+scalar
+					val=CodeListLine[i+2].value;
+					for (j=0;j<MAccu[ResM].n*MAccu[ResM].p;j++)MAccu[ResM].ptr[j]=MAccu[ResM].ptr[j]+val;
+					}
+				if (CodeListLine[i+1].code==3) {//ResM-scalar
+					val=CodeListLine[i+2].value;
+					for (j=0;j<MAccu[ResM].n*MAccu[ResM].p;j++)MAccu[ResM].ptr[j]=MAccu[ResM].ptr[j]-val;	
+					}
+			i=i+2;
+			}
+
+			if (CodeListLine[i+2].code == 15){
+				if (CodeListLine[i+1].code==2) {//ResM+numM
+					NumM=CodeListLine[i+2].value;
+					for (j=0;j<MAccu[ResM].n*MAccu[ResM].p;j++)MAccu[ResM].ptr[j]=MAccu[ResM].ptr[j]+MAccu[NumM].ptr[j];
+					}
+				if (CodeListLine[i+1].code==3) {//ResM-numM
+					NumM=CodeListLine[i+2].value;
+					for (j=0;j<MAccu[ResM].n*MAccu[ResM].p;j++)MAccu[ResM].ptr[j]=MAccu[ResM].ptr[j]-MAccu[NumM].ptr[j];
+					}
+			i=i+2;
+			}
+		}//end while
+		
+		//Put Final calculation results
+		FinalStep:
+			CodeListLine[iptrEqualSignP].code=15; //Put ResM result after the equal sign
+			CodeListLine[iptrEqualSignP].value=ResM;
+			//Apparently it is not needed to finish the line by 0xFF
+			//as the first data will be considered for the result
+	return Error;
+}
+
+int MatrixMultiplication(Matrix *MAccu,floactet *CodeListLine,int i, int imaxLine){
+	extern int NbrMaxMatrix; 
+	int m,k,NewM,NumM,j,l;
+	float scalar;
+	//3 cas possibles  (there is at least one matrix in n°1 or n°2
+	//  CASE1      n°1  is scalar       |     n°2 is matrix
+	//  CASE2                 matrix      |               scalar
+	//  CASE3                 matrix      |               matrix
+	if (CodeListLine[i].code == 1 && CodeListLine[i+2].code == 15 ||
+			CodeListLine[i].code == 15 && CodeListLine[i+2].code == 1){
+		//CASE1 or CASE2
+		if (CodeListLine[i].code == 1 && CodeListLine[i+2].code == 15){
+			NumM=(int)CodeListLine[i+2].value; //mtx n°
+			scalar = CodeListLine[i].value; }
+		if (CodeListLine[i].code == 15 && CodeListLine[i+2].code == 1){
+			NumM=(int)CodeListLine[i].value; //mtx n°
+			scalar = CodeListLine[i+2].value;}
+			
+			if (NumM < NbrMaxMatrix) {//Get new temp mtx or same NumM
+			//create a new matrix
+			for (m=NbrMaxMatrix/2; m<NbrMaxMatrix; m++)if (MAccu[m].ptr == 0) goto FoundFreeMatrix;
+			PrintCmd("Not enough available matrices for solving!\n");
+			return 9; //Matrix error
+			FoundFreeMatrix:
+			NewM=m;
+			MAccu[NewM].ptr = (float *) malloc (MAccu[NumM].n*MAccu[NumM].p*sizeof(float) );
+			if (MAccu[NewM].ptr == 0 ) {PrintCmd ("Error couldn't allocate memory for temporary matrix\n"); return 9;}
+			MAccu[NewM].n=MAccu[NumM].n;
+			MAccu[NewM].p=MAccu[NumM].p;
+		}else{NewM=NumM;}
+		//Here is the multiplication:
+		for (j=0; j<MAccu[NumM].n*MAccu[NumM].p; j++)
+			MAccu[NewM].ptr[j] = MAccu[NumM].ptr[j] * scalar;
+		//done result is in NewM
+		//Now we put the matrix result in the CodeListLine
+		CodeListLine[i].code=15; //mtx
+		CodeListLine[i].value=NewM; // n°mtx
+		i++;
+		//sprintf(s,"Matrix Size nxp=%dx%d\n",MAccu[NewM].n,MAccu[NewM].p);
+		//PrintCmd (s);	
+		while (i+2<=imaxLine){
+			CodeListLine[i].code=CodeListLine[i+2].code;
+			CodeListLine[i].value=CodeListLine[i+2].value;
+			i++;
+			}
+		return 0; //no errors
+	}
+	//CASE3
+	if (CodeListLine[i].code == 15 && CodeListLine[i+2].code == 15){
+		int NumM1 = (int)CodeListLine[i].value;
+		int NumM2 = (int)CodeListLine[i+2].value;
+		//we need a new matrix
+		//create a new matrix
+		for (m=NbrMaxMatrix/2; m<NbrMaxMatrix; m++)if (MAccu[m].ptr == 0) goto FoundFreeMatrix2;
+			PrintCmd("Not enough available matrices for solving!\n");
+			return 9; //Matrix error
+		FoundFreeMatrix2:
+			NewM=m;
+			if (MAccu[NumM1].p != MAccu[NumM2].n) {
+				PrintCmd("Incompatible matrix size Mtx1.p must equal Mtx2.n\n");
+				return 9;
+				}
+			//M1*M2 just start below
+			for (j=0;j<MAccu[NumM1].n;j++){
+				for (k=0;k<MAccu[NumM2].p;k++){
+					float Sum=0;
+					for (l=0;l<MAccu[NumM1].p;l++)Sum=Sum+MAccu[NumM1].ptr[j*MAccu[NumM1].p+l]*MAccu[NumM2].ptr[l*MAccu[NumM2].p+k];
+					MAccu[NewM].ptr[j*MAccu[NewM].p+k]=Sum;					
+				}
+			}
+	}
+	//it shouldn't arrive here so if it is the case, generate error
+	return 9;
+}
+int MatrixDivision(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine){
+	int Error=0;
+	return Error;
+}
+
+	
+int MathFunctionMatrices (Matrix *MAccu, floactet *CodeListLine,int i){
+		extern int NbrMaxMatrix; 
+		int m,NewM;
+		int j,k;
+		//we are in the case function(matrix):   [13][CodeVal],[15][n°]
+		//NumM > NbrMaxMatrix/2 for the temporary matrices for calculation
+		//These are free at the end of the line calculation.
+		//If NumM >NbrMaxMatrix/2 We don't need to create a new matrix
+		//If NumM <NbrMaxMatrix/2 We need to create a new matrix
+		int NumM = (int) CodeListLine[i+1].value;
+		if (NumM < NbrMaxMatrix) {
+			//create a new matrix
+			for (m=NbrMaxMatrix/2; m<NbrMaxMatrix; m++)if (MAccu[m].ptr == 0) goto FoundFreeMatrix;
+			PrintCmd("Not enough available matrices for solving!\n");
+			return 9; //Matrix error
+			FoundFreeMatrix:
+			NewM=m;
+			MAccu[NewM].ptr = (float *) malloc (MAccu[NumM].n*MAccu[NumM].p*sizeof(float) );
+			if (MAccu[NewM].ptr == 0 ) {PrintCmd ("Error couldn't allocate memory for temporary matrix\n"); return 9;}
+			MAccu[NewM].n=MAccu[NumM].n;
+			MAccu[NewM].p=MAccu[NumM].p;
+		}else{NewM=NumM;} //we use temporary matrix as target and source
+		//In the following we use NewM and NumM considering the possibility 
+		// that numM could be temporary or program defined 
+		//if NumM is temporary then NewM = NumM
+		//if NumM is defined in the MnemoProgram then NewM != NumM
+		
+		switch ((int)CodeListLine[i].value){ 
+			case 1:	//exp
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++)
+					MAccu[NewM].ptr[j] = RMath_exp(MAccu[NumM].ptr[j]);
+			break; 
+			case 2:	//ln
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++)
+					MAccu[NewM].ptr[j] = RMath_ln(MAccu[NumM].ptr[j]);
+			break;
+			case 3:	//sqrt
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++)
+					MAccu[NewM].ptr[j] = RMath_sqrt(MAccu[NumM].ptr[j]);
+			break;
+
+			//if (CodeVal==4 ) {AlreadyTaken for the function f(x);}	//function f(x)
+
+			case 5:	//sin
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++)
+					MAccu[NewM].ptr[j] = RMath_sin(MAccu[NumM].ptr[j]);
+			break;
+			case 6:	//cos
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++)
+					//MAccu[NewM].ptr[j] = RMath_cos(MAccu[NumM].ptr[j]);
+					MAccu[NewM].ptr[j] = RMath_cos(MAccu[NumM].ptr[j]);
+			break;
+			case 7:	//tan
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++)
+					MAccu[NewM].ptr[j] = RMath_tan(MAccu[NumM].ptr[j]);
+			break;
+			case 8:	//fact
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++)
+					MAccu[NewM].ptr[j] = fact((int)MAccu[NumM].ptr[j]);
+			break;
+			case 9:	//Power
+				goto OutForPower;
+			break;
+			case 10:	//ch
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++)
+					MAccu[NewM].ptr[j] = RMath_ch(MAccu[NumM].ptr[j]);
+			break;
+			case 11:	//sh
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++)
+					MAccu[NewM].ptr[j] = RMath_sh(MAccu[NumM].ptr[j]);
+			break;
+			case 12:	//th
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++)
+					MAccu[NewM].ptr[j] = RMath_th(MAccu[NumM].ptr[j]);
+			break;
+			case 13:		//Re
+				PrintCmd("Activate Complexe before use!\n");
+				MathError=8;
+			break;
+			case 14:		//Im
+				PrintCmd("Activate Complexe before use!\n");
+				MathError=8;
+			break;
+
+			//if (CodeVal==15 ) {//Already taken for integrals}
+
+			case 16:	//Oscilloscope
+				if (SerialReady ==0) MathError = 7;
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++)
+					MAccu[NewM].ptr[j] = Oscilloscope(MAccu[NumM].ptr[j]);
+			break;
+			case 17:	//acos
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++)
+					MAccu[NewM].ptr[j] = RMath_acos(MAccu[NumM].ptr[j]);
+			break;
+			case 18:	//asin
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++)
+					MAccu[NewM].ptr[j] = RMath_asin(MAccu[NumM].ptr[j]);
+			break;
+			case 19:	//ath
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++)
+					MAccu[NewM].ptr[j] = RMath_ath(MAccu[NumM].ptr[j]);
+			break;
+			case 20:	//atan
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++)
+					MAccu[NewM].ptr[j] = RMath_atan(MAccu[NumM].ptr[j]);
+			break;
+			case 21:	//ash
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++)
+					MAccu[NewM].ptr[j] = RMath_ash(MAccu[NumM].ptr[j]);
+			break;
+			case 22:	//ach
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++)
+					MAccu[NewM].ptr[j] = RMath_ach(MAccu[NumM].ptr[j]);
+			break;
+			case 23:	//abs
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++)
+					MAccu[NewM].ptr[j] = RMath_abs(MAccu[NumM].ptr[j]);
+			break;
+			case 24:	//module(z)
+				PrintCmd("Activate Complexe before use!\n");
+				MathError=8;
+			break;
+			case 25:	//arg(z)
+				PrintCmd("Activate Complexe before use!\n");
+				MathError=8;
+			break;
+			case 26:	//key
+				PrintCmd("key(matrix) What for!??\n");
+				MathError=8;
+			break;
+		}
+	KeepOn:
+		if (MathError !=0 ) {sprintf(s,"Math Error = %d\n",MathError);PrintCmd(s);return 3;}
+		if (MathError == 0) {//Place Matrix Result
+				CodeListLine[i].code=15; 
+				CodeListLine[i].value=NewM;
+				}
+		k=i+1;
+		while (CodeListLine[k].code !=0xFF && CodeListLine[k].code !=0) {
+			CodeListLine[k]=CodeListLine[k+1];
+			k++;
+			}
+OutForPower:
+	return;
+}
+//-------------------------- End Coding Matrices --------------------------
 
 //-------------------------------------------------------------------------------
+
 
 int CalculFunctionComplexe (floactet *CodeListLine,int i){
 		int k,MathError=0;
@@ -557,8 +890,10 @@ float OldRMath_cos(float x){
 	}
 
 float RMath_cos(float x){
-	while (x>2*pi) x=x - 2*pi;
-	while (x<0)x=x+2*pi;
+	if (x>0)x=x-2*pi*(int)(x/(2*pi));
+	if (x<0)x=x+2*pi*(1-(int)(x/(2*pi)) );
+	//while (x>2*pi) x=x - 2*pi;
+	//while (x<0)x=x+2*pi;
 	if (x == 0 ) return 1; //cos(0)=1
 	if (x<0) x=-x;
 	if (x == SaveCosSin_x) {return SaveCos_y;}
@@ -566,8 +901,10 @@ float RMath_cos(float x){
 	return SaveCos_y;
 }
 float RMath_sin(float x){
-	while (x>2*pi) x=x - 2*pi;
-	while (x<0)x=x+2*pi;
+	if (x>0)x=x-2*pi*(int)(x/(2*pi));
+	if (x<0)x=x+2*pi*(1-(int)(x/(2*pi)) );
+	//while (x>2*pi) x=x - 2*pi;
+	//while (x<0)x=x+2*pi;
 	if (x==0) return 0; //sin(0)=0
 	if (x == SaveCosSin_x) {return SaveSin_y;}
 	cos_sin(x);

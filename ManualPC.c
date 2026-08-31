@@ -3,7 +3,8 @@
  *
  * BUSSY-SOCRATE REGAN
  *
- * ---------------------
+ * ---------------------*/
+
 
 /* Includes */
 #include <windows.h>			// system
