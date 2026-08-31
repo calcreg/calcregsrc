@@ -22,7 +22,7 @@
 #define VertScale			ChartRectHeight / 100
 #define ProgTextMaxChars 1000
 #define MnemoListSize 1000
-#define CodeListSize 10000 // nbr of Codes floactet = octet + float
+//#define CodeListSize 10000 // nbr of Codes floactet = octet + float
 
 #define LabelListSize 200
 #define CharMaxOneLine 200 //printing  maximum 200 chars in once => s[200]
@@ -273,7 +273,8 @@ NbrCmplx *Accu;
 int NbrVar; //total exact number of accu allocated
 //int MaxSizeVarName=50; //Size maximum for variable names
 #define MaxSizeVarName 50
-
+//Taille pour la liste des Codes, est modifiée en cas de nécessité dans le programme, suivie d'un relancement (ce changement est effectuée pour la session d'ouverture de CalcReg)
+int CodeListSize=10000; 
 //---------------FAccu
 //struct var *FAccuVar; //Pointer on Locked struct var memory for variables affectation of the Accu
 //MemHandle FMemHdle; //Handler on the structure FAccuVar opened in CountNbrVar
@@ -1114,7 +1115,7 @@ int CheckForBreak(){
 
 // --------------------CalcMain--------------------
 static  int CalcMain(floactet *CodeList){
- 
+
 //char *InstructionLine = "1+(1+(-1+3*2)-1)*2\n";
 static char InstructionLine[LineSize];
 int Error,i,a,b,c,nbrLine,NbrCodesCopied,OffsetLine=0;
@@ -1126,11 +1127,12 @@ static int SubRoutineStack[MaxSubRoutine];
 static int PointerSubRoutine=0;
 
 int nbits,NumM,Mn,Mp,AccIndex,lblptr, istrt,pos,k,K,offsetP,OkLine,CodeListOffsetSave,CounterLineCode;
-int PrevDataMLine=0,PrevMtx=-1,Prevk=0;//set PrvMtx=-1 for impossible mtx nbr
+int PrevDataMLine,PrevMtx,Prevk;//set PrvMtx=-1 for impossible mtx nbr
 
 float x1,y1,x2,y2,color;
 float X0,X1,Y0,Y1,Y;
-
+RestartConverting: //pour le cas de relancement doublage de CodeListSize
+PrevDataMLine=0;PrevMtx=-1,Prevk=0;
 
 		CodeListAdr=CodeList; //To transport CodeList out of here without any interference
 		ProgSize=strlen(WholeMnemoProg);
@@ -1189,6 +1191,11 @@ float X0,X1,Y0,Y1,Y;
 		if (CheckLabelDef(InstructionLine,LineSize) == 0) { 
 			//if (debug > 2) printf("No label \n");
 			Error = ConvertMnemo(InstructionLine, CodeList); //InstructionLine = Mnemolist for the test
+			if (Error==-1){ //exceeding CodeListSize, half handled in ConvertMnemo<=> size was doubled to solve problem
+				floactet *CodeList_intermediate = (floactet *) malloc(CodeListSize*sizeof(struct floactet));
+				if( CodeList_intermediate == 0){PrintCmd("Couldn't Re-allocate CodeList!\nRelaunch Manually \nby [EXE]\n");return 0;}
+				else {free(CodeList);CodeList=CodeList_intermediate; Error=0; goto RestartConverting;}
+				}
 		}else {
 				Labels[lblptr].n=CodeListOffset;
 				if (debug == -4) {sprintf(s,"Set Label[%d].n= %d (CodeList)\n",lblptr,CodeListOffset);PrintCmd(s);}
@@ -2786,7 +2793,8 @@ int StrtStr,EndStr,p,a,BackFromAccu=0;
 	ComeBackFromAccu:
 		BackFromAccu=0;
 	while (Out==0){
-		if (CodeListOffset > CodeListSize-10) {PrintCmd("Exceeding Memory size for Codes --- contact Regan B.S. by email for info");return 5;} 
+		//if (CodeListOffset > CodeListSize-10) {PrintCmd("Exceeding Memory size for Codes --- contact Regan B.S. by email for info");return 5;} 
+		if (CodeListOffset > CodeListSize-10) {PrintCmd("Exceeding CodeListSize\nDoubling CodeListSize\nPlease wait...\n");CodeListSize=2*CodeListSize;return -1;} 
 		if (MnemoListLine[i]=='"' )  {//PrintCmd("text detected\n");
 			CodeList[CodeListOffset].code = 1;
 			CodeList[CodeListOffset].value = (float)(offsetI+i+1);//OffsetI is the current position into WholeMnemoProg
