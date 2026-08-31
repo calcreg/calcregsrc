@@ -9,7 +9,11 @@
 //the definition below is then set 
 
 #define CalcRegSoftware 1
-
+#ifdef CalcRegSoftware
+//
+#else
+#define WINDOWTITLEREG "3D Object Modeler V1.0      Built on CalcRegV1.9 visit http://www.palmreg.fr.mu"
+#endif
 
 #define XBtn 10   //gauche du groupe de buttons
 #define YBtn 10   //haut
@@ -25,5 +29,5 @@
 #define DrawZoneHChg  100 //50
 #define DrawZoneWChg  340 //340
 
-#define START_TEXT "Set Volume down to 10%\nUse of Headphone works better\nDo not listen at high volumes set.\n+/- to changes freq. then Play."
+#define START_TEXT "Enjoy Gfx modeling"
  

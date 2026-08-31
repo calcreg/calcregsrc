@@ -17,8 +17,6 @@
 
 #ifdef CalcRegSoftware
 	#define WINDOWTITLEREG "CalcReg V1.9 GUI Win32 API"
-#else
-	#define WINDOWTITLEREG "Ultra Sound Generator      Built on CalcRegV1.9 visit http://www.palmreg.fr.mu"
 #endif
 
 #define IDC_MAIN_EDIT	101
@@ -353,7 +351,7 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			if (LOWORD(wParam) == TBreakMenuId) 
 				{doMainMenu(TBreakMenuId);
 						if (BreakActivated==1) btn_brk = CreateWindow("BUTTON","Break",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+45,50,25,hwnd,0,hinst,NULL);
-						else DeleteObject(btn_brk);
+						else {EnableWindow(btn_brk,FALSE);DestroyWindow(btn_brk);/*DeleteObject(btn_brk);*/}
 				}
 			if (LOWORD(wParam) == cmplxMenuId) doMainMenu(cmplxMenuId);
 			if (LOWORD(wParam) == ZerofndMenuId) doMainMenu(ZerofndMenuId);
@@ -387,13 +385,18 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			if(btn_start==(HWND)lParam) MainFormHandleEvent(btnstart);
 		#else
 					if(btn_start==(HWND)lParam) {
-						MessageBox(hwnd, "If you use further this software:\n" \
+					/*	MessageBox(hwnd, "If you use further this software:\n" \
 						"1. You agree to be yourself fully responsible for anything "\
 						"that can happen -- to you or your computer -- by using "\
 						"this software.\n"\
 						"2. You agree that this software cannot and doesn't replace any medical treatment.\n"\
 						"3. You also agree to have read the license before use.\n"\
 						"4. You agree not to use this software more than once a week, to avoid any unknow or unwanted physical or emotionnal effect.\n\n"
+						"If you disagree just click the QUIT button that will appear at start of this software.","CAUTION AND RESPONSABILITY", 
+						MB_OK | MB_ICONEXCLAMATION);*/
+						MessageBox(hwnd, "If you use this Free software\n" 
+						"1. You agree to be fully responsible of any possible damage to your computer or any data loss\n"
+						"2. You also agree to have read the license before use.\n"\
 						"If you disagree just click the QUIT button that will appear at start of this software.","CAUTION AND RESPONSABILITY", 
 						MB_OK | MB_ICONEXCLAMATION);
 						MainFormHandleEvent(btnstart);

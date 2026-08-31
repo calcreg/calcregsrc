@@ -543,6 +543,7 @@ void Execute(void) {
 	#else
 		PrintCmd(START_TEXT);
 	#endif
+	
 //------------ start -------
 	CalcMain(CodeList);
 //------------ end --------
@@ -1248,7 +1249,7 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 					PrintCmd("Error no Nbr to Display\n ");
 					sprintf(s,"The code %d is [%d][%f]\n",OffsetLine,CodeOfOneLine[OffsetLine].code,CodeOfOneLine[OffsetLine].value);
 					PrintCmd(s);
-					sprintf(s,"ptr code   %d is [%d][%f]\n",OffsetLine+1,CodeOfOneLine[OffsetLine+1].code,CodeOfOneLine[OffsetLine+1].value); 
+					sprintf(s,"ptr code  %d is [%d][%f]\n",OffsetLine+1,CodeOfOneLine[OffsetLine+1].code,CodeOfOneLine[OffsetLine+1].value); 
 					PrintCmd(s);
 					goto EndMain;
 				}
@@ -1259,7 +1260,7 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 						TextIndex=(int)CodeOfOneLine[OffsetLine+3].value;
 						}
 			if (TextIndex != 0){
-			i=0;
+			i=0;if (WholeMnemoProg[TextIndex+i]=='"'){s[i]=' ';i++;}//this is for the pb of the removing of spaces then the pointer points directly on ' " ' and therefore it doesn't diplay anything 
 				while (WholeMnemoProg[TextIndex+i]!='"'){
 							s[i]=WholeMnemoProg[TextIndex+i];i++;}
 				s[i]=0; //terminate the ascii chain
@@ -1420,7 +1421,68 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			int xw=(int)CodeOfOneLine[OffsetLine+7].value;
 			int yh=(int)CodeOfOneLine[OffsetLine+9].value;
 			if (btnNbr < 20 ) {
-
+				switch(btnNbr){
+					case 0:
+						if (btn_0 !=0)DestroyWindow(btn_0);
+					break;
+					case 1:
+						if (btn_1 !=0)DestroyWindow(btn_1);
+					break;
+					case 2:
+						if (btn_2 !=0)DestroyWindow(btn_2);
+					break;
+					case 3:
+						if (btn_3 !=0)DestroyWindow(btn_3);
+					break;
+					case 4:
+						if (btn_4 !=0)DestroyWindow(btn_4);
+					break;
+					case 5:
+						if (btn_5 !=0)DestroyWindow(btn_5);
+					break;
+					case 6:
+						if (btn_6 !=0)DestroyWindow(btn_6);
+					break;
+					case 7:
+						if (btn_7 !=0)DestroyWindow(btn_7);
+					break;
+					case 8:
+						if (btn_8 !=0)DestroyWindow(btn_8);
+					break;
+					case 9:
+						if (btn_9 !=0)DestroyWindow(btn_9);
+					break;
+					case 10:
+						if (btn_10 !=0)DestroyWindow(btn_10);
+					break;
+					case 11:
+						if (btn_11 !=0)DestroyWindow(btn_11);
+					break;
+					case 12:
+						if (btn_12 !=0)DestroyWindow(btn_12);
+					break;
+					case 13:
+						if (btn_13 !=0)DestroyWindow(btn_13);
+					break;
+					case 14:
+						if (btn_14 !=0)DestroyWindow(btn_14);
+					break;
+					case 15:
+						if (btn_15 !=0)DestroyWindow(btn_15);
+					break;
+					case 16:
+						if (btn_16 !=0)DestroyWindow(btn_16);
+					break;
+					case 17:
+						if (btn_17 !=0)DestroyWindow(btn_17);
+					break;
+					case 18:
+						if (btn_18 !=0)DestroyWindow(btn_18);
+					break;
+					case 19:
+						if (btn_19 !=0)DestroyWindow(btn_19);
+					break;
+				}
 				//for the drawing of buttons
 				//hDC = GetDC(hmywin);
 				GetClientRect(hmywin,&wndrect);
@@ -2134,9 +2196,14 @@ int StrtStr,EndStr,p,a,BackFromAccu=0;
 		if (MnemoListLine[i]=='"' )  {//PrintCmd("text detected\n");
 			CodeList[CodeListOffset].code = 1;
 			CodeList[CodeListOffset].value = (float)(offsetI+i+1);//OffsetI is the current position into WholeMnemoProg
-			while (MnemoListLine[i]!=0 || MnemoListLine[i] != '"' || MnemoListLine[i]!=Octet("\n")){
-				if (MnemoListLine[i] != '"') {		
-					CodeListOffset++;				
+			CodeList[CodeListOffset+1].code = 0xFF; //return code
+			CodeList[CodeListOffset+1].value = 0;
+			i++;
+		//	while (MnemoListLine[i]!=0 && MnemoListLine[i] != '"'
+		//		&& MnemoListLine[i]!=0x0D && MnemoListLine[i] !=0x0A){
+			while (MnemoListLine[i]!=0){
+				if (MnemoListLine[i] == '"') {		
+					CodeListOffset=CodeListOffset+2; //+2 'cause of adding return code				
 					CodeListOffsetMax=CodeListOffset;
 					goto EndConvert; //this line is finished
 					}

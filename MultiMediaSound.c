@@ -508,6 +508,13 @@ BOOL SaveMFile(Matrix* MAccu, int NumM,char *pszFileName)
 //--------------------------- Load Matrix ------------------------------
 BOOL LoadMFile(Matrix* MAccu, int NumM,char *pszFileName)
 {
+	typedef struct mtxChunk{
+		char nam[6];
+		int n; //mtx n
+		int p;// mtx p
+		char dat[4];
+		int size;
+		}mtxChunk;
 	HANDLE hFile;
 	BOOL bSuccess = FALSE;
 	
@@ -532,7 +539,14 @@ BOOL LoadMFile(Matrix* MAccu, int NumM,char *pszFileName)
 				if(ReadFile(hFile, pszFileText, dwFileSize, &dwRead, NULL))
 				{
 					pszFileText[dwFileSize] = 0; // Add null terminator
+
+					mtxChunk *chnk;
+					chnk=pszFileText;
+					int Mn=chnk[0].n;
+					int Mp=chnk[0].p;
+
 					//We fill in the Matrix
+
 					LPSTR  datastrt=0;
 					int i;
 					int datasize;
@@ -565,7 +579,8 @@ BOOL LoadMFile(Matrix* MAccu, int NumM,char *pszFileName)
 					datawav=datastrt;
 					//for (i=0;i<datasize;i++) MAccu[NumM].ptr[i]=(float)datastrt[i];
 					for (i=0;i<datasize;i++) MAccu[NumM].ptr[i]=(float)datawav[i];
-					MAccu[NumM].n=1;MAccu[NumM].p=datasize;
+					MAccu[NumM].n=Mn;MAccu[NumM].p=Mp;
+					if(Mn*Mp!=datasize)PrintCmd("Error in sizes loadM\n");
 					bSuccess = TRUE; // It worked!
 				}
 				GlobalFree(pszFileText);

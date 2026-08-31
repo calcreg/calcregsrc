@@ -11,37 +11,21 @@ red=0.9 //reduction factor
 menx=50
 meny=30//360
 createbtn10,menx,meny,40,20,"mode"
-
 createbtn11,(menx+40),meny,40,20,"move"
-
 createbtn12,menx,(meny+40),100,20,"save object.m"
-
 createbtn13,menx,(meny+60),100,20,"Big Display"
-
 createbtn14,menx,(meny+80),100,20,"Read Object.m"
-
 createbtn7,(menx+80),meny,30,20,"Rx-"
-
 createbtn8,(menx+110),meny,30,20,"Rx+"
-
 createbtn9,menx,(meny+120),100,20,"QUIT"
-
 createbtn1,(menx+140),(meny),30,20,"Ry-"
-
 createbtn15,(menx+170),(meny),30,20,"Ry+"
-
 createbtn4,(menx+200),(meny),30,20,"Rz-"
-
 createbtn16,(menx+230),(meny),30,20,"Rz+"
-
 createbtn2,(menx),(meny+20),60,20,"magnify"
-
 createbtn3,(menx+60),(meny+20),50,20,"shrink"
-
 createbtn5,(menx+180),(meny+40),50,20,"UNDO"
-
 createbtn17,(menx+110),(meny+20),50,20,"Mag Z-"
-
 createbtn6,(menx+160),(meny+20),50,20,"Mag Z+"
 
 
@@ -82,7 +66,7 @@ dataM7,0,0,(-1.6)
 //modobjM0,1,1,7,1//M,ptlink,ind,vect,mod
 
 teta=pi/10
-
+bsr mode
 bsr display
 
 loop:
@@ -148,8 +132,12 @@ mode:
 gfxdim0,10,0,10,1
 mod=mod+1
 mod==4=>goto init
+clscmd
+print mod,"stress mode="
 rts
 init:
+clscmd
+print 0,"flatten mode="
 mod=0
 rts
 

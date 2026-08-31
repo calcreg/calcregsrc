@@ -688,7 +688,8 @@ switch (mod){
 				y=MAccu[NumM].ptr[1*Mp+k];
 				z=MAccu[NumM].ptr[2*Mp+k];
 				d2=(x-x0)*(x-x0)+(y-y0)*(y-y0)+(z-z0)*(z-z0); //distance Pt-P0
-				alfa=RMath_exp(-4*d2*(a*a+b*b+c*c));//vect grand, base serrée et hauteur grande
+				alfa=RMath_exp(-8*d2*(a*a+b*b+c*c));//vect grand, base serrée et hauteur grande
+				//alfa=exp(-8*d2*(a*a+b*b+c*c));//vect grand, base serrée et hauteur grande
 				MAccu[NumM].ptr[0*Mp+k]=x+alfa*a;
 				MAccu[NumM].ptr[1*Mp+k]=y+alfa*b;
 				MAccu[NumM].ptr[2*Mp+k]=z+alfa*c;			
@@ -703,7 +704,8 @@ switch (mod){
 				y=MAccu[NumM].ptr[1*Mp+k];
 				z=MAccu[NumM].ptr[2*Mp+k];
 				d2=(x-x0)*(x-x0)+(y-y0)*(y-y0)+(z-z0)*(z-z0); //distance Pt-P0
-				alfa=RMath_exp(-8*d2*(a*a+b*b+c*c));//vect grand, base serrée et hauteur grande
+				alfa=RMath_exp(-16*d2*(a*a+b*b+c*c));//vect grand, base serrée et hauteur grande
+				//alfa=exp(-16*d2*(a*a+b*b+c*c));//vect grand, base serrée et hauteur grande
 				MAccu[NumM].ptr[0*Mp+k]=x+alfa*a;
 				MAccu[NumM].ptr[1*Mp+k]=y+alfa*b;
 				MAccu[NumM].ptr[2*Mp+k]=z+alfa*c;			
@@ -714,7 +716,44 @@ switch (mod){
 	return 0;
 }
 
-
+int SearchPtLink(Matrix *MAccu,int PtLinkM,int pnt, int Indi, int Indj){
+	//return the point index for the position Indi,Indj around the point of index pnt in the mesh related points
+	//
+	//										|Ptlink1         Pt(Indi1,Indj1)      
+	//										|                     	|
+	//						PtLink4	|     Ptlink2   	|
+	//	Pt(Indi(-1),Indj0) ----[Pnt]----------- Pt(Indi1,Indj0) ---------
+	//										|						|
+	//								        |  PtLink3			|
+	//										|						|
+	//				----------Pt(Indi0,Indj(-1))-----Pt(Indi1,Indj(-1))-----
+	// About the algorithm:
+	// According to the path chosen, there could be discarded points 
+	//because of net limits that could be evaluated by another path
+	//In a roundish object, limit conditions are round, there seldom should be 
+	//this situation.
+	
+	int i,j,pL=pnt; //init pL
+	int MLinkp=MAccu[PtLinkM].p;
+	if(Indi>0)for (i=0;i<Indi;i++){
+			if (pL == 0) goto EndSearchPtLink; //we got out of the existing net points
+			pL=MAccu[PtLinkM].ptr[1*MLinkp+pL];//get ptlink2 of pL
+		}
+	if(Indi<0)for (i=0;i<(-Indi);i++){
+			if (pL == 0) goto EndSearchPtLink; //We got out of the existing net points
+			pL=MAccu[PtLinkM].ptr[3*MLinkp+pL];//get ptlink4 of pL
+		}
+	if(Indj>0)for (j=0;j<Indj;j++){
+			if (pL == 0) goto EndSearchPtLink; //we got out of the existing net points
+			pL=MAccu[PtLinkM].ptr[0*MLinkp+pL];//get ptlink1 of pL
+		}
+	if(Indj<0)for (j=0;j<(-Indj);j++){
+			if (pL == 0) goto EndSearchPtLink; //We got out of the existing net points
+			pL=MAccu[PtLinkM].ptr[2*MLinkp+pL];//get ptlink3 of pL
+		}
+EndSearchPtLink:	
+	return pL; //return the point index
+	}
 
 //------------------- Matrix Operations Analysis ------------------------------------
 int MatrixPower(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine){
@@ -1725,7 +1764,7 @@ float RMath_exp(float x){
 	float b001,b002,b004,b008,b010,b020,b040,b080,b100,b200,b400,b800,b1000,b2000,b4000,b8000;
 	int a;
 	//unsigned long int a;
-	float exp;
+	float Exp;
 /*	float e_1024=1.000977039;//exp(1/1024)
 	float	e001=1.0019550359;//exp(1/512)
 	float	e002=1.003913889;
@@ -1748,6 +1787,7 @@ float RMath_exp(float x){
 */
 	if (x == 0) return 1; //e(0)= 1
 	Inv=0;
+	if (Rabs(x)>60) return exp(x); //we use the double float library when it goes out of our RMath-exp job.
 	if (x<0) {x=-x;Inv=1;}//Invert for e(-x) 
 
 	a=(int)(x*0x200);
@@ -1770,9 +1810,9 @@ float RMath_exp(float x){
 	if ((a&0x4000)!=0) b4000  =  e4000;   else b4000=1;
 	if ((a&0x8000)!=0) b8000  =  e8000;   else b8000=1;	
 
-	exp= b001*b002*b004*b008*b010*b020*b040*b080*b100*b200*b400*b800*b1000*b2000*b4000*b8000;
+	Exp= b001*b002*b004*b008*b010*b020*b040*b080*b100*b200*b400*b800*b1000*b2000*b4000*b8000;
 	
-	ea= exp;
+	ea= Exp;
 	eb= ea*e_1024;
 	ec= eb*e_1024;
 	A=(float)a/0x200; b=A+1/1024.0;c=A+2/1024.0;

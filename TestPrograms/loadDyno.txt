@@ -8,46 +8,21 @@ b=4
 mod=1
 red=0.9 //reduction factor
 
-menx=50
-meny=30//360
-createbtn10,menx,meny,40,20,"mode"
+createbtn10,10,340,40,20,"mode"
 
-createbtn11,(menx+40),meny,40,20,"move"
+createbtn11,10,320,40,20,"move"
 
-createbtn12,menx,(meny+40),100,20,"save object.m"
+createbtn12,10,360,100,20,"save object.m"
 
-createbtn13,menx,(meny+60),100,20,"Big Display"
+createbtn13,10,380,100,20,"Big Display"
 
-createbtn14,menx,(meny+80),100,20,"Read Object.m"
-
-createbtn7,(menx+80),meny,30,20,"Rx-"
-
-createbtn8,(menx+110),meny,30,20,"Rx+"
-
-createbtn9,menx,(meny+120),100,20,"QUIT"
-
-createbtn1,(menx+140),(meny),30,20,"Ry-"
-
-createbtn15,(menx+170),(meny),30,20,"Ry+"
-
-createbtn4,(menx+200),(meny),30,20,"Rz-"
-
-createbtn16,(menx+230),(meny),30,20,"Rz+"
-
-createbtn2,(menx),(meny+20),60,20,"magnify"
-
-createbtn3,(menx+60),(meny+20),50,20,"shrink"
-
-createbtn5,(menx+180),(meny+40),50,20,"UNDO"
-
-createbtn17,(menx+110),(meny+20),50,20,"Mag Z-"
-
-createbtn6,(menx+160),(meny+20),50,20,"Mag Z+"
-
-
+createbtn14,10,400,100,20,"Read Object.m"
 
 defM1,4,N
 fillsphM0,1,1.5,100
+
+loadM0,"dyno.m"
+
 defM2,4,4 //Rz pi/2 pour aller a droite
 defM3,4,4 //Ry pi/2 pour aller en bas
 defM4,4,4 //Rotation autour de z
@@ -60,8 +35,6 @@ defM10,4,N
 defM11,4,4
 defM12,4,4
 defM13,4,4
-defM14,4,N//Mtx backup from Undo
-defM15,4,4 //elongate
 
 dataM2,cos(pi/2),sin(-pi/2),0,0, sin(pi/2),cos(pi/2),0,0, 0,0,1,0, 0,0,0,1
 dataM3,cos(pi/2),0,sin(pi/2),0, 0,1,0,0, sin(-pi/2),0,cos(pi/2),0, 0,0,0,1
@@ -74,7 +47,6 @@ dataM6,cos(pi/20),0,sin(pi/20),0, 0,1,0,0, sin(-pi/20),0,cos(pi/20),0, 0,0,0,1
 dataM11,red,0,0,0, 0,red,0,0, 0,0,red,0, 0,0,0,1
 dataM12,(1/red),0,0,0, 0,(1/red),0,0, 0,0,(1/red),0, 0,0,0,1
 dataM13,1,0,0,0, 0,1,0,0, 0,0,1,-1, 0,0,0,1
-dataM15,(red),0,0,0, 0,(red),0,0, 0,0,(1/red),0, 0,0,0,1
 
 dataM7,0,0,(0.3)
 //modobjM0,1,198,7,0//M,ptlink,ind,vect,mod
@@ -90,13 +62,8 @@ c=key(0)
 mx=key(4)
 mx==1=>goto modif
 c==4 => bsr turn
-c==16 => bsr turm
-c==6 => bsr elongate
-c==17 => bsr shorten
-c==7 => bsr roulm
 c==8 => bsr roule
 c==1 => bsr roly
-c==15=>bsr rolmy
 c==5 => bsr undo
 c==10=>bsr mode
 c==11=>bsr move
@@ -108,24 +75,6 @@ c==14=>bsr ChargerMtx
 c==9 => goto exit
 goto loop
 
-
-elongate:
-M9=M0
-M0=M15*M0
-bsr display
-rts
-
-shorten:
-M9=M0
-M15(1,1)=1/M15(1,1)
-M15(2,2)=1/M15(2,2)
-M15(3,3)=1/M15(3,3)
-M0=M15*M0
-M15(1,1)=1/M15(1,1)
-M15(2,2)=1/M15(2,2)
-M15(3,3)=1/M15(3,3)
-bsr display
-rts
 
 ChargerMtx:
 loadM0
@@ -145,12 +94,13 @@ bsr display
 rts
 
 mode:
-gfxdim0,10,0,10,1
 mod=mod+1
 mod==4=>goto init
+print mod
 rts
 init:
 mod=0
+print mod
 rts
 
 move:
@@ -160,12 +110,9 @@ bsr display
 rts
 
 undo:
-M14=M0 //back up from undo
 M0=M9
-M9=M14
 bsr display
 rts
-
 modif:
 key(0)
 mx=key(3)
@@ -256,26 +203,8 @@ M0=M4*M0
 bsr display
 rts
 
-turm:
-M4(2,1)=-M4(2,1) //just reversing the rotation 
-M4(1,2)=-M4(1,2)
-M0=M4*M0
-M4(2,1)=-M4(2,1)//back to M5
-M4(1,2)=-M4(1,2)
-bsr display
-rts
-
 roule:
 M0=M5*M0
-bsr display
-rts
-
-roulm:
-M5(2,3)=-M5(2,3) //just reversing the rotation 
-M5(3,2)=-M5(3,2)
-M0=M5*M0
-M5(2,3)=-M5(2,3)//back to M5
-M5(3,2)=-M5(3,2)
 bsr display
 rts
 
@@ -283,16 +212,6 @@ roly:
 M0=M6*M0
 bsr display
 rts
-
-rolmy:
-M6(1,3)=-M6(1,3) //just reversing the rotation 
-M6(3,1)=-M6(3,1)
-M0=M6*M0
-M6(1,3)=-M6(1,3) //back to M6 
-M6(3,1)=-M6(3,1)
-bsr display
-rts
-
 
 exit:
 end
