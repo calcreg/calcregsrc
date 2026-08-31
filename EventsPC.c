@@ -19,8 +19,8 @@ static int Rmin (int x1,int x2);
 static int Rmax (int x1,int x2);
 int Rabs(int x1);
 
-extern void Execute(void);
-
+void Execute(void);
+extern DWORD WINAPI Thread_Execute( LPVOID lpParam );
 extern void PrintCmd(char * s) ;
 extern void DeleteCmd() ;
 extern void Printf(const char * format, ...); //should be Printf and not printf otherwise it conflicts with StdIOPalm.h definition
@@ -46,7 +46,19 @@ int GfxDerivate=0; // If =1 then Draw the function with its derivated
 int Button=0; //for the keyboard in CalcRegPC
 int MouseLeftClick=0;//init up=0; down=1
 
-static int ProgInExecution=0; //=1 while program in execution
+int ProgInExecution=0; //=1 while program in execution
+
+void Execute(){
+		//Launching EXECUTE as a Thread for multitask handling
+		HANDLE hThread1;
+		DWORD Thread1ID, Thread1Param = 100;
+		hThread1 = CreateThread(NULL, 0, Thread_Execute, &Thread1Param, 0, &Thread1ID);
+		if (hThread1 == NULL){
+			PrintCmd("Error on launching the Thread EXE!\n");
+		}
+}
+
+
 /*
  * MainFormHandleEvent
  */
@@ -66,10 +78,9 @@ int MainFormHandleEvent(int event) {
 					return TRUE;
 				}else{
 					GfxMove=1;	GfxDerivate=0;GfxZoom=0; //Re-init each time we launch with EXE 
-					SetUpTextProg(0);
 					ProgInExecution=1;
-					Execute();
-					ProgInExecution=0;
+					Execute(); //Attention launching the Thread--> multitask!
+					//ProgInExecution=0;
 				}
    				break;
 				

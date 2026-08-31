@@ -104,7 +104,8 @@ extern void RemoveComments(char *txt);
 
 extern void DisplayManual();
 
-void Execute(void);
+extern void Execute(void);
+DWORD WINAPI Thread_Execute( LPVOID lpParam );//en multitache
 extern void Rprintf(float x);//write and enter
 static void RCPrintf(floactet F);//write complexe number Re+Im*i
 extern void REPrintf(float x);//write nbr but don't enter
@@ -468,8 +469,15 @@ void RCPrintf(floactet F){
 
 
 	
-//------------------------------------------------
-void Execute(void) {
+//------------ Here is the starting point of the CalcReg Machinery ---------------------------
+
+
+//void Execute(void) {
+
+extern int ProgInExecution;
+
+DWORD WINAPI Thread_Execute( LPVOID lpParam ){
+
     char ValueStr[100];
 	int i,Nm;
 	char *progtext, *ptxt;
@@ -598,6 +606,7 @@ FreeMemories:
 	#else
 		CloseProc(hmywin);
 	#endif
+	ProgInExecution=0; //Indicates the end of the execution of the program Thread
 }
 
 int ReorgVarList(int nbrvar,char *prog){

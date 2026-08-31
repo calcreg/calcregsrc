@@ -42,7 +42,7 @@ void Wait(int Time){
 	if (BreakActivated==1) if( CheckForBreak() == 1) return;
 	nbrticks2=TimGetTicks();}
 	*/
-	printf ("Wait not yet implemented\n");
+	PrintCmd ("Wait not yet implemented\n");
 	}
 
 
@@ -132,7 +132,7 @@ void GetOscilloData(int info){
 		
 	Error = SerClose (SerIORef); //close the port
 	*/
-	printf ("Oscillo serial not yet implemented\n");
+	PrintCmd ("Oscillo serial not yet implemented\n");
 	}
 
 void PutSerialData(int info){
@@ -208,7 +208,7 @@ void PutSerialData(int info){
 		
 	Error = SerClose (SerIORef); //close the port
 */
-	printf ("PutSerialdata Not yet implemented\n");
+	PrintCmd ("PutSerialdata Not yet implemented\n");
 	}
 	
 
@@ -248,5 +248,5 @@ SerReceiveFlush(SerIORef, 0);//Put to 0 otherwise it waits
 //ret=false;//modif regan //Ne pas générer d'erreur intempestive
 return(ret);
 */
-	printf ("wait for data oscillo not yet implemented\n"); 
+	PrintCmd ("wait for data oscillo not yet implemented\n"); 
 }

@@ -273,7 +273,7 @@ void SetUpTextProg(int position){
 }
 
 void DisplayManual(){
-		DeleteProg();
+		//DeleteProg();
 		PrintProg(Manual);
-		SetUpTextProg(0);//set at start of the text
+		//SetUpTextProg(0);//set at start of the text
 }
