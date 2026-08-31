@@ -1,0 +1,10 @@
+
+//defM0,1,44100
+//recsndM0,44100,8
+loadsndM0
+j=0
+loop:
+playsndM0,44100,8
+j=j+1
+j<3=>goto loop
+end

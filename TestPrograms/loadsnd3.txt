@@ -1,0 +1,10 @@
+
+defM0,1,200000
+//recsndM0,44100
+loadsndM0,"haareg.wav"
+j=0
+loop:
+playsndM0,44100
+j=j+1
+j<1=>goto loop
+end

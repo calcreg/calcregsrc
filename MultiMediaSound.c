@@ -7,19 +7,25 @@
  *  BUSSY-SOCRATE REGAN
  *
  *-----------------------------------------*/
-
-#include <windows.h>
-#include <math.h>
-
+ 
+     #include <windows.h>
+     #include <math.h>
+	 #include <stdio.h>
+	 
 typedef struct Matrix{
 	int n;	//n line
 	int p;	//p column
 	float * ptr; //pointer on the matrix
 	}Matrix;
 
-int PlaySoundMatrix(Matrix *, int NumM, float SamplesPerSecond, float bits);
+int PlaySoundMatrix(Matrix *, int NumM, float SamplesPerSecond);
 int PlaySoundReg(float , float , float );
+int GetAudioMicro(Matrix *MAccu,int NumM,float SamplesPerSecond);
 int CloseAudioDevice(void);
+int LoadSoundFile(Matrix *MAccu, int NumM, char *);
+
+
+
 extern void PrintCmd(char *);
     
      //#define BUFFERSIZE    4860                // 4k sound buffer
@@ -35,6 +41,8 @@ extern void PrintCmd(char *);
 //important for external use like closing	 
 HWAVEOUT     hWaveOut;          // Handle to sound card output
 int AudioDeviceState=0; // 0=closed; 1=opened
+
+
           
 int PlaySoundReg(float SoundFrequency, float SoundAmplitude, float SoundDuration){
               
@@ -138,7 +146,7 @@ int PlaySoundReg(float SoundFrequency, float SoundAmplitude, float SoundDuration
         return FALSE;
      }
 //------------------------------- Play Matrix ------------------
-int PlaySoundMatrix(Matrix *MAccu, int NumM, float SamplesPerSecond,float bits){
+int PlaySoundMatrix(Matrix *MAccu, int NumM, float SamplesPerSecond){
          
 //        HWAVEOUT     hWaveOut;          // Handle to sound card output
 		 
@@ -156,33 +164,34 @@ int PlaySoundMatrix(Matrix *MAccu, int NumM, float SamplesPerSecond,float bits){
 			// ** Initialize the sound format we will request from sound card **    
         WaveFormat.wFormatTag = WAVE_FORMAT_PCM;     // Uncompressed sound format
         WaveFormat.nChannels = 1;                    // 1=Mono 2=Stereo
-        WaveFormat.wBitsPerSample = 8;               // Bits per sample per channel
+        WaveFormat.wBitsPerSample = 16;               // Bits per sample per channel
         WaveFormat.nSamplesPerSec = (int)SamplesPerSecond; //44100;           // Sample Per Second
         WaveFormat.nBlockAlign = WaveFormat.nChannels * WaveFormat.wBitsPerSample / 8;
         WaveFormat.nAvgBytesPerSec = WaveFormat.nSamplesPerSec * WaveFormat.nBlockAlign;    
         WaveFormat.cbSize = 0;
 
-		//int BUFFERSIZE = SoundDuration * WaveFormat.nSamplesPerSec;
-		//WORD *Data=(WORD *)malloc(BUFFERSIZE*sizeof(WORD));
-		char *Data=(char *)malloc(DataSize*sizeof(char));
+		short int *Data=(short int *)malloc(DataSize*sizeof(short int));
+		//unsigned char *Data=(char *)malloc(DataSize*sizeof(char));
 		if (Data == 0 ) {
 			Message("Error While allocating memory for sound");
 			return 0;
 			}
 		if (MAccu[NumM].n !=1) Message("Warning Matrix size nxp, n should be 1\n");
-		for (i=0; i<DataSize; i++) Data[i]=(char)(128+127*MAccu[NumM].ptr[i]);
-		
+		for (i=0; i<DataSize; i++) Data[i]=(short int)(MAccu[NumM].ptr[i]);
+		//for (i=0; i<DataSize; i++) Data[i]=(char)(0x80+0x7F*MAccu[NumM].ptr[i]);
+		//for (i=0; i<DataSize; i++) Data[i]=(unsigned char)MAccu[NumM].ptr[i];
+
         // ** Create our "Sound is Done" event **
         Done = CreateEvent (0, FALSE, FALSE, 0);
               
         // ** Open the audio device **
         if (waveOutOpen(&hWaveOut,0,&WaveFormat,(DWORD) Done,0,CALLBACK_EVENT) != MMSYSERR_NOERROR) 
-              {Message("Sound card cannot be opened.");return TRUE;}
+              {Message("Speaker Sound card cannot be opened.");return TRUE;}
 		else AudioDeviceState=1; 
        
               
         // ** Create the wave header for our sound buffer **
-        WaveHeader.lpData=Data;
+        WaveHeader.lpData=(LPSTR)Data;
         //WaveHeader.dwBufferLength=BUFFERSIZE;
         WaveHeader.dwBufferLength=DataSize;
         WaveHeader.dwFlags=0;
@@ -235,7 +244,239 @@ int PlaySoundMatrix(Matrix *MAccu, int NumM, float SamplesPerSecond,float bits){
 int CloseAudioDevice(void){
         if (waveOutClose(hWaveOut) != MMSYSERR_NOERROR)
         {
-              Message("Sound card cannot be closed!");
+              Message("Speaker Sound card cannot be closed!");
               return TRUE;
         }
 }
+
+
+//-------------------------- Audio Microphone -------------------------
+
+int GetAudioMicro(Matrix *MAccu,int NumM,float SamplesPerSecond){
+
+/*
+WAVEINCAPS     wic; 
+unsigned long  iNumDevs, j; 
+unsigned char s[50];
+// Get the number of Digital Audio In devices in this computer 
+iNumDevs = waveInGetNumDevs(); 
+
+// Go through all of those devices, displaying their names 
+for (j = 0; j < iNumDevs; j++) 
+{ 
+    // Get info about the next device 
+    if (!waveInGetDevCaps(j, &wic, sizeof(WAVEINCAPS))) 
+    { 
+        // Display its Device ID and name 
+        sprintf(s,"In Device ID #%u: %s\n", j, wic.szPname); 
+		PrintCmd(s);
+	} 
+} 
+
+  */      
+        HWAVEIN     hWaveIn;          // Handle to sound card input
+		 
+        WAVEFORMATEX WaveFormat;        // The sound format
+        WAVEHDR      WaveHeader;        // WAVE header for our sound data
+         MMRESULT result;      
+ //       char         Data[BUFFERSIZE];  // Sound data buffer
+        HANDLE       Done;              // Event Handle that tells us the sound has finished being played.
+                // This is a real efficient way to put the program to sleep
+                // while the sound card is processing the sound buffer
+        double x;
+        int i;
+		unsigned char s[50];
+		//do we set no limit for recording memory or is it set by matrix size
+		//if (MAccu[NumM].ptr != 0) {free(MAccu[NumM].ptr);}
+		int DataSize = MAccu[NumM].n*MAccu[NumM].p;
+
+		//MMTIME MMTime = {0};
+		//MMTime.wType = TIME_BYTES;
+
+		short int *Data=(short int *)malloc(DataSize*sizeof(short int));
+		//unsigned char *Data=(char *)malloc(DataSize*sizeof(char));
+		if (Data == 0 ) {
+			Message("Error While allocating memory for sound");
+			return 0;
+			}
+			// ** Initialize the sound format we will request from sound card **    
+        WaveFormat.wFormatTag = WAVE_FORMAT_PCM;     // Uncompressed sound format
+        WaveFormat.nChannels = 1;                    // 1=Mono 2=Stereo
+        WaveFormat.wBitsPerSample = 16;               // Bits per sample per channel
+        WaveFormat.nSamplesPerSec =(int)SamplesPerSecond; //44100;           // Sample Per Second
+        WaveFormat.nBlockAlign = WaveFormat.nChannels * WaveFormat.wBitsPerSample / 8;
+        WaveFormat.nAvgBytesPerSec = WaveFormat.nSamplesPerSec * WaveFormat.nBlockAlign;    
+        WaveFormat.cbSize = 0;
+	
+        // ** Create our "Sound is Done" event **
+    //  Done = CreateEvent (0, FALSE, FALSE, 0);
+    /*          
+        // ** Open the audio device **
+        if (waveInOpen(&hWaveIn,0,&pFormat,(DWORD) Done,0L,CALLBACK_EVENT) != MMSYSERR_NOERROR) 
+              {PrintCmd("Micro Sound card\ncannot be opened.\n");return TRUE;}
+//		else AudioDeviceState=1; 
+  
+result = waveInOpen(&hWaveIn, WAVE_MAPPER,&WaveFormat,
+            0L, 0L, WAVE_FORMAT_DIRECT);
+if (result )
+ {
+  char fault[256];
+  waveInGetErrorText(result, fault, 256);
+	PrintCmd(fault);
+	PrintCmd( "Failed to open waveform input device.");
+	return 0;
+ }
+*/
+	result = waveInOpen(&hWaveIn, 0, &WaveFormat, 0, 0, CALLBACK_NULL);
+
+if (result)
+ {
+  char fault[256];
+  waveInGetErrorText(result, fault, 256);
+	PrintCmd(fault);
+	PrintCmd( "Failed to open waveform input device.");
+	return 0;
+ }
+
+        
+        // ** Create the wave header for our sound buffer **
+        WaveHeader.lpData=(LPSTR)Data;
+        //WaveHeader.lpData=Data;
+        //WaveHeader.dwBufferLength=BUFFERSIZE;
+        WaveHeader.dwBufferLength=DataSize*2;//*2 because it is short int
+        WaveHeader.dwFlags=0;
+        WaveHeader.dwLoops=0;
+              
+        // ** Prepare the header for Recording with sound card **
+        if (waveInPrepareHeader(hWaveIn,&WaveHeader,sizeof(WaveHeader)) != MMSYSERR_NOERROR)
+        {
+              Message("Micro Error preparing Header!");
+              return TRUE;
+        }
+              
+        // ** Record sound! **
+      //  ResetEvent(Done);  // Reset our Event so it is non-signaled, it will be signaled again with buffer finished
+              
+        if (waveInAddBuffer(hWaveIn,&WaveHeader,sizeof(WaveHeader)) != MMSYSERR_NOERROR)
+        {
+              Message("Error reading sound card!");
+              return TRUE;
+        }
+           
+// Commence sampling input
+	result = waveInStart(hWaveIn);
+	if (result){Message( "Failed to start recording");return;}
+
+
+ // Wait until finished recording
+ do {} while (waveInUnprepareHeader(hWaveIn, &WaveHeader, sizeof(WAVEHDR))==WAVERR_STILLPLAYING);
+
+		 /*  
+        //Wait until recording sound finishes
+        if (WaitForSingleObject(Done,INFINITE) != WAIT_OBJECT_0)
+        {
+              Message("Error waiting for sound to finish recording");
+              return TRUE;
+        }  */
+		//MAccu[NumM].ptr = (float *) malloc (DataSize*sizeof(float) );
+		if (MAccu[NumM].ptr != 0) {
+			MAccu[NumM].n=1; MAccu[NumM].p=DataSize;
+			for (i=0;i<DataSize;i++){
+				MAccu[NumM].ptr[i] = (float) Data[i];
+			//	MAccu[NumM].ptr[i] = Data[i];
+				}
+		}else PrintCmd("Error allocation for micro matrix memory!\nData unavailable\n");
+		/*
+        //Unprepare our wav header **
+        if (waveInUnprepareHeader(hWaveIn,&WaveHeader,sizeof(WaveHeader)) != MMSYSERR_NOERROR)
+        {
+              Message("Micro Error unpreparing header!");
+              return TRUE;
+        }
+         */     
+        // close the wav device **
+        if (waveInClose(hWaveIn) != MMSYSERR_NOERROR)
+        {
+              Message("Micro Sound card cannot be closed!");
+              return TRUE;
+        } 
+           
+        //Release our event handle **
+        CloseHandle(Done);
+        free (Data); //release memory
+        return FALSE;
+}
+
+
+//----------------------------------- Load Sound File----------------
+
+BOOL LoadSoundFile(Matrix* MAccu, int NumM,char *pszFileName)
+{
+	HANDLE hFile;
+	BOOL bSuccess = FALSE;
+	
+	hFile = CreateFile(pszFileName, GENERIC_READ, FILE_SHARE_READ, NULL,
+		OPEN_EXISTING, 0, NULL);
+	if(hFile != INVALID_HANDLE_VALUE)
+	{
+		DWORD dwFileSize;
+		char s[50];
+		dwFileSize = GetFileSize(hFile, NULL);
+		//sprintf(s,"file .wav size=%d\n",dwFileSize);
+		//PrintCmd(s);
+		if(dwFileSize != 0xFFFFFFFF)
+		{
+			LPSTR pszFileText;
+
+			pszFileText = (LPSTR)GlobalAlloc(GPTR, dwFileSize + 1);
+			if(pszFileText != NULL)
+			{
+				DWORD dwRead;
+
+				if(ReadFile(hFile, pszFileText, dwFileSize, &dwRead, NULL))
+				{
+					pszFileText[dwFileSize] = 0; // Add null terminator
+					//We fill in the Matrix
+					LPSTR  datastrt=0;
+					int i;
+					int datasize;
+					int *dat;
+					LPSTR psz = pszFileText;
+					for (i=0;i<dwFileSize;i++) {
+						if(*psz=='d' && *(psz+1)=='a' &&*(psz+2)=='t' && *(psz+3)=='a' ) 
+								{datastrt = psz +8;
+								//PrintCmd("found data chunk\n");
+								goto datafound;}
+								
+							psz++;
+						}
+				datafound:
+					//technic to get the int32 == int  with introduction of  int dat
+					dat= psz+4;
+					datasize = *dat;
+					//sprintf(s,"data size=%d\n",datasize);
+					//PrintCmd(s);
+
+					if (datastrt == 0) {
+						PrintCmd("Failed to find 'data' chunk!\n");
+						CloseHandle(hFile);
+						return FALSE;
+					}
+					if (MAccu[NumM].ptr !=0) free(MAccu[NumM].ptr);
+					MAccu[NumM].ptr = (float*)malloc(datasize/2*sizeof(float) ); //datasize/2 because int short and not char
+					if (MAccu[NumM].ptr == 0) {PrintCmd("Couldn't allocate memory for loading .wav file\n");return FALSE;}
+					short int *datawav;
+					datawav=datastrt;
+					//for (i=0;i<datasize;i++) MAccu[NumM].ptr[i]=(float)datastrt[i];
+					for (i=0;i<datasize/2;i++) MAccu[NumM].ptr[i]=(float)datawav[i];
+					MAccu[NumM].n=1;MAccu[NumM].p=datasize/2;
+					bSuccess = TRUE; // It worked!
+				}
+				GlobalFree(pszFileText);
+			}
+		}
+		CloseHandle(hFile);
+	}else{PrintCmd("Couldn't load sound file!\n"); bSuccess=FALSE;}
+	return bSuccess;
+}
+

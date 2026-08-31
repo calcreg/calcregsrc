@@ -166,9 +166,12 @@ extern int MathFunctionMatrices (Matrix *MAccu, floactet *CodeListLine,int i);
 // in Functions.c
 extern int CalculFunctionComplexe(floactet *CodeListLine,int i);
 
-//playsound
+//record or playsound
 extern int PlaySoundReg(float ,float ,float );
-extern int PlaySoundMatrix(Matrix *, int NumM, float ,float );
+extern int PlaySoundMatrix(Matrix *, int NumM, float);
+extern int GetAudioMicro(Matrix *, int NumM, float);
+extern int 	LoadSoundFile(Matrix *MAccu, int NumM,char*);
+extern char* DoLoadSound();
 
 //serial-Oscillo
 //extern Boolean  waitfordata(int NbrTrialToGet);
@@ -212,8 +215,8 @@ float SoundFrequency,SoundAmplitude,SoundDuration,SamplesPerSecond;
 static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListSize
 static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_";
 //									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26
-static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_box3d_getserial_wait_bsr_rts_putserial_playsound_clscmd_defM_playsndM_fillM_";
-//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21
+static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_box3d_getserial_wait_bsr_rts_putserial_playsound_clscmd_defM_playsndM_fillM_recsndM_loadsndM_";
+//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23
 //char blabli[]= { {'hello'},0x1,{'hi'},0x0};
 
 //--------------labels
@@ -340,8 +343,7 @@ extern unsigned char SerialDataToSend[];
 extern int AudioDeviceState;
 //----------------------------------
 
-int bla = 0; //This position is troublesome
-
+int offsetI = 0; //During the line convertion into codes it contains the position of th eline in wholeMnemoProg
 //----------------------------------
 
 
@@ -844,7 +846,7 @@ static floactet CodeOfOneLine[CodeOneLineSizeMax]; //Code Of One Line
 static int SubRoutineStack[MaxSubRoutine];
 static int PointerSubRoutine=0;
 
-int nbits,NumM,Mn,Mp,AccIndex,lblptr, istrt,pos,offsetP,k,K,OkLine,CodeListOffsetSave,CounterLineCode;
+int nbits,NumM,Mn,Mp,AccIndex,lblptr, istrt,pos,k,K,offsetP,OkLine,CodeListOffsetSave,CounterLineCode;
 float x1,y1,x2,y2,color;
 float X0,X1,Y0,Y1,Y;
 
@@ -877,7 +879,7 @@ float X0,X1,Y0,Y1,Y;
 	offsetP=0;
 	while (offsetP<ProgSize){
 	
-	i=offsetP; K=0;
+	i=offsetP; K=0; 
 	for (k=0; k<LineSize;k++){ 
 		if (WholeMnemoProg[i+k]==0x0D ) goto OutLoadLine; 
 		if (WholeMnemoProg[i+k]==0x0A ) goto OutLoadLine; 
@@ -890,6 +892,7 @@ float X0,X1,Y0,Y1,Y;
 		K=k+1;
 		
 	//if (debug>0) PrintCmd(InstructionLine);
+	offsetI = offsetP; //this is for the current position in wholeMnemoProg 
 	offsetP=offsetP+K;
 		i=0;
 		while(i<LineSize){if(InstructionLine[i]==0x0D) InstructionLine[i]=0x0A; i++;}//change the return code
@@ -962,10 +965,7 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 		if (CodeList[CodeListOffset].code==0) goto EndMain;
 	}//skip enter : this needs to be here for the Error treatment line detection
 
-	//Now we empty the temporary Matrices
-	//free temporary matrix memories<=> NumM aboves NbrMaxMatrix/2
-	for (i=NbrMaxMatrix/2;i<NbrMaxMatrix;i++) if (MAccu[i].ptr!=0) {free (MAccu[i].ptr);MAccu[i].ptr=0;}
-
+	//The freeing of  temporary matrices is done in FillCodeOfOneLine 
 	NbrCodesCopied=FillCodeOfOneLine(CodeList,CodeOfOneLine);//transfert one line 
 	CodeListOffsetSave=CodeListOffset;
 	CounterLineCode++;
@@ -1098,12 +1098,9 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 	if (CodeOfOneLine[OffsetLine].code!=11 ) goto OutInstructionHere;//Special Instruction  detected
 
 
-		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==1) {//Print 
-			if (debug > 0 ) PrintCmd("print\n");
-				if (CodeOfOneLine[OffsetLine+1].code==1) {
-				if (AllowComplexe != 1 || CodeOfOneLine[OffsetLine+1].cmplx ==0)Rprintf(CodeOfOneLine[OffsetLine+1].value);//implementation for display float
-				else RCPrintf(CodeOfOneLine[OffsetLine+1]);//print complexe number
-				}
+	if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==1) {//Print 
+		if (debug > 0 ) PrintCmd("print\n");
+
 				if (CodeOfOneLine[OffsetLine+1].code!=1) {
 					PrintCmd("Error no Nbr to Display\n ");
 					sprintf(s,"The code %d is [%d][%f]\n",OffsetLine,CodeOfOneLine[OffsetLine].code,CodeOfOneLine[OffsetLine].value);
@@ -1112,6 +1109,24 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 					PrintCmd(s);
 					goto EndMain;
 				}
+				
+			int TextIndex=0;
+			if (CodeOfOneLine[OffsetLine+2].code==10 &&
+						CodeOfOneLine[OffsetLine+3].code==1){
+						TextIndex=(int)CodeOfOneLine[OffsetLine+3].value;
+						}
+			if (TextIndex != 0){
+			i=0;
+				while (WholeMnemoProg[TextIndex+i]!='"'){
+							s[i]=WholeMnemoProg[TextIndex+i];i++;}
+				s[i]=0; //terminate the ascii chain
+				PrintCmd(s);
+			}
+			//print number here
+			if (CodeOfOneLine[OffsetLine+1].code==1) {
+			if (AllowComplexe != 1 || CodeOfOneLine[OffsetLine+1].cmplx ==0)Rprintf(CodeOfOneLine[OffsetLine+1].value);//implementation for display float
+			else RCPrintf(CodeOfOneLine[OffsetLine+1]);//print complexe number
+			}
 			OffsetLine=0;
 		}
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==2) {//goto 
@@ -1235,15 +1250,53 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 //-------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==20) {//playsndM
 			if (CodeOfOneLine[OffsetLine+1].code==1&& CodeOfOneLine[OffsetLine+2].code==10 &&
-			CodeOfOneLine[OffsetLine+3].code==1&& CodeOfOneLine[OffsetLine+4].code==10 &&
-			CodeOfOneLine[OffsetLine+5].code==1) {
+			CodeOfOneLine[OffsetLine+3].code==1) {
 			NumM=(int)CodeOfOneLine[OffsetLine+1].value;//n°Matrix MAccu to play
 			SamplesPerSecond=CodeOfOneLine[OffsetLine+3].value;
-			nbits=CodeOfOneLine[OffsetLine+5].value;
-			PlaySoundMatrix(MAccu, NumM,SamplesPerSecond,nbits);
+			PlaySoundMatrix(MAccu, NumM,SamplesPerSecond);
 
 			OffsetLine=0;
 			}else{PrintCmd("playsndM!\n");goto EndMain;}
+		}	
+//------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==22) {//recsndM
+			if (CodeOfOneLine[OffsetLine+1].code==1&& CodeOfOneLine[OffsetLine+2].code==10 &&
+			CodeOfOneLine[OffsetLine+3].code==1) {
+			NumM=(int)CodeOfOneLine[OffsetLine+1].value;//n°Matrix MAccu to play
+			SamplesPerSecond=CodeOfOneLine[OffsetLine+3].value;
+			if (NumM<0 || NumM > NbrMaxMatrix/2){sprintf(s,"unauthorized number for Matrix\n 0<Mtx n°<%d\n",NbrMaxMatrix/2); PrintCmd(s);goto EndMain;}
+
+			GetAudioMicro(MAccu, NumM,SamplesPerSecond);
+
+			OffsetLine=0;
+			}else{PrintCmd("recsndM!\n");goto EndMain;}
+		}	
+//------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==23) {//loadsndM
+			if ( CodeOfOneLine[OffsetLine+1].code==1){
+			NumM=(int)CodeOfOneLine[OffsetLine+1].value;//n°Matrix MAccu to play
+			if (NumM<0 || NumM > NbrMaxMatrix/2){sprintf(s,"unauthorized number for Matrix\n 0<Mtx n°<%d\n",NbrMaxMatrix/2); PrintCmd(s);goto EndMain;}
+			char sndfilename[50];
+			int TextIndex=0,i=0;
+			if (CodeOfOneLine[OffsetLine+2].code==10 &&
+						CodeOfOneLine[OffsetLine+3].code==1){
+						TextIndex=(int)CodeOfOneLine[OffsetLine+3].value;
+						//Rprintf((float)TextIndex);
+						}
+			if (TextIndex != 0){
+				while (WholeMnemoProg[TextIndex+i]!='"'){
+							sndfilename[i]=WholeMnemoProg[TextIndex+i];i++;}
+				sndfilename[i]=0; //terminate the ascii chain
+				//PrintCmd(sndfilename);
+				if (LoadSoundFile(MAccu, NumM,sndfilename)==FALSE){
+						Error=8; goto EndMain;}
+			}else{
+				if (LoadSoundFile(MAccu, NumM,DoLoadSound() )==FALSE){
+						Error=8; goto EndMain;}
+			}
+
+			OffsetLine=0;
+			}else{PrintCmd("loadsndM!\n");goto EndMain;}
 		}	
 //------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==18) {//clscmd
@@ -1622,6 +1675,21 @@ int StrtStr,EndStr,p,a,BackFromAccu=0;
 		BackFromAccu=0;
 	while (Out==0){
 		if (CodeListOffset > CodeListSize-10) {PrintCmd("Exceeding Memory size for Codes --- contact Regan B.S. by email for info");return 5;} 
+		if (MnemoListLine[i]=='"' )  {//PrintCmd("text detected\n");
+			CodeList[CodeListOffset].code = 1;
+			CodeList[CodeListOffset].value = (float)(offsetI+i+1);//OffsetI is the current position into WholeMnemoProg
+			while (MnemoListLine[i]!=0 || MnemoListLine[i] != '"' || MnemoListLine[i]!=Octet("\n")){
+				if (MnemoListLine[i] != '"') {		
+					CodeListOffset++;				
+					CodeListOffsetMax=CodeListOffset;
+					goto EndConvert; //this line is finished
+					}
+				i++;
+			}
+			PrintCmd("Finish your text by guillemet \n");
+			ErrorCode=1;
+			goto EndConvert;
+		} //set Text position "blabla"
 		if (MnemoListLine[i]==Octet("\n") )  {Out=1; goto EndNbr;} //endLine or No data
 		if (MnemoListLine[i]==OperatorList[4] ) { //"("
 			if (opposite == 1) {
@@ -2028,8 +2096,14 @@ FunctionFound:
  
 int FillCodeOfOneLine(floactet *CodeList,floactet *CodeOfOneLine){
 	//CodeListOffset is set outside this subroutine
-	int i=0;
+	int i=0,j;
 StartFill:
+	if (CodeList[CodeListOffset+i].code==15 &&CodeList[CodeListOffset+i+1].code!=6){
+	//Now we empty the temporary Matrices
+	//free temporary matrix memories<=> NumM aboves NbrMaxMatrix/2
+	for (j=NbrMaxMatrix/2;j<NbrMaxMatrix;j++) if (MAccu[j].ptr!=0) {free (MAccu[j].ptr);MAccu[j].ptr=0;}
+	}
+
 		CodeOfOneLine[i]=CodeList[CodeListOffset+i];
 		i++;
 	if (CodeList[CodeListOffset+i].code==0xFF ) goto EndFill;
