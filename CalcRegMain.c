@@ -61,7 +61,8 @@ RECT		prect,brect;
 COLORREF	colpen,colbrush;
 HFONT hfDefault;
 HWND hEditP,hEditC;//txt win
-unsigned char LastFileName[100];
+unsigned char LastFileName[300]; //Une taille de 100 uniquement provoquait un bug, le programme s'exécutait mal, pas d'affichage graphique alors que le programme tournait...
+
 
 int			x,y;
 // for the execution at start
@@ -81,7 +82,6 @@ extern int Button,systate;
 int MaxNbrButtons=MaxBtn; //the buttons to be opened by the program
 
 HWND ProgBtn[50];
-
 
 void CloseProc(HWND hwnd)
 {
@@ -572,6 +572,10 @@ BOOL LoadTextFileToEdit(HWND hEdit, LPCTSTR pszFileName)
 		DWORD dwFileSize;
 
 		dwFileSize = GetFileSize(hFile, NULL);
+		char s[100];
+		sprintf(s,"Loading Size=%d bytes\n",(int)dwFileSize);
+		PrintCmd(s);
+		
 		if(dwFileSize != 0xFFFFFFFF)
 		{
 			LPSTR pszFileText;
@@ -599,7 +603,8 @@ void DoFileOpen(HWND hwnd,int Reopen)
 {
 	OPENFILENAME ofn;
 	HWND hEdit;
-	char szFileName[MAX_PATH] = "";
+	char szFileName[MAX_PATH+100] = "";
+
 	if (Reopen !=0) {	HWND hEdit = GetDlgItem(hwnd, IDC_MAIN_EDIT);
 								LoadTextFileToEdit(hEdit, LastFileName);return;}
 	ZeroMemory(&ofn, sizeof(ofn));
@@ -617,7 +622,7 @@ void DoFileOpen(HWND hwnd,int Reopen)
 		hEdit = GetDlgItem(hwnd, IDC_MAIN_EDIT);
 		LoadTextFileToEdit(hEdit, szFileName);
 		strcpy(LastFileName,szFileName); //save filename
-		unsigned char titlewin[100];
+		unsigned char titlewin[200];
 		//detect name without the extension
 		unsigned char *name;
 
@@ -647,6 +652,10 @@ BOOL SaveTextFileFromEdit(HWND hEdit, LPCTSTR pszFileName)
 		DWORD dwTextLength;
 
 		dwTextLength = GetWindowTextLength(hEdit);
+		char s[100];
+		sprintf(s,"Saving prog Size:=%d octets\n",(int)dwTextLength);
+		PrintCmd(s);
+		
 		// No need to bother if there's no text.
 		if(dwTextLength > 0)
 		{
