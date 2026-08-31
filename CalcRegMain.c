@@ -16,7 +16,7 @@
 
 
 #ifdef CalcRegSoftware
-	#define WINDOWTITLEREG "CalcReg V1.9 GUI Win32 API"
+	#define WINDOWTITLEREG "CalcReg V1.12.8 GUI Win32 API"
 #endif
 
 #define IDC_MAIN_EDIT	101
@@ -370,6 +370,7 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			if (LOWORD(wParam) == AboutMenuId) doMainMenu(AboutMenuId);
 		#endif
 			if(btn_close==(HWND)lParam) CloseProc(hwnd);
+
 		#ifdef CalcRegSoftware
 			if(btn_brk==(HWND)lParam) StopProgram=1;
 			if(btn_ClCmd==(HWND)lParam) MainFormHandleEvent(btnclear);

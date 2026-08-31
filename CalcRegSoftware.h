@@ -12,7 +12,7 @@
 #ifdef CalcRegSoftware
 //
 #else
-#define WINDOWTITLEREG "UltraSound Generator      Built on CalcRegV1.9 visit http://www.palmreg.fr.mu"
+#define WINDOWTITLEREG "UltraSound Generator      Built on CalcRegV1.12.8 visit http://www.palmreg.fr.mu"
 #endif
 
 #define XBtn 10   //gauche du groupe de buttons
@@ -25,9 +25,9 @@
 #define BtnHght 20 // hauteur de bouton
 
 #define DrawZoneXChg 320 
-#define DrawZoneYChg 90
-#define DrawZoneHChg  100 //50
-#define DrawZoneWChg  340 //340
+#define DrawZoneYChg 25
+#define DrawZoneHChg  50
+#define DrawZoneWChg  340
 
-#define START_TEXT "Set volume down to 10%"
+#define START_TEXT "Set volume down to 10%\nPlease wait for initialisation\n and Sound creation\n"
  
