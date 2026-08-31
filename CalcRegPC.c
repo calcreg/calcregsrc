@@ -64,6 +64,7 @@ extern void WinEraseRectangleReg(int,int,int,int);
 extern HDC hDC;
 
 extern void PrintCmd(char * s) ;
+extern void PrintProg(char * s);
 extern void DeleteCmd() ;
 extern void Printf(const char * format, ...); //should be Printf and not printf otherwise it conflicts with StdIOPalm.h definition
 //static float sscanf (char *StringNbr,char* s, float *Nbr);
@@ -74,7 +75,6 @@ extern void SetUpTextProg();
 extern void HideKeyPad();
 extern void ShowKeyPad();
 extern void DeleteProg();
-extern void PrintProg(char * s);
 extern void decodeCreator();
 extern void decodeCopyRight();
 
@@ -95,8 +95,8 @@ int doMainMenu (int command);
 //Ajout memo
 extern void SaveProg();
 extern void LoadProg();
-extern void RemoveComments(char *txt);
-
+extern void RemoveComments(char *txt);//RMathlib.c
+extern int PreProcesser(char *); //RMathlib.c
 extern void DisplayManual();
 
 void Execute(void);
@@ -109,6 +109,7 @@ extern void decode(char *txt, int size);
 int CheckForBreak();
 static int ConvertMnemo(char * MnemoList, floactet * CodeList); //convert Mnemo in codes
 static int CalculOneLine(floactet *CodeList);
+static void HandleCalculOneLineMsgError(int Error);
 static int CalculOneLineReel(floactet *CodeList);
 static int CalculOneLineReelMatrix(floactet *CodeList);
 static int CalculOneLineComplexeMatrix(floactet *CodeList);
@@ -183,7 +184,7 @@ extern int MatrixDivisionComplexe(Matrix *MAccu,floactet *CodeListLine,int i,int
 extern int MathFunctionMatricesComplexe(Matrix *MAccu, floactet *CodeListLine,int i);
 
 
-// in Functions.c
+// in Functions
 extern int CalculFunctionComplexe(floactet *CodeListLine,int i);
 
 //record or playsound
@@ -317,7 +318,14 @@ Code 14 = FAccu Functions [14][Nbr of the FAccu Function defined in line FAccu[N
 Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 														 */
 
-//loop:
+//PREPROCESSORS
+// preprocessors are set as //#
+//they are used to make settlements before the program is run and 
+//should be placed at top of the program
+//					//#COMPLEXE					used to activate complexe mode
+//					//#NOCOMPLEXE				used to disable complexe mode (by default: no complexe mode)
+														 
+//loop:    loop is a label
 //grid Step	//StepX and Y for grid
 //gfxdim xmin,xmax,ymin,ymax,IncX //Gfx definition
 //box3d wx,wy,wz,Inc3d  wx width of the box from -wx to wx Xmax3d = wx =-Xmin3d
@@ -405,8 +413,6 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //action n    	n=0 clear gfx screen 
 //					n=1 systate gfx control inactive, zoom move gfx, this action also resets the MouseMoved and MouseLeftClick
 //					n=2 systate gfx control activated zoom move gfx,this action also resets the MouseMoved and MouseLeftClick
-//					n=3 Enable Complexe Calculation -- the speed of calculation will be slower than in Real calculation
-//					n=4 Disable Complexe Calculation -- by default complexe calculation is OFF
 
 //copyM n°M1,n°M2,mod   copy M2 at the place defined by mod in M1, the resulting Matrix is M1 with a new size if necessary
 //						The copy is made like: all the p values of M2 are copied to M1p; for all n M2(n,p) to M1(n,newposp)
@@ -459,6 +465,8 @@ extern int SerFlag;
 extern unsigned char SerialDataToSend[];
 //audio device
 extern int AudioDeviceState;
+extern int SoundPlaying;
+
 //----------------------------------
 
 int offsetI = 0; //During the line convertion into codes it contains the position of th eline in wholeMnemoProg
@@ -524,8 +532,6 @@ DWORD WINAPI Thread_Execute( LPVOID lpParam ){
 	floactet *CodeList;
 	int sizetxt;
 	FILE *fp;
-	extern HDC hDC;
-	extern HWND hEditP;
 	
 	GridSet=0;//init
 	ColorGraph=1;
@@ -561,7 +567,18 @@ DWORD WINAPI Thread_Execute( LPVOID lpParam ){
 		
 	if (strstr(progtext,"longjumeau") !=0  ) CodageIdentity2=1;
 	MnemoProgSize=strlen(progtext);
-	
+
+	//-------- PREPROCESSEUR
+	switch(PreProcesser(progtext)){ //Goes to activate various reglages
+		case 1://#COMPLEXE
+			AllowComplexe=1;
+		break;
+		case 2://#NOCOMPLEXE
+			AllowComplexe=-1;
+		break;
+	}
+	//--------
+
 	// win32 ->
 	WholeMnemoProg = (char*)malloc (MnemoProgSize+AdditionalProgMem);
 	if( WholeMnemoProg == 0){PrintCmd("can't allocate mnemoprog!");return;}
@@ -631,19 +648,6 @@ DWORD WINAPI Thread_Execute( LPVOID lpParam ){
 	if (SerialOpened==1){SerialOpened=0;CloseHandle(hSerialPC);
 										//PrintCmd("CloseSerial device\n");
 										}//Close the Serial Device used
-	/*PalmOs
-	if (BreakActivated ==1)WinDrawChars("       ",7,BrkX,BrkY); //clean the "brk area"
-	if (Keypad==0) FrmShowObject(Frm, (FrmGetObjectIndex(Frm, btnkeypad)));
-	if (GridSet==1) {
-			FrmShowObject(Frm, (FrmGetObjectIndex(Frm, btngfxderivate)));
-			FrmShowObject(Frm, (FrmGetObjectIndex(Frm, btngfxpset)));
-			FrmShowObject(Frm, (FrmGetObjectIndex(Frm, btngfxmoins)));
-			FrmShowObject(Frm, (FrmGetObjectIndex(Frm, btngfxplus)));
-			if (GfxZoom==0) FrmShowObject(Frm, (FrmGetObjectIndex(Frm, btngfxwork)));
-			if (GfxMove==0)FrmShowObject(Frm, (FrmGetObjectIndex(Frm, btngfxmove)));
-			//the movability is init to 1 at the begining movability is available
-			}
-	*/
 FreeMemories:
 	if (progtext!=0) free(progtext);
 	if (WholeMnemoProg !=0) free(WholeMnemoProg); //free the memory for the list of correspondance with the Accu and the names of variables
@@ -658,6 +662,7 @@ FreeMemories:
 		CloseProc(hmywin);
 	#endif
 	ProgInExecution=0; //Indicates the end of the execution of the program Thread
+	return 0; //zero must be returned in a Thread
 }
 
 int ReorgVarList(int nbrvar,char *prog){
@@ -804,11 +809,11 @@ static void ChangeNamesToAccu(char *text){
 			if(ntxt!=0)while (*left !=0x0a && left >text){left--;if (*left=='"'){txt++;goto Loop2;}}//Avoid changing the symboles taken in ascii chains
 			//
 			if ( ntxt !=0 ) {//sprintf(s,"char=%c%c",txt,txt+1);PrintCmd(s);
-				if( 'a' <*(ntxt+strlen(str) ) && *(ntxt+strlen(str) )<'z') {txt=ntxt+strlen(str);goto Loop2;}				
-				if( 'A' <*(ntxt+strlen(str) ) && *(ntxt+strlen(str) )<'Z') {txt=ntxt+strlen(str);goto Loop2;}				
+				if( 'a' <=*(ntxt+strlen(str) ) && *(ntxt+strlen(str) )<='z') {txt=ntxt+strlen(str);goto Loop2;}				
+				if( 'A' <=*(ntxt+strlen(str) ) && *(ntxt+strlen(str) )<='Z') {txt=ntxt+strlen(str);goto Loop2;}				
 				//if(  *(ntxt+strlen(str)-1 )==')') {txt=ntxt+strlen(str);goto Loop2;}				
-				if (ntxt > txt ) if( 'a' <*(ntxt-1) && *(ntxt-1)<'z') {/*PrintCmd("not");*/txt=ntxt+strlen(str);goto Loop2;}
-				if (ntxt > txt ) if( 'A' <*(ntxt-1) && *(ntxt-1)<'Z') {/*PrintCmd("not");*/txt=ntxt+strlen(str);goto Loop2;}
+				if (ntxt > txt ) if( 'a' <=*(ntxt-1) && *(ntxt-1)<='z') {/*PrintCmd("not");*/txt=ntxt+strlen(str);goto Loop2;}
+				if (ntxt > txt ) if( 'A' <=*(ntxt-1) && *(ntxt-1)<='Z') {/*PrintCmd("not");*/txt=ntxt+strlen(str);goto Loop2;}
 				test=1;	//reset to 1 if ok
 				nptr=ntxt-txt;								//get the offset of the token place in txt
 				sprintf(AStr,"A%d",AccuVar[i].n); //create An (A0,A1,...)
@@ -1225,7 +1230,7 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			goto AlmostEndLoop;
 		}
 	if (CodeOfOneLine[0].code == 11 && CodeOfOneLine[0].value == -1 && CodeOfOneLine[3].code == 10){//Trf(x)=...
-			if (CodeOfOneLine[2].code != 9 && CodeOfOneLine[4].code != 9){ PrintCmd("Error syntaxe Trf(x,y)\n");goto EndMain;}
+			if (CodeOfOneLine[2].code != 9 && CodeOfOneLine[4].code != 9){ PrintCmd("Error syntaxe Trf(x,y)\nx and y should be variables");goto EndMain;}
 
 			if (TraceFunctionTwoVariable(CodeOfOneLine,CodeList) !=0 ) goto EndMain;
 			if (StopProgram==1) goto EndMain;
@@ -1268,8 +1273,10 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 	if (Error != 0) {sprintf(s,"Parenthese Error = %d \n", Error);PrintCmd(s);goto EndMain;}
 	if(StopProgram == 1) goto EndMain;
 	Error = CalculOneLine(CodeOfOneLine); //Calcul
-	if (Error != 0 && CodeOfOneLine[0].code!=11) {sprintf(s,"Error = %d\n", Error); PrintCmd (s); goto EndMain;}
-	//We don't care about the error is it is an instruction 11
+	if (Error != 0 && CodeOfOneLine[0].code!=11) {
+			HandleCalculOneLineMsgError(Error);//sprintf(s,"Error = %d\n", Error); PrintCmd (s); 
+			goto EndMain;}
+	//We don't care about the error if it is an instruction 11
 	if(StopProgram == 1) goto EndMain; 
 
 		// => Instruction
@@ -1391,16 +1398,17 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			int Mn = MAccu[NumM].n; 
 			int Mp = MAccu[NumM].p; 
 			int dsn=Mn,dsp=Mp,n;
-			char mtx_s[100];
+			char mtx_s[500];mtx_s[0]=0;
 			if (dsp>10) dsp=10; //Max size to display nxp=10x10
 			if (dsn>10) dsn=10;
 			sprintf(mtx_s,"M%d=\n",NumM);
 			for (n=0;n<dsn;n++){
 				for (i=0;i<dsp;i++){
+				if(strlen(mtx_s)>500) {PrintCmd("display data oversize\n");goto PrintDone;}
 				if (AllowComplexe==1){
-					if (MAccu[NumM].Cptr[i+Mp*n]>=0)sprintf(mtx_s,"%s%.1f+i%.1f |",mtx_s,MAccu[NumM].ptr[i+Mp*n],MAccu[NumM].Cptr[i+Mp*n]);
-					else sprintf(mtx_s,"%s%.1f-i%.1f |",mtx_s,MAccu[NumM].ptr[i+Mp*n],-MAccu[NumM].Cptr[i+Mp*n]);
-					}else sprintf(mtx_s,"%s%.1f| ",mtx_s,MAccu[NumM].ptr[i+Mp*n]);
+					if (MAccu[NumM].Cptr[i+Mp*n]>=0)sprintf(mtx_s,"%s%.1e +i.%.1e |",mtx_s,MAccu[NumM].ptr[i+Mp*n],MAccu[NumM].Cptr[i+Mp*n]);
+					else sprintf(mtx_s,"%s%.1e -i.%.1e |",mtx_s,MAccu[NumM].ptr[i+Mp*n],-MAccu[NumM].Cptr[i+Mp*n]);
+					}else sprintf(mtx_s,"%s%.1e| ",mtx_s,MAccu[NumM].ptr[i+Mp*n]);
 				}
 				if (dsp<Mp)	sprintf(mtx_s,"%s (...)\n",mtx_s);
 				else 	sprintf(mtx_s,"%s\n",mtx_s);
@@ -1484,18 +1492,6 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 						PenMoved=0;MouseLeftClick=0;
 						#ifdef CalcRegSoftware
 						PrintCmd("Gfx control active\n");			
-						#endif
-					break;
-					case 3://activate complexe
-						AllowComplexe=1;
-						#ifdef CalcRegSoftware
-						PrintCmd("Complexe ON\n");			
-						#endif
-					break;
-					case 4://inactivate complexe
-						AllowComplexe=-1;
-						#ifdef CalcRegSoftware
-						PrintCmd("Complexe OFF\n");			
 						#endif
 					break;
 				}
@@ -2121,7 +2117,8 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 	//-------------------------------------------------------EndLoop---------------------------------
 	if (debug > 0 )PrintCmd("End\n");
 EndMain:
-	if (Error!=0){sprintf(s,"\nError Indication= %d ",Error);PrintCmd(s);IndicErrorCode(CodeList,CodeListOffset);}
+	if (Error!=0){sprintf(s,"Error code %d\n",Error);PrintCmd(s);
+									IndicErrorCode(CodeList,CodeListOffset);}
 	return (0);
  }
 
@@ -2162,7 +2159,7 @@ EndMain:
 		p[k]=WholeMnemoProg[i++];k++;
 		}
 	p[k]=0;
-	sprintf (s,"\nOffsetCode=%d\nLine %d\nbefore code -->\n%s\n",ErrorOffsetCode,LineError+nbrlabelsfnd,p);PrintCmd(s);
+	sprintf (s,"OffsetCode=%d,Line %d\nFollows:\n%s\n",ErrorOffsetCode,LineError+nbrlabelsfnd,p);PrintCmd(s);
 }
  
  static int TraceFunctionOneVariable(floactet *CodeOfOneLine, floactet *CodeList)
@@ -2965,14 +2962,15 @@ int iptrstrt=0,Aind, Mn,Mp,NumM;
 			if(CodeOfOneLine[i+2].code!=1 ||
 				CodeOfOneLine[i+3].code!=10 ||CodeOfOneLine[i+4].code!=1 ||
 				CodeOfOneLine[i+5].code!=7 ) {
-				PrintCmd("Syntaxe Matrix!\n");
+				sprintf(s,"Syntaxe Error M%d(a,b)\n",(int)CodeOfOneLine[i].value);
+				PrintCmd(s);
 				if(debug > 0) {
 				sprintf(s,"[%d],[%d],[%d],[%d]\n",(int)CodeOfOneLine[i+2].code,(int)CodeOfOneLine[i+3].code,(int)CodeOfOneLine[i+4].code,(int)CodeOfOneLine[i+5].code);
 				PrintCmd(s);}
 				return 9;
 				}else {
 				NumM = (int) CodeOfOneLine[i].value;
-				if (MAccu[NumM].ptr == 0) {PrintCmd("Matrix not defined!\n");return 9;}
+				if (MAccu[NumM].ptr == 0) {sprintf(s,"Matrix M%d not defined!\n",NumM);PrintCmd(s);return 9;}
 				if (AllowComplexe ==1 && MAccu[NumM].Cptr == 0) {PrintCmd("Matrix.cmplx not defined!\n");return 9;}
 				Mn= (int) CodeOfOneLine[i+2].value;
 				Mp= (int) CodeOfOneLine[i+4].value;
@@ -3288,6 +3286,38 @@ static int CalculOneLine(floactet *CodeListLine){
 	else Error = CalculOneLineReel(CodeListLine);
 	return Error;
 	}
+
+void HandleCalculOneLineMsgError(int Error){
+	switch(Error){
+	case 1:
+	PrintCmd("No  End in the Line\n");
+	break;
+	case 2:
+	PrintCmd("Syntaxe error should find numbers around the math operator\n");
+	break;
+	case 3:
+	PrintCmd("Division by zero prohibited\n");
+	break;
+	case 4:
+	PrintCmd("Should be no parenthese at the stage of this program.\nThe treatment of the parenthese should be done previously.\n");
+	break;
+	case 5:
+	PrintCmd("Bad syntax for test condition\n");
+	break;
+	case 6:
+	PrintCmd("Syntaxe Error\n");
+	break;
+	case 7:
+	PrintCmd("Serial Device Not Opened (Oscilloscope)\n");
+	break;
+	case 8:
+	PrintCmd("Complexe only\n");
+	break;
+	case 9:
+	PrintCmd("Matrix Error\n");
+	break;	
+	}
+	}
 	
 //------------------------------  Calcul with Matrix -------------------------
 
@@ -3524,7 +3554,8 @@ OutForPower:
 		if (CodeListLine[i].code==15 || CodeListLine[i+2].code == 15) 
 				{ErrorCode=MatrixDivision(MAccu,CodeListLine,i,imaxLine);
 						i=iptrEqualSignP; //reinitialise position after the equal sign	
-						goto SearchPriority; // Back to seek for operation priority
+						if (ErrorCode==0)goto SearchPriority; // Back to seek for operation priority
+						else return ErrorCode;
 				}
 		if (CodeListLine[i].code!=1 || CodeListLine[i+2].code != 1) {PrintCmd("How possible ?? division\n"); ErrorCode=2; goto EndCalculOneLine; }
 		if (CodeListLine[i+2].value!=0) val = CodeListLine[i].value / CodeListLine[i+2].value;
@@ -3739,7 +3770,8 @@ OutForPower:
 		if (CodeListLine[i].code==15 || CodeListLine[i+2].code == 15) 
 				{ErrorCode=MatrixDivisionComplexe(MAccu,CodeListLine,i,imaxLine);
 						i=iptrEqualSignP; //reinitialise position after the equal sign	
-						goto SearchPriority; // Back to seek for operation priority
+					if (ErrorCode==0)goto SearchPriority; // Back to seek for operation priority
+					else return ErrorCode;
 				}
 		if (CodeListLine[i].code!=1 || CodeListLine[i+2].code != 1) {PrintCmd("How possible ?? division\n"); ErrorCode=2; goto EndCalculOneLine; }
 		if(CodeListLine[i].cmplx == 0&& CodeListLine[i+2].cmplx == 0 && CodeListLine[i+2].value != 0) {
@@ -3806,7 +3838,7 @@ OutForPower:
 	behind the instruction (exemple: print 1*2)
 	*/
 									   
-	//Search for priority *,/,(,  
+	//Search for priority *,/,(,
 	int i,k; int imaxLine=0, NumM,Mn,Mp;
 	float CodeVal,val,x1,x2,a,b,h,val_cmplx;
 	int ErrorCode=0,NbrAccu;
@@ -3892,6 +3924,9 @@ OutForPower:
 								case 6:
 								val=(float)((-YpenUp+DrawZoneY+DrawZoneH)/DrawZoneH*(DimYmax-DimYmin)+DimYmin);
 								//val=(float)YpenUp;
+								break;
+								case 7:
+								val = (float)SoundPlaying;
 								break;
 								}
 							}	//key

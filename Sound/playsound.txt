@@ -1,0 +1,8 @@
+
+Nsp=92000
+defM1,1,Nsp
+defM2,1,Nsp
+fillM1,0,1
+
+M2=8192*cos(2*3.1415*440*M1)
+playsndM2,Nsp

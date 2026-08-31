@@ -29,6 +29,8 @@ int SaveSoundFile(Matrix *MAccu, int NumM,int SamplesPerSecond, char*);
 int SaveMFile(Matrix *MAccu, int NumM,char*);
 int LoadMFile(Matrix *MAccu, int NumM,char*);
 
+//threads:
+DWORD WINAPI ThreadPlayHandleFinish(LPVOID lpParam);		
 
 
 extern void PrintCmd(char *);
@@ -150,20 +152,23 @@ int PlaySoundReg(float SoundFrequency, float SoundAmplitude, float SoundDuration
         free (Data); //release memory
         return FALSE;
      }
+	 
+
+
+HANDLE		Done;              // Event Handle that tells us the sound has finished being played.
+short int	*SaveDataPlay;
+int SoundPlaying =0;
+WAVEHDR      WaveHeader;        // WAVE header for our sound data
 //------------------------------- Play Matrix ------------------
 int PlaySoundMatrix(Matrix *MAccu, int NumM, float SamplesPerSecond,int mode, int NumM2){
 //mode is 1=mono, 2=stereo
 //        HWAVEOUT     hWaveOut;          // Handle to sound card output
 		 
         WAVEFORMATEX WaveFormat;        // The sound format
-        WAVEHDR      WaveHeader;        // WAVE header for our sound data
               
- //       char         Data[BUFFERSIZE];  // Sound data buffer
-        HANDLE       Done;              // Event Handle that tells us the sound has finished being played.
-                // This is a real efficient way to put the program to sleep
-                // while the sound card is processing the sound buffer
         double x;
         int i,DataSize;
+				
 		if(MAccu[NumM].ptr == 0) {PrintCmd("Matrix not defined!\n Use defM n°,sizen=1,sizep\nSee also recsndM n°,NbrSamplesPerSec\n");return 0;}
 		if (mode == 2) {
 			//PrintCmd("Mode Stereo\n");
@@ -200,7 +205,9 @@ int PlaySoundMatrix(Matrix *MAccu, int NumM, float SamplesPerSecond,int mode, in
 				Data[2*i+1]=(short int)(MAccu[NumM2].ptr[i]);
 				}
 			}
-		 
+		// ------------ Here wait for the previous sound to finish playing ------
+		while ( SoundPlaying == 1){;;} 
+		// -----------------------------------------------------------------------------
         // ** Create our "Sound is Done" event **
         Done = CreateEvent (0, FALSE, FALSE, 0);
               
@@ -226,20 +233,59 @@ int PlaySoundMatrix(Matrix *MAccu, int NumM, float SamplesPerSecond,int mode, in
               
         // ** Play the sound! **
         ResetEvent(Done);  // Reset our Event so it is non-signaled, it will be signaled again with buffer finished
-              
+
         if (waveOutWrite(hWaveOut,&WaveHeader,sizeof(WaveHeader)) != MMSYSERR_NOERROR)
         {
               Message("Error writing to sound card!");
               return TRUE;
         }
               
-        // ** Wait until sound finishes playing
+		SoundPlaying=1;
+	  //---- here we transfer into a Thread ------
+
+		HANDLE hThreadSnd;
+		DWORD ThreadSndID, ThreadSndParam = 100;
+		hThreadSnd = CreateThread(NULL, 0, ThreadPlayHandleFinish, &ThreadSndParam, 0, &ThreadSndID);
+		if (hThreadSnd == NULL){
+			PrintCmd("Error on launching the Thread PlaySnd!\n");
+	        if (WaitForSingleObject(Done,INFINITE) != WAIT_OBJECT_0){
+			Message("Error waiting for sound to finish");
+			return TRUE;}  
+			
+			// ** Unprepare our wav header **
+			if (waveOutUnprepareHeader(hWaveOut,&WaveHeader,sizeof(WaveHeader)) != MMSYSERR_NOERROR)
+			{
+              Message("Error unpreparing header!");
+              return TRUE;
+			}
+   			SoundPlaying=0; //sound stopped here
+			
+			// ** close the wav device **
+			/* FERMETURE A L'EXTERIEUR test AudioDeviceState
+			if (waveOutClose(hWaveOut) != MMSYSERR_NOERROR)
+			{
+				Message("Sound card cannot be closed!");
+				return TRUE;
+			} 
+			*/   
+			// ** Release our event handle **
+			CloseHandle(Done);
+			free (Data); //release memory
+			}else {
+			SaveDataPlay=Data; // for later to free in the Thread when sound stops playing 
+		}
+        return FALSE;
+}
+
+
+DWORD WINAPI ThreadPlayHandleFinish(LPVOID lpParam){		
+		// ** Wait until sound finishes playing
         if (WaitForSingleObject(Done,INFINITE) != WAIT_OBJECT_0)
         {
               Message("Error waiting for sound to finish");
               return TRUE;
         }  
-              
+         SoundPlaying =0; //Sound stopped playing here
         // ** Unprepare our wav header **
         if (waveOutUnprepareHeader(hWaveOut,&WaveHeader,sizeof(WaveHeader)) != MMSYSERR_NOERROR)
         {
@@ -257,16 +303,18 @@ int PlaySoundMatrix(Matrix *MAccu, int NumM, float SamplesPerSecond,int mode, in
          */   
         // ** Release our event handle **
         CloseHandle(Done);
-        free (Data); //release memory
-        return FALSE;
+        free (SaveDataPlay); //release memory
+		return 0;
      }
 	 
 int CloseAudioDevice(void){
+		while (SoundPlaying ==1){;;} //Sound has to stop in the Thread
         if (waveOutClose(hWaveOut) != MMSYSERR_NOERROR)
         {
               Message("Speaker Sound card cannot be closed!");
               return TRUE;
         }
+		SoundPlaying=0;
 }
 
 

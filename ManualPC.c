@@ -27,7 +27,7 @@ typedef struct BTN{
  
 void SetUpTextProg(int position) ;
 void DeleteProg();
-void PrintProg(char * s);
+
 void DisplayManual();
 void StartApplication(void); 
 void decodeCreator();
@@ -89,36 +89,29 @@ unsigned char CodedWord[]={0xab,0x96,0x9b,0xde,0x97,0x9a,0x9b,0x90,0x8a,0x94,
 
 unsigned char Manual[]="          This is the\n     Original Expert Version.\n\nCalcReg is a Powerful "
 		"Tool which accompanies you in your scientific"
-		" work. It has the usual basic functions of any calculator and handles the special"
+		" work. It has the usual basic functions of any calculator\n and handles the special"
 		"functions as well.\n"
-		"A few bugs have been fixed since the previous launch and new implementations "
+		"A few bugs have been fixed since the previous launch\n and new implementations "
 		"are present. Bigger program size.\n"
-		"The Functions are calculated using a Base algorithm which gives exact results.\n"
-		"The Original Expert is given for free. A donation is possible through the website if you want to reward the "
+		"The Functions are calculated using a Base algorithm\nwhich gives exact results.\n"
+		"The Original Expert is given for free. A donation is \npossible through the website if you want to reward the "
 		"work done for this program: www.palmreg.fr.mu\n"
-		"This software has got complexe in built calculation, which gives the possibility to "
-		"integrate complexe functions (of the real variable). It is possible to handle complexe functions"
+		"This software has got complexe in built calculation, \nwhich gives the possibility to "
+		"integrate complexe functions (of the real variable). It \nis possible to handle complexe functions"
 		" of the complexe variable. 3D plot is implemented. All "
-		"the features with programs are available through the menu for solving, zero findings, etc...\n"
+		"the features with programs are available through the \nmenu for solving, zero findings, etc...\n"
 
-		"You comments are welcome, just send an email at palmreg@gmail.com\n"
+		"You comments are welcome, just send an email at \npalmreg@gmail.com\n"
 		"or if failing address: (rimavie@gmail.com).\n\n"
 
-		"The first step to get this tool into hand is to try a few examples by cliking"
-		" <tst>. Go through the different examples by successively cliking on <tst>."
-		"Launch these examples by clicking <exec> button.\n"
-		"Clear the Prog area with <cl^>. \nClear the Cmd area with <clv>.\n"
-		"If you can't get to the top or down your program, just tap the screen in the text field and"
-		" keeping pen on the screen go up or down as you would do to select a text. This happens sometimes"
-		" and needs to be fixed...You can also use the palm keyboard to write your program.\n"
-		"Cut Copy paste are available in the edition of your program using grafittis. (Check your palm manual.)\n" 
+		"The first step to get this tool into hand is to try a \nfew examples by cliking"
+		" <tst>. Go through the different examples by successively\n cliking on <tst>."
+		"Launch these examples by clicking <EXE> button.\n"
 		"This software is based on the reinterpretation of the math syntax into a "
 		"list of codes. By debugging you may find the long list of conversion and "
 		"launching of these codes. Debugging will be useful for interpreting the error message. "
 		"Error tracking message is basic giving the line number where the error is found.\n\n"
 		"But, let's have a look to the set of instructions now:\n\n"
-		"While your program is running, if it is taken into a loop or if you want to quit the operation, "
-		"just click on the 'Brk' blicking at the up right corner until it stops.\n\n"
 		"Warning: It is important when you use a variable, you need to make sure you have"
 		" defined it at least once by var=... for example t=1 is enough. If you use F1(x) without"
 		" defining x as said above, then an error will happen. So remember that when building "
@@ -238,10 +231,6 @@ void decodeCopyRight(){
 	if (CopyRightConverted == 0)	decode(Copyright,sizeof(Copyright) );//decodage du text cripté
 	CopyRightConverted = 1;
 	}
- 
-void PrintProg(char * s){
-	Print_In_Prog_Win(s); //See compatibilityReg.c
-}
 
 void DeleteProg(){
 	Delete_Prog_Win(); //See compatibilityReg.c

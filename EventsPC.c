@@ -75,14 +75,9 @@ int MainFormHandleEvent(int event) {
 				
 			case btnCP:
 				//if (FrmAlert (SureDeleteProg) == 0){DeleteProg();}
-				printf("Alert Sure?\n");
+				PrintCmd("Alert Sure?\n");
    				break;
-			case btnkeypad:
-				//ShowKeyPad();FrmHideObject(Frm, (FrmGetObjectIndex(Frm, btnkeypad)));				
-				break;
 			case btngfxwork:
-				//FrmHideObject(Frm, (FrmGetObjectIndex(Frm, btngfxwork)));
-				//FrmShowObject(Frm, (FrmGetObjectIndex(Frm, btngfxmove)));
 				GfxZoom=1;
 				GfxMove=0;
 				break;
@@ -94,8 +89,6 @@ int MainFormHandleEvent(int event) {
 			case btngfxmove:
 				GfxZoom=0;
 				GfxMove=1;
-				//FrmHideObject(Frm, (FrmGetObjectIndex(Frm, btngfxmove)));
-				//FrmShowObject(Frm, (FrmGetObjectIndex(Frm, btngfxwork)));
 				break;
 
 			case btngfxmoins:
@@ -108,7 +101,6 @@ int MainFormHandleEvent(int event) {
 					DimXmax=newDimXmax;
 					DimYmin=newDimYmin;
 					DimYmax=newDimYmax;
-					//IncX=IncX*4/3;
 					RedrawingGfx=1;
 					Execute();
 					XpenDown = 0;	XpenUp = 0; PenMoved=0;

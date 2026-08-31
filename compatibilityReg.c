@@ -7,13 +7,15 @@
 
 extern HDC hDC;
 extern HWND hEditP,hEditC;
+extern HWND hmywin;
+void Print_In_Prog_Win(char *s); 
+void Print_In_Cmd_Win(char *s); 
+void Delete_Cmd_Win(void);
+void Delete_Prog_Win(void);
+void WinEraseRectangleReg(int DX,int DY,int DW,int DH);
 
-	void Print_In_Prog_Win(char *s); 
-	void Print_In_Cmd_Win(char *s); 
-	void Delete_Cmd_Win(void);
-	void Delete_Prog_Win(void);
 
-	void WinDrawLine(int x1, int y1, int x2, int y2){
+void WinDrawLine(int x1, int y1, int x2, int y2){
 		MoveToEx(hDC,x1,y1,NULL);//chgPOs2Win32
 		LineTo(hDC,x2,y2);
 		return;
@@ -24,13 +26,13 @@ extern HWND hEditP,hEditC;
 			return; */
 	//for some reason the program is unable to make 
 	//sprintf ("\0d0a...") so we have to transform \n into \0d0a by hand
-		int i,k=0,size,nbrEnter;
+		int i,k=0,size,nbrEnter=0;
 			size=strlen(s);
 			for (i=0;i<size;i++) {if (s[i]==0x0a)nbrEnter++;}
-//			char * p = (char*) malloc ( (size+nbrEnter)*sizeof(char));
-			char * p = (char*) malloc ( (size+nbrEnter+1000)*sizeof(char));//+1000 because of bugs
-			p[0]=s[0];
-			for (i =1;i<(size+nbrEnter);i++){
+			char * p = (char*) malloc ( (size+nbrEnter+1)*sizeof(char));
+			if (s[0]==0x0a) {p[0]=0x0d;p[1]=0x0a;k++;}
+			else p[0]=s[0];
+			for (i =1;i<size;i++){
 				if (s[i]==0x0a && s[i-1]!=0x0d) {p[i+k]=0x0d;p[i+k+1]=0x0a;k++;}
 				else p[i+k]=s[i];
 				}
@@ -49,7 +51,7 @@ extern HWND hEditP,hEditC;
 			char * p = malloc ( (size+nbrEnter+1)*sizeof(char));
 			if (s[0]==0x0a) {p[0]=0x0d;p[1]=0x0a;k++;}
 			else p[0]=s[0];
-			for (i =1;i<(size+nbrEnter);i++){
+			for (i =1;i<size;i++){
 				if (s[i]==0x0a && s[i-1]!=0x0d) {p[i+k]=0x0d;p[i+k+1]=0x0a;k++;}
 				else p[i+k]=s[i];
 				}
@@ -77,10 +79,12 @@ void Delete_Prog_Win(void){
 }	
 void Delete_Cmd_Win(void){
 //SetWindowText(hEditC, "---");
+ShowWindow(hmywin,SW_SHOW);
+UpdateWindow(hmywin);
 SetWindowText(hEditC, 0);
 }
 	
-	void WinEraseRectangleReg(int DX,int DY,int DW,int DH){
+void WinEraseRectangleReg(int DX,int DY,int DW,int DH){
 		RECT rP;
 				rP.left		= DX;
 				rP.right	= DX+DW;

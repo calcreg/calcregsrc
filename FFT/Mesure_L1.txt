@@ -1,0 +1,89 @@
+//Faire Gfx ctrl OFF
+//Puis selectionner un fenetrage
+//revenir aux boutons pour le valider
+//Faire See
+//Faire df(x) pour obtenir la derivée
+
+//Circuit R-L pour mesure de L
+menux=100
+menuy=350
+createbtn1,menux,menuy,60,20,"Rec Snd"
+createbtn2,menux,(menuy+20),60,20,"Quit"
+createbtn3,menux,(menuy+40),60,20,"Get a"
+createbtn4,menux,(menuy+60),60,20,"Get b"
+createbtn5,menux,(menuy+80),60,20,"See"
+createbtn6,menux,(menuy+100),60,20,"df(x)"
+createbtn7,(menux+80),(menuy),120,20,"gfx-ctrl OFF"
+
+Nsp=200000
+a=253
+b=281
+defM0,1,Nsp
+defM1,1,Nsp
+
+LoopClv:
+c=key(0)
+mx=key(4)
+mx==1=>bsr GetABWindow
+c==1 => bsr RecordSound
+c==2 => goto Quit
+c==3 => bsr Geta
+c==4 => bsr Getb
+c==5 => bsr See
+c==6 => bsr Differentiate
+c==7 => action 1
+goto LoopClv
+
+Quit:
+end
+
+GetABWindow:
+key(0)
+mx=key(3)
+mx==1=>goto GetABWindow
+a= key(1)
+b=key(5)
+print a,"a="
+print b,"b="
+action 2
+rts
+
+
+Geta:
+a=?(0)
+print a
+rts
+
+Getb:
+b=?(0)
+print b
+rts
+
+
+RecordSound:
+recsndM0,Nsp
+gfxdim 0,(Nsp/200),-20000,20000,1
+grid 100
+x=1
+Trf(x)=M0(1,x)
+saveM0,"SignalRLC.m"
+rts
+
+See:
+loadM0,"SignalRLC.m"
+gfxdim a,b,-25000,25000,1
+grid 100
+x=1
+Trf(x)=M0(1,x)
+rts
+
+Differentiate:
+x=a
+loopd:
+y=x+1
+M1(1,x)=M0(1,y)-M0(1,x)
+x=x+1
+x<b=>goto loopd
+Trf(x)=M1(1,x)
+rts
+

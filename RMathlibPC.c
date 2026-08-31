@@ -17,7 +17,7 @@ extern void WinDrawLine(int , int, int,int);
 extern void SelectionStylo(COLORREF);
 
 //windows stuff
-extern HWND hmywin;
+extern HWND hmywin,hEditC;
 extern HDC hDC; 
 extern HBRUSH 	hbrush;
 static HBRUSH 	BrushTable[16];
@@ -59,7 +59,6 @@ extern int SerialReady; //Serial device opened =1, closed =0
 
 extern void SetUpTextProg(int position);
 extern void DeleteProg();
-extern void PrintProg(char * s);
 extern float Oscilloscope(float a);
 extern void Delete_Cmd_Win();
 
@@ -76,9 +75,8 @@ extern void Delete_Cmd_Win();
 //------- acos ----------  MathError=6 out of range acos, asin
 
 void PrintCmd(char * s);
-void  Printf(const char * format, ...) ; //should be Printf and not printf otherwise it conflicts with StdIOPalm.h definition
-void HideKeyPad() ;
-void ShowKeyPad() ;
+void PrintProg(char * s);
+
 
 char Octet(char * StringPointer) ; 
 float Rsscanf (char *StringNbr,char *s ,float *Nbr) ;
@@ -88,6 +86,7 @@ void SaveProg();
 void LoadProg();
 int CompareVarNames(char* txt, int i1, int i2);
 void RemoveComments(char *txt);
+int PreProcesser(char *);
 
 void Rprintf(float x);//write and enter
 void REPrintf(float x);//write nbr but don't enter
@@ -189,6 +188,11 @@ extern int GridSet; //for the grid =0 grid off, =1 grid on color Red
 extern int ColorGraph; //the color of the graph
 extern int Keypad;
 extern int GfxBigDisplay;
+
+//key or mouse rectangle
+extern int Button;
+extern int XpenDown,YpenDown,MouseLeftClick,PenMoved,XpenUp,YpenUp;
+MSG Msg;
 
 
 //math
@@ -1366,14 +1370,13 @@ int MatrixMultiplicationComplexe(Matrix *MAccu,floactet *CodeListLine,int i, int
 			float *mat2=MAccu[NumM2].ptr;
 			float *Cmat1=MAccu[NumM1].Cptr;
 			float *Cmat2=MAccu[NumM2].Cptr;
-			float Sum=0,Sum_cmplx=0;
+			float Sum,Sum_cmplx;
 				for (j=0;j<MAccu[NumM1].n;j++){
 					for (k=0;k<MAccu[NumM2].p;k++){
-						Sum=0;
-						//for (l=0;l<MAccu[NumM1].p;l++)Sum=Sum+MAccu[NumM1].ptr[j*MAccu[NumM1].p+l]*MAccu[NumM2].ptr[l*MAccu[NumM2].p+k];
+						Sum=0;Sum_cmplx=0;
 						for (l=0;l<MAccu[NumM1].p;l++){
 							a1=mat1[j*M1p+l]; b1=Cmat1[j*M1p+l];
-							a2=mat2[j*M1p+l]; b2=Cmat2[j*M1p+l];
+							a2=mat2[l*M2p+k]; b2=Cmat2[l*M2p+k];
 							Sum=Sum + a1*a2-b1*b2;
 							Sum_cmplx =Sum_cmplx + a2*b1+a1*b2;
 						}
@@ -1608,7 +1611,7 @@ int MathFunctionMatrices (Matrix *MAccu, floactet *CodeListLine,int i){
 		//If NumM >NbrMaxMatrix/2 We don't need to create a new matrix
 		//If NumM <NbrMaxMatrix/2 We need to create a new matrix
 		int NumM = (int) CodeListLine[i+1].value;
-		if (NumM < NbrMaxMatrix) {
+		if (NumM < NbrMaxMatrix/2) {
 			//create a new matrix
 			for (m=NbrMaxMatrix/2; m<NbrMaxMatrix; m++)if (MAccu[m].ptr == 0) goto FoundFreeMatrix;
 			PrintCmd("Not enough available matrices for solving!\n");
@@ -2080,8 +2083,93 @@ int CalculFunctionComplexe (floactet *CodeListLine,int i){
 			}
 			val_cmplx=0;goto KeepOn;
 			}	//arg(z)
-		if (CodeVal==31 ) {PrintCmd("sign ! undefined with complexe\n");MathError = 1;val=0;val_cmplx=0;goto KeepOn;}	//module(z)
+ 		if (CodeVal==26 ) {
+								switch((int)CodeListLine[i+1].value){
+								case 0:
+								GetMessage(&Msg, hmywin, 0, 0);
+								TranslateMessage(&Msg);
+								DispatchMessage(&Msg);
+								
+								val=(float)Button;val_cmplx=0;Button=0;
+								break;
+								
+								case 1:
+								//val=(float)XpenDown;
+								val=(float)((XpenDown-DrawZoneX)/DrawZoneW*(DimXmax-DimXmin)+DimXmin);
+								val_cmplx=0;
+								break;
+								case 2:
+								val= (float)((-YpenDown+DrawZoneY+DrawZoneH)/DrawZoneH*(DimYmax-DimYmin)+DimYmin);
+								val_cmplx=0;
+								//val=(float)YpenDown;
+								break;
+								case 3:
+								val=(float)MouseLeftClick;
+								val_cmplx=0;
+								break;
+								case 4:
+								val=(float)PenMoved;PenMoved=0;
+								val_cmplx=0;
+								break;
+								case 5:
+								val=(float) ((XpenUp-DrawZoneX)/DrawZoneW*(DimXmax-DimXmin)+DimXmin);
+								val_cmplx=0;
+								//val=(float)XpenUp;
+								break;
+								case 6:
+								val=(float)((-YpenUp+DrawZoneY+DrawZoneH)/DrawZoneH*(DimYmax-DimYmin)+DimYmin);
+								val_cmplx=0;
+								//val=(float)YpenUp;
+								break;
+								}
+							}	//key
 
+		if (CodeVal==31 ) {if (CodeListLine[i+1].value > 0) val=1;else val=-1;val_cmplx=0;goto KeepOn;}	//sign
+		if (CodeVal==32 ) {
+			char *cmdtext;
+			val_cmplx=0;
+			DWORD	CmdTextLength;
+		LoopTextGetNbr:
+			CmdTextLength = GetWindowTextLength(hEditC);
+			if (CodeListLine[i+1].value==1){
+				if (CmdTextLength>=2){
+						cmdtext=(char*)malloc((CmdTextLength+1)*sizeof(char));
+						if (cmdtext ==0){PrintCmd("Couldn't allocate memory!\nTaking value 0\n");val=0;goto KeepOn;}
+						GetWindowText(hEditC, cmdtext, CmdTextLength);
+					if (cmdtext[CmdTextLength-2]!=0x0D){
+						Wait(100); //wait 100 milliseconds
+						free(cmdtext); 
+						goto LoopTextGetNbr;
+					}
+				}else {Wait(100); goto LoopTextGetNbr;}
+			}
+			if (CodeListLine[i+1].value==0){
+			if (CmdTextLength == 0 ){PrintCmd("No number in Cmd window:\ntaking value 0\n");val=0;goto KeepOn;}
+			cmdtext=(char*)malloc((CmdTextLength+1)*sizeof(char));
+			if (cmdtext ==0){PrintCmd("Couldn't allocate memory!\nTaking value 0\n");val=0;goto KeepOn;}
+			GetWindowText(hEditC, cmdtext, CmdTextLength);
+			}
+			//Search for the last Return character Last char should be "return"
+			//if (cmdtext[CmdTextLength-2]==0x0D)PrintCmd("prev char is 0x0D\n");
+			//Last char is 0x0D if it is returned
+			/*char msg_s[100];
+			sprintf(msg_s,"char-3 is : %c\n",cmdtext+CmdTextLength-3);
+			PrintCmd(msg_s);*/
+			int pt=1;
+			while (pt<CmdTextLength && cmdtext[CmdTextLength-pt]!=0x0A)//it doesn't work with 0x0D
+				{pt++;}
+			//here i should indicate the position of the number in cmdtext
+			sscanf(cmdtext+CmdTextLength-pt,"%f",&val);
+			val_cmplx=0;			
+			//sprintf(msg_s,"got number: %f\n",val);
+			//PrintCmd(msg_s);
+			free(cmdtext);
+			
+		}//getnbr: ?()	
+		
+		
+		
+		
 		KeepOn:
 		if (MathError == 0) {CodeListLine[i].code=1; CodeListLine[i].value=val;CodeListLine[i].cmplx=val_cmplx;}
 		k=i+1;
@@ -2231,6 +2319,17 @@ int CompareVarNames(char* txt, int i1, int i2){ //returns 0 if same
 	return 1; //if it returns from here, it means something went unexpectadly
 }
  
+int PreProcesser(char *mnemotext){
+/* PrepoSignal:
+	//#COMPLEXE	1
+	*/
+	int PreproSignal=0;
+	//search for //#COMPLEXE
+	if (strstr(mnemotext,"//#COMPLEXE")!=0) PreproSignal=1;
+	if (strstr(mnemotext,"//#NOCOMPLEXE")!=0) PreproSignal=2;
+	
+	return PreproSignal;
+}
 
 
 void RemoveComments(char *txt){
@@ -2349,6 +2448,11 @@ void PrintCmd(char * s) {
 	if (StartInfoDone==1) {DeleteCmd();StartInfoDone=0;}
 	Print_In_Cmd_Win(s); //See compatibilityReg.c
 }
+ 
+void PrintProg(char * s){
+	Print_In_Prog_Win(s); //See compatibilityReg.c
+}
+
 
  char Octet(char * StringPointer){
 	return StringPointer[0];
@@ -2890,7 +2994,7 @@ float RMath_asin(float x){
 		if (x>=1) return pi/2;
 		if (x<0) a=-pi/2;//start
 		else a=0;
-		b=pi/2;//stop at ln11
+		b=pi/2;
 		h=0.1;
 		if (FunctionPrecision == 1) 	H=0.0000001;//precision of the result
 		else H=HlowPrecision; //Low precision;
@@ -2903,7 +3007,7 @@ float RMath_asin(float x){
 		t=t+h;
 		Y1=RMath_sin(t)-x;
 		//printf("e(t= %f)=   %f\n",t,Y1);
-		if (t>b) {PrintCmd("acos not found\n");goto ErrorOut;}
+		if (t>b) {return pi/2;} //exceeding research because value is pi/2
 		if(Y0*Y1>0) goto Loop;
 		t=t-h;
 		h=h/10;
@@ -2915,46 +3019,6 @@ float RMath_asin(float x){
 	
 	
 	//------------------------- End math -----------------
-
-	
-	
-	
-		
-void HideKeyPad(){
-/*
-		FormPtr 	Frm;
-		FieldPtr 	FldPtr;
-		UInt16 k;
-		Frm = FrmGetFormPtr(frmadc16);
-		for (k=btntan;k<=btnE;k++){
-		FrmHideObject(Frm, (FrmGetObjectIndex(Frm, k)));
-		Keypad=0;
-		}
-		if (GfxBigDisplay == 1) {
-			FrmHideObject(Frm, (FrmGetObjectIndex(Frm, fld_prog))); 
-			FrmHideObject(Frm, (FrmGetObjectIndex(Frm, fld_cmd))); 
-		}
-*/
-	printf("hide keypad\n");
-	}	
-void ShowKeyPad(){
-/*
-		FormPtr 	Frm;
-		FieldPtr 	FldPtr;
-		UInt16 k;
-		Frm = FrmGetFormPtr(frmadc16);
-		for (k=btntan;k<=btnE;k++){
-		FrmShowObject(Frm, (FrmGetObjectIndex(Frm, k)));
-		}
-		Keypad=1;
-		//Redraw also the prog and cmd fields:
-			if (GfxBigDisplay == 1) {
-				FrmShowObject(Frm, (FrmGetObjectIndex(Frm, fld_prog))); 
-				FrmShowObject(Frm, (FrmGetObjectIndex(Frm, fld_cmd))); 
-				}
-				*/
-	printf("show keypad\n");
-	}
 	
 
 	
@@ -2964,7 +3028,6 @@ void Tracer3DAxis(){
 	float color=0;
 
 	GridSet=1;
-	//HideKeyPad(); //hide the keypad
 	SelectionStylo(0x000000);//noir
 		
 //	Line(0,0,Dx(Xmax3d,0,0),Dy(Xmax3d,0,0),color);
@@ -3005,10 +3068,10 @@ void TracerAxis(int centerx,int centery,int width, int height){
 	WinDrawLine(centerx-width/2,centery-height/2, centerx-width/2, centery+height/2);	
 	WinDrawLine(centerx+width/2,centery-height/2, centerx+width/2, centery+height/2);	
 
-	centerx=0;
-	centery=0;
-	height=(-DimYmin+DimYmax);
-	width=(-DimXmin+DimXmax);
+//	centerx=0;
+//	centery=0;
+//	height=(-DimYmin+DimYmax);
+//	width=(-DimXmin+DimXmax);
 	Line(DimXmin,0,DimXmax,0,color);
 	Line(0,DimYmin,0,DimYmax,color);
 	if (StepX !=0){

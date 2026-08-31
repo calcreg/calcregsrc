@@ -36,7 +36,8 @@
 	void DoFileSave(HWND hwnd);
 	char* DoLoadFileReg();
 	char* DoSaveFileReg();
-
+	
+	extern void PrintCmd( char*);
 	extern int Rabs(int);
 	extern Rprintf(float);
 HINSTANCE	hinst=NULL;

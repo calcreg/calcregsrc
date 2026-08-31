@@ -1,0 +1,71 @@
+//play a sound in microphone
+
+//bsr ReadSpectrum
+//end
+bsr CalculRLC
+//end
+
+Nsp=200000
+
+tmp=1  //s
+
+defM1,1,(tmp*Nsp)
+fillM1,0,tmp
+pi=3.1415927
+//M0=0.5*sin(2*pi*50*M1)+ 0.3*cos(2*pi*100*M1)
+defM0,1,(tmp*Nsp)
+recsndM0,Nsp
+//loadM0,"SignalRLC_7268+L.m"
+gfxdim -0.1,(Nsp/400),-2000,2000,1
+grid1000
+x=1
+Trf(x)=M0(1,x)
+//saveM0,"SignalRLC_7268+L.m"
+//end
+
+M1=M0 //to get same mtx size
+fillM1,0,tmp // up to 2sec?
+
+f=1/tmp
+pi=3.1415927
+w=2*pi*f
+
+km=25000  // ------- kmax
+defM3,1,km
+defM7,1,km
+fillM3,0,0
+fillM7,0,0
+//test fftM:Remove 3 comments
+fftM0,3,7,253,10000
+bsr DisplaySpectrum
+saveM3,"M3SpecRLC.m"
+saveM7,"M7SpecRLC.m"
+end
+
+
+DisplaySpectrum:
+gfxdim -0.1,6000,-1,400,1
+grid100
+x=1
+Trf(x)=abs(M3(1,x))
+x=1
+Trf(x)=abs(M7(1,x))
+rts
+
+ReadSpectrum:
+loadM3,"M3SpecRLC.m"
+loadM7,"M7SpecRLC.m"
+km=mtxp(M3)
+bsr DisplaySpectrum
+rts
+
+
+CalculRLC:
+pi=3.1415927
+//k=3.917826E3
+k=3.855636E+3
+C=220E-9
+L=1/((2*pi*k)^2*C)
+print L,"L(H)="
+rts
+

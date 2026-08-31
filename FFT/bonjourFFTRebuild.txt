@@ -1,0 +1,70 @@
+Nsp=8192
+//loadsndM0,"bonjour.wav"
+tmp=1  //s
+loadM0,"bonjour.m"
+playsndM0,Nsp
+
+gfxdim -0.1,Nsp,-8192,Nsp,5
+grid1000
+x=1
+Trf(x)=M0(1,x)
+end
+M1=M0 //to get same mtx size
+fillM1,0,2 // up to 2sec?
+
+f=1/tmp
+pi=3.1415927
+w=2*pi*f
+
+km=800  // ------- kmax
+defM3,1,km
+defM7,1,km
+
+k=1
+loop:
+M3(1,k)= 1/Nsp*M0*trp(cos(k*w*M1))
+M7(1,k)= 1/Nsp*M0*trp(sin(k*w*M1))
+k=k+1
+k<km=>goto loop
+bsr DisplaySpectrum
+
+Nsp=8192 //--------- Nsp file2
+defM4,1,Nsp
+defM5,1,km //same as M3
+fillM5,1,km
+t=1
+dt=tmp/Nsp
+loop2:
+M4(1,t)= M3*trp(cos(t*dt*w*M5))+M7*trp(sin(t*dt*w*M5))
+t=t+1
+t<Nsp=>goto loop2
+
+bsr jouer
+
+boucle:
+clavier = key(0)
+clavier == 9 => goto outing
+clavier == 8 => bsr jouer
+goto boucle
+
+outing:
+clscmd
+print0,"out"
+end
+
+jouer:
+playsndM4,Nsp
+rts
+end
+
+
+
+
+DisplaySpectrum:
+gfxdim -0.1,km,-100,100,1
+grid10
+x=1
+Trf(x)=abs(M3(1,x))
+x=1
+Trf(x)=abs(M7(1,x))-10
+rts

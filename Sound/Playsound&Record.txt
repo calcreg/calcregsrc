@@ -1,0 +1,15 @@
+
+Nsp=92000
+defM1,1,Nsp
+defM2,1,Nsp
+defM3,1,Nsp
+fillM1,0,1
+
+M2=8192*cos(2*3.1415*440*M1)
+playsndM2,Nsp
+recsndM3,Nsp
+gfxdim 0,1000,-1000,1000,1
+grid 500
+x=1
+Trf(x)=M3(1,x)
+end
