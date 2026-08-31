@@ -1,0 +1,4 @@
+grid 10
+
+wtext100,20,"hello ssdddfjf1"
+wtext100,40,"how are you?"

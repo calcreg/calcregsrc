@@ -59,9 +59,9 @@ int MainFormHandleEvent(int event) {
 		switch (event) {
 	
    			case btnstart:	
-				if (ProgExecution == 1){
+				if (ProgInExecution == 1){
 					PrintCmd ("program didn't finish yet\n");
-					return true;
+					return TRUE;
 				}else{
 					GfxMove=1;	GfxDerivate=0;GfxZoom=0; //Re-init each time we launch with EXE 
 					SetUpTextProg(0);
@@ -140,7 +140,7 @@ int MainFormHandleEvent(int event) {
 				
 				
    			case btntest:
-				DeleteProg();
+				//DeleteProg();
 				if (testProg == 0 ) PrintProg("defM0,1,10\ndefM1,1,10\nfillM0,0,2\nM1=M0\nprint M1(1,5)\nM1=cos(M0)\nprint M1(1,1)\n");
 				//if( testProg == 0 ) PrintProg( "gfxdim -3,3,-10,3,0.1\nx=-3\nTrf(x)= -x + 1\nx=-3\nTrf(x)= -x^2 + 1\n");
 				if( testProg == 1 ) PrintProg( "gfxdim -6,6,-1.2,1.2,0.1\nx=-6\nTrf(x)=sin (x)\nTrf(x)= cos (x) \n");
@@ -195,6 +195,39 @@ int MainFormHandleEvent(int event) {
 	   		case btn2:	
 				Button=2;
    				break;
+	   		case btn0:	
+				Button=0;
+   				break;
+	   		case btn10:	
+				Button=10;
+   				break;
+	   		case btn11:	
+				Button=11;
+   				break;
+	   		case btn12:	
+				Button=12;
+   				break;
+	   		case btn13:	
+				Button=13;
+   				break;
+	   		case btn14:	
+				Button=14;
+   				break;
+	   		case btn15:	
+				Button=15;
+   				break;
+	   		case btn16:	
+				Button=16;
+   				break;
+	   		case btn17:	
+				Button=17;
+   				break;
+	   		case btn18:	
+				Button=18;
+   				break;
+	   		case btn19:	
+				Button=19;
+   				break;
 	   		case btnpnt:	
 				PrintProg(".");
    				break;
@@ -209,9 +242,6 @@ int MainFormHandleEvent(int event) {
    				break;
 	   		case btn1:	
 				Button=1;
-   				break;
-	   		case btn0:	
-				PrintProg("0");
    				break;
 	   		case btnpow:	
 				PrintProg("^");

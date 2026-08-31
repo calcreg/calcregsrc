@@ -8,6 +8,7 @@
 
 
 /* Includes */
+#include "CalcRegSoftware.h"
 #include <windows.h>			// system
 #include <Stdio.h>
 
@@ -17,6 +18,11 @@ typedef struct var{//takes the name of the Accu
 	int adr;	// Adr of the variable in the WholeMnemoProg list
 }var;
 
+
+typedef struct BTN{
+	int flag;
+	HWND btn;
+	}BTN;
 
  
 void SetUpTextProg(int position) ;
@@ -215,11 +221,13 @@ void StartApplication(void) {
 
 	decode (Copyright2,sizeof(Copyright2) ); //decodage du text cripté avec un cosinus
 	PrintCmd(Copyright2);
-	PrintCmd("Click Test or Read Manual\n");
+	#ifdef CalcRegSoftware
+		PrintCmd("Click Test or Read Manual\n");
+	#endif
 	StartInfoDone=1;//after that the next printing will first clean the cmd field
 	//decode(Copyright,sizeof(Copyright) );//decodage du text cripté
 	//decode (CodedWord,sizeof(CodedWord) );//decodage du text cripté
-}
+	}
 
 void decodeCreator(){
 	if (CodedWordConverted == 0) decode (CodedWord,sizeof(CodedWord) );//decodage du text cripté

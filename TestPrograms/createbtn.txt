@@ -1,0 +1,25 @@
+
+
+createbtn1,400,10,40,20,"btn1"
+createbtn2,400,80,40,20,"btn2"
+createbtn3,400,120,40,20,"btn3"
+
+loop:
+clavier=key(0)
+clavier == 1 =>bsr btn1
+clavier == 2 =>bsr btn2
+clavier == 3 =>goto btn3
+goto loop
+
+btn2:
+wtext10,50,"btn2"
+rts
+
+btn1:
+wtext10,50,"btn1"
+rts
+
+btn3:
+wtext10,50,"btn3"
+end
+

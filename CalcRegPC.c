@@ -11,6 +11,7 @@
 #include<stdlib.h>
 
 #include "CalcReg.h"
+#include "CalcRegSoftware.h"
 
 //--------------------------------------------
 #define	ChartRectLeft		30
@@ -21,7 +22,7 @@
 #define VertScale			ChartRectHeight / 100
 #define ProgTextMaxChars 100
 #define MnemoListSize 100
-#define CodeListSize 1000 // nbr of Codes floactet = octet + float
+#define CodeListSize 10000 // nbr of Codes floactet = octet + float
 
 #define LabelListSize 200
 #define CharMaxOneLine 200 //printing  maximum 200 chars in once => s[200]
@@ -34,6 +35,13 @@ typedef struct floactet{
 	float value;
 	float cmplx;
 }floactet;
+
+/*
+typedef struct BTN{
+	int flag;
+	HWND btn;
+	}BTN;
+*/
 
 typedef struct Matrix{
 	int n;	//n line
@@ -218,8 +226,8 @@ float SoundFrequency,SoundAmplitude,SoundDuration,SamplesPerSecond;
 static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListSize
 static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_trp_mtxn_mtxp_";
 //									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26    27     28     29
-static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_box3d_getserial_wait_bsr_rts_putserial_playsound_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_";
-//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25
+static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_";
+//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26
 //char blabli[]= { {'hello'},0x1,{'hi'},0x0};
 
 //--------------labels
@@ -249,6 +257,9 @@ int NbrMaxMatrix = 2*25; //always a multiple of 2
 //the other half is for the temporary calculation
 Matrix MAccu[50];
 
+//Button list
+int NbrMaxBtn=50;
+HWND btnList[50];
 
 //------WholeMnemoProg
 //MemHandle MemHdleProg;//Handle on the WholeMnemoProg
@@ -315,6 +326,7 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 // resulting calculation being M[size=1,1] is also taken as a scalar
 //saveM0   save the matrix 0 selection of name is done through the win32API
 //saveM1,"mtx.m" The the matrix 1 in file mtx.m
+//createbtn n°btn,x,y,width,height,"btnname"  use key(0) == n°btn  to reach btn data for those you created n°btn>=10 is safer not ot interact with the small keyboard already existing
 
 //MathFunctions
 extern int MathError; //send back a code if error in the Math functions. MathError=1 out of range exponential
@@ -369,6 +381,19 @@ extern char Philosophy[];
 extern char NewFunctionalties[];
 
 
+	extern HWND	btn_0,btn_1,btn_2,btn_3,btn_4,btn_5,btn_6,btn_7,btn_8,btn_9;
+	extern HWND	btn_10,btn_11,btn_12,btn_13,btn_14,btn_15,btn_16,btn_17,btn_18,btn_19;
+	extern HWND hEditP,hmywin;
+	extern HINSTANCE hinst;
+	RECT wndrect; //valrect to get a mouse value between -10 and 10
+
+#ifdef CalcRegSoftware
+	//
+#else
+	#include"CalcRegMyprog.h"
+#endif
+//----------------------------------------------------
+
 void RCPrintf(floactet F){
 	REPrintf(F.value);
 	if (F.cmplx>=0) PrintCmd("+");
@@ -399,9 +424,13 @@ void Execute(void) {
 	if (progtext==0) {PrintCmd("Keep clicking  on Test <tst> to view different program examples...\nclick <exec> to launch them.");return;}
 	//this text cannot be modified from progtext, because the memory can be reallocated by the system
 	*/
-		
+	#ifdef CalcRegSoftware
 		//Start Special Part for Win32
 		DWORD 	dwTextLength = GetWindowTextLength(hEditP);
+	#else
+		DWORD dwTextLength = strlen(myprog);
+	#endif
+
 		// No need to bother if there's no text.
 		progtext=(char*)malloc ((dwTextLength+1)*sizeof(char));
 		if (progtext == 0) {
@@ -410,9 +439,13 @@ void Execute(void) {
 			MB_ICONEXCLAMATION | MB_OK);
 			goto FreeMemories;
 			}
-		GetWindowText(hEditP, progtext, dwTextLength+1);
+		#ifdef CalcRegSoftware	
+			GetWindowText(hEditP, progtext, dwTextLength+1);
+		#else
+			strcpy(progtext,myprog);
+		#endif
 		//End Special Part for Win32
-		
+	
 		MnemoProgSize =strlen(progtext);
 		if (MnemoProgSize == 0) {
 			//printf("file empty\n");
@@ -480,10 +513,15 @@ void Execute(void) {
 		Button = 0; //init the button for key();
 		//init matrix stuff
 		for (i=0;i<NbrMaxMatrix;i++)MAccu[i].ptr=0; // no matrix available yet
-
+	#ifdef CalcRegSoftware
+		//
+	#else
+		PrintCmd(START_TEXT);
+	#endif
 //------------ start -------
 	CalcMain(CodeList);
 //------------ end --------
+
 	//close audio device eventually
 	if (AudioDeviceState == 1) {CloseAudioDevice();AudioDeviceState = 0;}
 
@@ -514,7 +552,11 @@ FreeMemories:
 	if (CodageIdentity==1 && CodageIdentity2 ==1) {	decodeCreator();
 																					PrintProg(CodedWord);}
 	if (debug > 0) PrintCmd("End\n");
-
+	#ifdef CalcRegSoftware
+	//
+	#else
+		CloseProc(hmywin);
+	#endif
 }
 
 
@@ -652,7 +694,9 @@ static void ChangeNamesToAccu(char *text){
 			}
 		}
 		txt=text;
+	#ifdef CalcRegSoftware
 		if (strlen(text)-SizeInit  > 100+AdditionalProgMem) PrintCmd("warning:\nincrease workspace size!\n"); 
+	#endif
 		if (debug >0 ){sprintf(s,"Mem Chg %d bytes\n",SizeInit-strlen(text) );
 								PrintCmd(s);
 								PrintCmd("New text:\n");PrintCmd(text);} 
@@ -671,6 +715,8 @@ static void ChangeNamesToAccu(char *text){
  */
 int doMainMenu (int command)
 {
+	DWORD 	dwTextLength;
+	char *progtext;
     switch(command)
     {
     // *** ADD MENU HANDLING HERE *** //
@@ -794,12 +840,10 @@ int doMainMenu (int command)
 		SetUpTextProg(0);
 		break;
 	case PhilosophyMenuId:
-		DeleteProg();
 		PrintProg(Philosophy);
 		SetUpTextProg(0);
 		break;
 	case NewFMenuId:
-		DeleteProg();
 		PrintProg(NewFunctionalties);
 		SetUpTextProg(0);
 		break;	
@@ -1274,18 +1318,60 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			}else{PrintCmd("putserial!\n");goto EndMain;}
 		}	
 //-------------
-		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==17) {//playsound
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==17) {//createbtn
 			if (CodeOfOneLine[OffsetLine+1].code==1&& CodeOfOneLine[OffsetLine+2].code==10 &&
-			CodeOfOneLine[OffsetLine+3].code==1&& CodeOfOneLine[OffsetLine+4].code==10 &&
-			CodeOfOneLine[OffsetLine+5].code==1) {
-			SoundFrequency=CodeOfOneLine[OffsetLine+1].value;
-			SoundAmplitude=CodeOfOneLine[OffsetLine+3].value;
-			SoundDuration=CodeOfOneLine[OffsetLine+5].value;
-			PlaySoundReg(SoundFrequency,SoundAmplitude,SoundDuration);
+				CodeOfOneLine[OffsetLine+3].code==1&& CodeOfOneLine[OffsetLine+4].code==10 &&
+				CodeOfOneLine[OffsetLine+5].code==1&& CodeOfOneLine[OffsetLine+6].code==10 &&
+				CodeOfOneLine[OffsetLine+7].code==1&& CodeOfOneLine[OffsetLine+8].code==10 &&
+				CodeOfOneLine[OffsetLine+9].code==1&& CodeOfOneLine[OffsetLine+10].code==10 &&
+				CodeOfOneLine[OffsetLine+11].code==1) {
+			char btnname[50];
 
+			int TextIndex= (int)CodeOfOneLine[OffsetLine+11].value;
+			if (TextIndex != 0){
+			i=0;
+			while (WholeMnemoProg[TextIndex+i]!='"'){
+						btnname[i]=WholeMnemoProg[TextIndex+i];i++;}
+			btnname[i]=0; //terminate the ascii chain
+
+			int btnNbr=(int)CodeOfOneLine[OffsetLine+1].value;
+			int x1=(int)CodeOfOneLine[OffsetLine+3].value;
+			int y1=(int)CodeOfOneLine[OffsetLine+5].value;
+			int xw=(int)CodeOfOneLine[OffsetLine+7].value;
+			int yh=(int)CodeOfOneLine[OffsetLine+9].value;
+			if (btnNbr < 20 ) {
+
+				//for the drawing of buttons
+				//hDC = GetDC(hmywin);
+				GetClientRect(hmywin,&wndrect);
+				if (btnNbr==0) btn_0 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
+				if (btnNbr==1) btn_1 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
+				if (btnNbr==2) btn_2 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
+				if (btnNbr==3) btn_3 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
+				if (btnNbr==4) btn_4 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
+				if (btnNbr==5) btn_5 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
+				if (btnNbr==6) btn_6 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
+				if (btnNbr==7) btn_7 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
+				if (btnNbr==8) btn_8 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
+				if (btnNbr==9) btn_9 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);			
+				if (btnNbr==10) btn_10 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
+				if (btnNbr==11) btn_11 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
+				if (btnNbr==12) btn_12 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
+				if (btnNbr==13) btn_13 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
+				if (btnNbr==14) btn_14 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
+				if (btnNbr==15) btn_15 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
+				if (btnNbr==16) btn_16 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
+				if (btnNbr==17) btn_17 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
+				if (btnNbr==18) btn_18 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
+				if (btnNbr==19) btn_19 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);			
+				ShowWindow(hmywin,SW_SHOW);
+				UpdateWindow(hmywin);
+
+			}else PrintCmd("Button not created :\nbutton already exist or button Nbr >20 !\nPrevious button overwritten.\n");
+		}else PrintCmd("text index nul!\n");	
 			OffsetLine=0;
-			}else{PrintCmd("playsound!\n");goto EndMain;}
-		}	
+		}else{PrintCmd("createbtn!\n");goto EndMain;}
+	}	
 //-------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==20) {//playsndM
 			if (CodeOfOneLine[OffsetLine+1].code==1&& CodeOfOneLine[OffsetLine+2].code==10 &&
@@ -1386,6 +1472,38 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 
 			OffsetLine=0;
 			}else{PrintCmd("loadM!\n");goto EndMain;}
+		}	
+//------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==26) {//wtext
+			if ( CodeOfOneLine[OffsetLine+1].code==1 &&
+					CodeOfOneLine[OffsetLine+2].code==10 &&
+						CodeOfOneLine[OffsetLine+3].code==1 &&
+							CodeOfOneLine[OffsetLine+4].code==10 &&
+						CodeOfOneLine[OffsetLine+5].code==1){
+			int TextIndex=0,i=0,tsize;
+			char * textdsp;
+				 TextIndex=(int)CodeOfOneLine[OffsetLine+5].value;
+			if (TextIndex != 0){
+				i=0;
+				while (WholeMnemoProg[TextIndex+i]!='"'){i++;}
+				int tsize=i;
+				textdsp=(char*)malloc(tsize*sizeof(char) );
+				i=0;
+				while (WholeMnemoProg[TextIndex+i]!='"'){
+							textdsp[i]=WholeMnemoProg[TextIndex+i];i++;}
+							textdsp[i]=0; //terminate the ascii chain
+							RECT prc;
+							prc.top = DrawZoneY+(int)CodeOfOneLine[OffsetLine+3].value;
+							prc.left=DrawZoneX+(int)CodeOfOneLine[OffsetLine+1].value;
+							prc.bottom = prc.top+15;
+							if (prc.left+tsize*10<DrawZoneX+DrawZoneW)prc.right = prc.left+tsize*10;//DrawZoneX+DrawZoneW;
+							else prc.right=DrawZoneX+DrawZoneW;
+							DrawText(hDC, textdsp, -1, &prc, DT_SINGLELINE |DT_VCENTER);
+							//PrintCmd(textdsp);
+			}
+			free(textdsp);			
+			OffsetLine=0;
+			}else{PrintCmd("wtext!\n");goto EndMain;}
 		}	
 //------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==18) {//clscmd

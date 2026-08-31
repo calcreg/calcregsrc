@@ -64,6 +64,7 @@
 #define SendInfraRedMenuId 3022
 #define PhilosophyMenuId 3023
 #define NewFMenuId 3024
+#define ExtractProgDataMenuId 3025
 
 //-----Don't change these ID they are used in a loop from 1353 to 1378! -----------------
 #define btntan 1353
@@ -97,6 +98,16 @@
 #define btnEq 1381
 #define btncoma 1382
 #define btnE 1383
+#define btn10 1384
+#define btn11 1385
+#define btn12 1386
+#define btn13 1387
+#define btn14 1388
+#define btn15 1389
+#define btn16 1390
+#define btn17 1391
+#define btn18 1392
+#define btn19 1393
 
 //-------------------------------
 

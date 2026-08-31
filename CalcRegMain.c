@@ -8,7 +8,15 @@
 #include "windows.h"
 #include "CalcReg.h"
 #include <stdio.h>
+#include "CalcRegSoftware.h"
 //#include "icon.h"
+
+
+#ifdef CalcRegSoftware
+	#define WINDOWTITLEREG "CalcReg V1.9 GUI Win32 API"
+#else
+	#define WINDOWTITLEREG "Ultra Sound Generator      Built on CalcRegV1.9 visit http://www.palmreg.fr.mu"
+#endif
 
 #define IDC_MAIN_EDIT	101
 #define ID_FILE_EXIT 9001
@@ -31,9 +39,14 @@
 	extern int Rabs(int);
 	extern Rprintf(float);
 HINSTANCE	hinst=NULL;
-HWND		btn_close,btn_line,btn_test,btn_ell,btn_brk;
-HWND		btn_ClCmd,btn_ClProg,btn_gfxmove,btn_gfxwork,btn_start,btn_read,btn_gfxplus,btn_gfxmoins,btn_gfxderivate,btn_gfxpset;
-HWND		btn_1,btn_2,btn_3,btn_4,btn_5,btn_6,btn_7,btn_8,btn_9,hmywin;
+HWND		btn_close,btn_start;
+#ifdef CalcRegSoftware
+HWND		btn_ClCmd,btn_ClProg,btn_gfxmove,btn_gfxwork,btn_gfxplus,btn_gfxmoins,btn_gfxderivate,btn_gfxpset;
+HWND		btn_test,btn_brk;
+#endif
+HWND		btn_0,btn_1,btn_2,btn_3,btn_4,btn_5,btn_6,btn_7,btn_8,btn_9;
+HWND		btn_10,btn_11,btn_12,btn_13,btn_14,btn_15,btn_16,btn_17,btn_18,btn_19;
+HWND hmywin,mybtn;
 HDC			hDC;
 RECT		drawrect,wndrect;
 RECT		prect,brect;
@@ -42,13 +55,49 @@ COLORREF	colpen,colbrush;
 	HWND hEditP,hEditC;//txt win
 
 int			x,y;
+// for the execution at start
+	int startExecution=1; //1 at start , 0 when once executed
+//---------------------------
 extern Pset;
 extern int XpenDown, YpenDown,XpenUp,YpenUp;
 extern float DimXmin,DimXmax,DimYmin,DimYmax,IncX;
 extern float DrawZoneX, DrawZoneY,DrawZoneW,DrawZoneH;
 extern int PenMoved; //=1 when down and moved then up
 extern int RedrawingGfx,GfxMove,GfxZoom;
-extern int StopProgram, BreakActivated;
+extern int StopProgram, BreakActivated,NbrMaxBtn;
+
+extern int Button;	
+
+
+
+
+BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
+{
+	switch(Message)
+	{
+		case WM_INITDIALOG:
+
+		return TRUE;
+		case WM_COMMAND:
+			switch(LOWORD(wParam))
+			{
+				case IDOK:
+					EndDialog(hwnd, IDOK);
+				break;
+				case IDCANCEL:
+					EndDialog(hwnd, IDCANCEL);
+				break;
+			}
+		break;
+		default:
+			return FALSE;
+	}
+	return TRUE;
+}
+
+
+
+
 void CloseProc(HWND hwnd)
 {
 	ReleaseDC(hwnd,hDC);
@@ -69,32 +118,31 @@ void Paint(HWND hwnd)
 	//re-evaluate the graph size when changing the windows sizing
 	//DrawZoneX=320;//125;
 	//DrawZoneY=25;
+	#ifdef CalcRegSoftware
 	DrawZoneH=wndrect.bottom-50;//300;
 	DrawZoneW=wndrect.right -340;//450-195;//450
+	#else
+	DrawZoneX=DrawZoneXChg;
+	DrawZoneY=DrawZoneYChg;
+	DrawZoneH=wndrect.bottom-DrawZoneHChg;//300;
+	DrawZoneW=wndrect.right -DrawZoneWChg;//450-195;//450
+	#endif
 
-
-	
+	#ifdef CalcRegSoftware
 	FillRect(hDC,&drawrect,CreateSolidBrush(0xFFFFFF));
 	FrameRect(hDC,&drawrect,CreateSolidBrush(0x0A0AFF));
-	
+	#endif
 	valrect.left = wndrect.left + 10;
 	valrect.right = wndrect.left + 60;
 	valrect.top  = wndrect.top + 310;
 	valrect.bottom = wndrect.top + 335;
-	FillRect(hDC,&valrect,CreateSolidBrush(0xFFFFFF));
-	FrameRect(hDC,&valrect,CreateSolidBrush(0x000000));
-
-/*
-	hbrush	= CreateSolidBrush(colbrush);
-	hpen	= CreatePen(PS_SOLID,1,colpen);
-
-	SelectObject(hDC,hbrush);
-	SelectObject(hDC,hpen);
-
-	FillRect(hDC,&prect,CreateSolidBrush(colpen));
-	FrameRect(hDC,&prect,CreateSolidBrush(0x000000));
-	FillRect(hDC,&brect,CreateSolidBrush(colbrush));
-	FrameRect(hDC,&brect,CreateSolidBrush(0x000000));
+	//FillRect(hDC,&valrect,CreateSolidBrush(0xFFFFFF));
+	//FrameRect(hDC,&valrect,CreateSolidBrush(0x000000));
+	/*				#ifdef CalcRegSoftware
+				//-----
+			#else 
+				if (startExecution == 1){Execute();startExecution=0;}
+			#endif
 	*/
 }
 
@@ -126,16 +174,19 @@ int CheckBState(HWND hwnd)
 {
 	char txt[]="Choose Line, Rectangle or Ellipse!";
 
-	if(SendMessage(btn_line,BM_GETCHECK,0,0)==1) return 1;
+	//if(SendMessage(btn_line,BM_GETCHECK,0,0)==1) return 1;
 	//if(SendMessage(btn_rect,BM_GETCHECK,0,0)==1) return 2;
-	if(SendMessage(btn_ell,BM_GETCHECK,0,0)==1) return 3; 
+	//if(SendMessage(btn_ell,BM_GETCHECK,0,0)==1) return 3; 
 	return 0;
 
 }
 
 void ObjectCreation(HWND hwnd)
 {
-	GetClientRect(hwnd,&wndrect);	
+	GetClientRect(hwnd,&wndrect);
+	//mybtn = CreateWindow("BUTTON","btn",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+400,wndrect.top+50,50,50,hwnd,0,hinst,NULL);			
+	
+#ifdef CalcRegSoftware
 	btn_gfxplus = CreateWindow("BUTTON","+",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+300,wndrect.top+10,12,14,hwnd,0,hinst,NULL);			
 	btn_gfxmoins = CreateWindow("BUTTON","-",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+300,wndrect.top+25,12,14,hwnd,0,hinst,NULL);			
 	btn_gfxderivate = CreateWindow("BUTTON","D",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+300,wndrect.top+40,12,14,hwnd,0,hinst,NULL);			
@@ -146,8 +197,6 @@ void ObjectCreation(HWND hwnd)
 	//btn_brk = CreateWindow("BUTTON","Break",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+45,50,25,hwnd,0,hinst,NULL);			
 	//btn_ClProg = CreateWindow("BUTTON","clr prog",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+15,50,25,hwnd,0,hinst,NULL);			
 	btn_test = CreateWindow("BUTTON","Test",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+75,50,25,hwnd,0,hinst,NULL);			
-	btn_start = CreateWindow("BUTTON","EXE",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+105,50,25,hwnd,0,hinst,NULL);			
-	btn_close = CreateWindow("BUTTON","Close",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+180,50,25,hwnd,0,hinst,NULL);
 	btn_ClCmd = CreateWindow("BUTTON","Clear",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+205,50,25,hwnd,0,hinst,NULL);			
 
 	btn_1 = CreateWindow("BUTTON","1",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+286,18,18,hwnd,0,hinst,NULL);			
@@ -159,6 +208,12 @@ void ObjectCreation(HWND hwnd)
 	btn_7 = CreateWindow("BUTTON","7",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+250,18,18,hwnd,0,hinst,NULL);			
 	btn_8 = CreateWindow("BUTTON","8",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+28,wndrect.top+250,18,18,hwnd,0,hinst,NULL);			
 	btn_9 = CreateWindow("BUTTON","9",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+46,wndrect.top+250,18,18,hwnd,0,hinst,NULL);			
+	btn_start = CreateWindow("BUTTON","EXE",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+105,50,25,hwnd,0,hinst,NULL);			
+	btn_close = CreateWindow("BUTTON","Close",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+180,50,25,hwnd,0,hinst,NULL);
+#else
+	btn_start = CreateWindow("BUTTON","START",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+250,50,25,hwnd,0,hinst,NULL);
+#endif
+
 	}
 
 void DrawPrimitive(HWND hwnd,int x,int y,int x1,int y1)
@@ -186,6 +241,7 @@ void DrawPrimitive(HWND hwnd,int x,int y,int x1,int y1)
 LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 {
 	float newDimXmin,newDimXmax,newDimYmin,newDimYmax;
+	int i;
 
 	switch(msg)
 	{
@@ -194,10 +250,12 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			break;
 
 		case WM_CREATE:
+			
 			ObjectCreation(hwnd);
 			
 		//Creation txt window heditProg
-
+		long lfHeight;
+		#ifdef CalcRegSoftware
 			hEditP = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "", 
 				WS_CHILD | WS_VISIBLE | WS_VSCROLL |WS_HSCROLL | ES_MULTILINE | ES_AUTOVSCROLL| ES_AUTOHSCROLL, 
 				70, 10, 230, 200, hwnd, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
@@ -206,16 +264,21 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 
 			hfDefault = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
 			//Chg font Reg
-			long lfHeight = -MulDiv(14, GetDeviceCaps(hDC, LOGPIXELSY), 72);
+			lfHeight = -MulDiv(14, GetDeviceCaps(hDC, LOGPIXELSY), 72);
 			hfDefault = CreateFont(lfHeight, 0, 0, 0, 0, TRUE, 0, 0, 0, 0, 0, 0, 0, "Times New Roman");
 
 			SendMessage(hEditP, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
-
+		#endif
 		//Creation txt window heditCommand
-
+		#ifdef CalcRegSoftware
 			hEditC = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "", 
 				WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL, 
 				70, 210, 230, 140, hwnd, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
+		#else
+			hEditC = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "", 
+				WS_CHILD | WS_VISIBLE | ES_MULTILINE, 
+				70, 240, 230, 120, hwnd, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
+		#endif
 			if(hEditC == NULL)
 				MessageBox(hwnd, "Could not create edit box.", "Error", MB_OK | MB_ICONERROR);
 
@@ -228,7 +291,7 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 		//Creation menuitem for window hwnd
 			HMENU hMenu, hSubMenu;
 			HICON hIcon, hIconSm;
-
+		#ifdef CalcRegSoftware
 			hMenu = CreateMenu();
 
 			hSubMenu = CreatePopupMenu();
@@ -272,7 +335,7 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT)hSubMenu, "Info");
 
 			SetMenu(hwnd, hMenu);
-
+		#endif
 			hIcon = (HICON)LoadImage(NULL, "CalcRegIcon.ico", IMAGE_ICON, 32, 32, LR_LOADFROMFILE);
 /*			hIcon= (HICON)malloc( sizeof(IconBitmapReg));
 			int i;
@@ -296,6 +359,7 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			break;
 
 		case WM_COMMAND:
+		#ifdef CalcRegSoftware
 			if (LOWORD(wParam) == ID_FILE_EXIT) CloseProc(hwnd); 
 			if (LOWORD(wParam) == ID_FILE_Read) DoFileOpen(hwnd);
 			if (LOWORD(wParam) == ID_FILE_Save) DoFileSave(hwnd);
@@ -307,7 +371,7 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 				{doMainMenu(TBreakMenuId);
 						if (BreakActivated==1) btn_brk = CreateWindow("BUTTON","Break",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+45,50,25,hwnd,0,hinst,NULL);
 						else DeleteObject(btn_brk);
-		}
+				}
 			if (LOWORD(wParam) == cmplxMenuId) doMainMenu(cmplxMenuId);
 			if (LOWORD(wParam) == ZerofndMenuId) doMainMenu(ZerofndMenuId);
 			if (LOWORD(wParam) == PolPltMenuId) doMainMenu(PolPltMenuId);
@@ -324,9 +388,22 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			if (LOWORD(wParam) == NewFMenuId) doMainMenu(NewFMenuId);
 			if (LOWORD(wParam) == PhilosophyMenuId) doMainMenu(PhilosophyMenuId);
 			if (LOWORD(wParam) == AboutMenuId) doMainMenu(AboutMenuId);
+		#endif
 			if(btn_close==(HWND)lParam) CloseProc(hwnd);
+			if(btn_start==(HWND)lParam) {
+						MessageBox(hwnd, "If you use further this software:\n" \
+						"1. You agree to be yourself fully responsible for anything "\
+						"that can happen -- to you or your computer -- by using "\
+						"this software.\n"\
+						"2. You agree that this software cannot and doesn't replace any medical treatment.\n"\
+						"3. You also agree to have read the license before use.\n"\
+						"4. You agree not to use this software more than once a week, to avoid any unknow or unwanted physical or emotionnal effect.\n\n"
+						"If you disagree just click the QUIT button that will appear at start of this software.","CAUTION AND RESPONSABILITY", 
+						MB_OK | MB_ICONEXCLAMATION);
+						MainFormHandleEvent(btnstart);
+					}
+		#ifdef CalcRegSoftware
 			if(btn_brk==(HWND)lParam) StopProgram=1;
-			if(btn_start==(HWND)lParam) MainFormHandleEvent(btnstart);
 			if(btn_ClCmd==(HWND)lParam) MainFormHandleEvent(btnclear);
 			if(btn_ClProg==(HWND)lParam) MainFormHandleEvent(btnC);
 			if(btn_test==(HWND)lParam) MainFormHandleEvent(btntest);
@@ -336,6 +413,8 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			if(btn_gfxpset==(HWND)lParam) MainFormHandleEvent(btngfxpset);
 			if(btn_gfxwork==(HWND)lParam) MainFormHandleEvent(btngfxwork);
 			if(btn_gfxmove==(HWND)lParam) MainFormHandleEvent(btngfxmove);
+		#endif
+			if(btn_1==(HWND)lParam) MainFormHandleEvent(btn0);
 			if(btn_1==(HWND)lParam) MainFormHandleEvent(btn1);
 			if(btn_2==(HWND)lParam) MainFormHandleEvent(btn2);
 			if(btn_3==(HWND)lParam) MainFormHandleEvent(btn3);
@@ -345,7 +424,16 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			if(btn_7==(HWND)lParam) MainFormHandleEvent(btn7);
 			if(btn_8==(HWND)lParam) MainFormHandleEvent(btn8);
 			if(btn_9==(HWND)lParam) MainFormHandleEvent(btn9);
-			
+			if(btn_10==(HWND)lParam) MainFormHandleEvent(btn10);
+			if(btn_11==(HWND)lParam) MainFormHandleEvent(btn11);
+			if(btn_12==(HWND)lParam) MainFormHandleEvent(btn12);
+			if(btn_13==(HWND)lParam) MainFormHandleEvent(btn13);
+			if(btn_14==(HWND)lParam) MainFormHandleEvent(btn14);
+			if(btn_15==(HWND)lParam) MainFormHandleEvent(btn15);
+			if(btn_16==(HWND)lParam) MainFormHandleEvent(btn16);
+			if(btn_17==(HWND)lParam) MainFormHandleEvent(btn17);
+			if(btn_18==(HWND)lParam) MainFormHandleEvent(btn18);
+			if(btn_19==(HWND)lParam) MainFormHandleEvent(btn19);
 			break;
 
 		case WM_LBUTTONDOWN:
@@ -430,8 +518,6 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 		default:
 			return DefWindowProc(hwnd,msg,wParam,lParam);
 	}
-
-
 	return 0;
 }
 
@@ -456,7 +542,7 @@ MSG			msg;
 
 	RegisterClass(&wc);
 
-	hwnd = CreateWindow("CalcReg","CalcReg V1.9 GUI Win32 API",WS_OVERLAPPEDWINDOW|DS_3DLOOK,CW_USEDEFAULT,0,CW_USEDEFAULT,0,0,0,hInstance,0);
+	hwnd = CreateWindow("CalcReg",WINDOWTITLEREG,WS_OVERLAPPEDWINDOW|DS_3DLOOK,CW_USEDEFAULT,0,CW_USEDEFAULT,0,0,0,hInstance,0);
 
 	hmywin=hwnd; //for external purpose
 	

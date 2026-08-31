@@ -1,0 +1,8 @@
+
+
+wtext100,100,"hello"
+print1
+wtext100,120,"hello2"
+print2
+wtext100,140,"hello3"
+print3
