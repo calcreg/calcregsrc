@@ -20,4 +20,7 @@ x=1
 Trf(x)= 1*M1(2,x)
 x=1
 Trf(x)= 1*M1(3,x)
+
+dispobjM0,1
+
  

@@ -164,6 +164,7 @@ extern float RMath_abs(float x);
 
 //Matrix
 extern int FillSphere(Matrix *MAccu,int NumM,int PtLinkM,float Radius,float period);
+extern int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode);
 
 extern int MatrixPower(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine);
 extern int MatrixSubAddition(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSignP,int imaxLine);
@@ -228,8 +229,8 @@ float SoundFrequency,SoundAmplitude,SoundDuration,SamplesPerSecond;
 static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListSize
 static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_trp_mtxn_mtxp_";
 //									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26    27     28     29
-static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_";
-//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27
+static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_";
+//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28
 //char blabli[]= { {'hello'},0x1,{'hi'},0x0};
 
 //--------------labels
@@ -332,6 +333,8 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //fillsphM n°mtx,n°PtLinkMtx,Radius,nbr data for phi=2pi    This fills the matrix as a sphere, the dimension should be Mn=3 and Mp a multiple of a
 //																							PtLinkMtx is the matrix which contains the link to four index p of points in the sphere
 //																							Mtx should be Mn=3 or 4, Mp is set by user. PtlinkMtx :Mn=4, Mp[PtLinkMtx] = Mp[Mtx]
+//dispobjM objM,PtLinkM,DrawingMode   objM is the matrix containing the different points objM[3 or 4,npts], and PtLinkM is the matrix containing the link points
+//																	DrawingMode is the mode to draw: 0=transparent, 1=hidden faces not drawn
 
 
 //MathFunctions
@@ -1564,6 +1567,20 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 		}	
 		
 //------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==28) {//dispobjM
+			if (CodeOfOneLine[OffsetLine+1].code==1&& CodeOfOneLine[OffsetLine+2].code==10 &&
+				CodeOfOneLine[OffsetLine+3].code==1&& CodeOfOneLine[OffsetLine+4].code==10 &&
+			CodeOfOneLine[OffsetLine+5].code==1) {
+			NumM = (int)CodeOfOneLine[OffsetLine+1].value;
+			int PtLinkM = (int)CodeOfOneLine[OffsetLine+3].value;
+			int DrawingMode = (int)CodeOfOneLine[OffsetLine+5].value;
+			Error = DisplayObjectMatrix(MAccu,NumM,PtLinkM,DrawingMode);
+			if (Error !=0) goto EndMain;
+ 			OffsetLine=0;
+			}else{PrintCmd("Display Matrix Object!\n");goto EndMain;}
+		}	
+		
+//------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==14) {//bsr 
 			if (debug > 0 ) {PrintCmd("bsr \n");}
 				if (CodeOfOneLine[OffsetLine+1].code==12) {//the label
@@ -1776,7 +1793,7 @@ EndMain:
 				FillCodeOfOneLine(CodeList,CodeOfOneLine);//transfert one line 
 
 
-				if (FunctionStart==0) {
+  				if (FunctionStart==0) {
 					X0=y-x*(xp-y)/zp;
 					Y0=z-x*(yp-z)/zp;
 					FunctionStart=1;

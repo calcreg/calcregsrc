@@ -122,6 +122,7 @@ void FloatToString(float value, char *buffer, int Rounding);
 
 //Matrix
 int FillSphere(Matrix *MAccu,int NumM,int PtLinkM,float Radius,float period);
+int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode);
 
 int MatrixPower(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine);
 int MatrixSubAddition(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSignP,int imaxLine);
@@ -205,7 +206,7 @@ float HlowPrecision=0.00001; //Low precision 1E-05;
 			int k,j,NbrLatitude;
 			int Error=0;
 			int Mp=MAccu[NumM].p;
-			if (MAccu[NumM].n !=3 && MAccu[NumM].n !=4) {PrintCmd("fillsphM: Mtx Size should be Mn=3\n");Error=1;goto EndMain;} 
+			if (MAccu[NumM].n !=3 && MAccu[NumM].n !=4) {PrintCmd("fillsphM: Mtx Size should be Mn=3 or 4\n");Error=1;goto EndMain;} 
 			if (period==0 || MAccu[NumM].p / period != (float) (int)(MAccu[NumM].p / period) ) {PrintCmd("fillsphM n°,radius,period_phi:\nInvalid period or Mp should be a multiple of the period_phi \n");Error=1;goto EndMain;}
 			//fill matrix with sphere
 			if (MAccu[NumM].ptr == 0) {Error = 1; PrintCmd("Can't fill Matrix sphere, not defined!\n");goto EndMain;}
@@ -255,11 +256,268 @@ float HlowPrecision=0.00001; //Low precision 1E-05;
 	return Error;
 	}
 
+int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode){
+	int Error,k,L,foundPlace,pt1,pt2,NoDraw,m,mmax,xminPt,xmaxPt;
+	float xmax,xmin,x,x1,y1,z1,x2,y2,z2,x3,y3,z3,X1,Y1,X2,Y2,X3,Y3;
+
+	int Mp = MAccu[NumM].p;
+	int Mn = MAccu[NumM].n;
+	int PtLinkMn = MAccu[PtLinkM].n;
+	int PtLinkMp = MAccu[PtLinkM].p;
+	if (MAccu[NumM].ptr == 0) {Error = 1; PrintCmd("dispobjM: objM not defined!\n");goto OutDrawObject;}
+	if (MAccu[PtLinkM].ptr == 0) {Error = 1; PrintCmd("disobjM: PtLinkMatrix not defined!\n");goto OutDrawObject;}
+	if (Mn!=3 && Mn!=4) {PrintCmd("dispobjM: objMn should be 3 or 4 \n");Error =1;goto OutDrawObject;}
+	if (PtLinkMp!=Mp) {PrintCmd("dispobjM: objMp should be same as PtLinkM.p\n");Error=1;goto OutDrawObject;} 
+	if (PtLinkMn!=4) {PrintCmd("dispobjM: PtLinkM.n should be equal to 4\n");Error=1;goto OutDrawObject;} 
+
+	
+			//	x3,y3,z3 (PtLink pt1)			x4,y4,z4
+			//     ---------------------------------
+			//     |             Square               	   |
+			//     |           definition           	   |
+			//     ---------------------------------
+			//  x1,y1,z1            x2,y2,z2 (PtLink pt2)
+
+	//						---- DrawingMode 0  ----
+	if (DrawingMode == 0){ //iron wires
+		for (k=0;k<Mp;k++){
+	
+	
+			x1=MAccu[NumM].ptr[ 0*Mp + k];
+			y1=MAccu[NumM].ptr[ 1*Mp + k];
+			z1=MAccu[NumM].ptr[ 2*Mp + k];
+		NoDraw=0;
+			pt1 = MAccu[PtLinkM].ptr[0*Mp+k]; //get ptlink 1
+			if (pt1 == 0) NoDraw=1;
+			else {x3=MAccu[NumM].ptr[ 0*Mp + pt1-1]; //pt-1 because index is in Matrix math convention starting from 1 and not 0
+			y3=MAccu[NumM].ptr[ 1*Mp + pt1-1];
+			z3=MAccu[NumM].ptr[ 2*Mp + pt1-1];
+			}
+			
+			pt2 = MAccu[PtLinkM].ptr[1*Mp+k];//get ptlink 2
+			if (pt2 == 0) NoDraw=1;
+			else{x2=MAccu[NumM].ptr[ 0*Mp + pt2-1];
+			y2=MAccu[NumM].ptr[ 1*Mp + pt2-1];
+			z2=MAccu[NumM].ptr[ 2*Mp + pt2-1];
+			}
+			//Remarque: We just draw line 2 by 2    x1<->x2, x1<->x3
+			//It is enough to draw everything in the other points handling
+		if (NoDraw==0){
+			X1=y1-x1*(xp-y1)/zp;
+			Y1=z1-x1*(yp-z1)/zp;
+			X2=y2-x2*(xp-y2)/zp;
+			Y2=z2-x2*(yp-z2)/zp;
+			X3=y3-x3*(xp-y3)/zp;
+			Y3=z3-x3*(yp-z3)/zp;
+			if (x1>0){
+				Line(X1,Y1,X2,Y2,ColorGraph);
+				Line(X1,Y1,X3,Y3,ColorGraph);
+			}else{
+				Line(X1,Y1,X2,Y2,0);
+				Line(X1,Y1,X3,Y3,0);
+			}
+			
+			
+			}//if NoDraw
+		}//for k
+	}//if DrawingMode 0
+
+	//						---- DrawingMode 1  ----
+	if (DrawingMode == 1){ //only visible faces
+
+	//Here we need to find the points order to display in x from back to front
+	//therefore for x decreasing order.
+	typedef struct ListOrder{
+		int pt;//postion index in the matrix in Memory convention (start from 0 not 1)
+		int next; //what index in the list order is the next point in th chosen order
+		float x; //the x value
+		}ListOrder;
+	ListOrder *list = (ListOrder*) malloc(Mp*sizeof (struct ListOrder));
+	if (list==0) {PrintCmd("dispobjM: Can't allocate memory for ListOrder\n"); goto OutDrawObject;}
+
+	//Get the xmin of the whole object
+	xmin=MAccu[NumM].ptr[0*Mp+0];
+	for (k=0;k<Mp;k++) if(MAccu[NumM].ptr[0*Mp+k] < xmin){
+										xmin = MAccu[0].ptr[0*Mp+k];
+										xminPt=k;
+										}
+
+	//Get the xmax of the whole object
+	xmax=MAccu[NumM].ptr[0*Mp+0];
+	for (k=0;k<Mp;k++) if(MAccu[NumM].ptr[0*Mp+k] > xmax){
+										xmax = MAccu[0].ptr[0*Mp+k];
+										xmaxPt=k;
+										}
+	//Set first value
+	list[0].pt = xmaxPt; //point on the first value in the matrix
+	list[0].x = xmax;
+	list[0].next=1;
+	
+	list[1].pt = xminPt; //point on the first value in the matrix
+	list[1].x = xmin;
+	list[1].next=-1;//The end code of next is -1 it should be never read if below is done fine
+	mmax=2; //Therefore there are now two values in list[]
+
+	//fill list[]
+	for(k=0;k<Mp;k++){
+		x=MAccu[NumM].ptr[0*Mp+k];
+		if(k != xminPt && k != xmaxPt){
+			foundPlace=0;m=0;
+			while (m<mmax && foundPlace==0){ //loop over the already stocked info in list to check where to put the new x data
+				if(m!=1)if(list[m].x >= x && x >= list[list[m].next].x){
+					//place this new point in between
+					if (mmax>=Mp) {PrintCmd("Error m>Mp\n"); goto OUTLIST;}	
+					list[mmax].x=x;
+					list[mmax].pt=k;
+					list[mmax].next=list[m].next;
+					list[m].next=mmax;
+					mmax++;
+					foundPlace=1;
+					}//if list[m]
+				m++;	
+			}//while m
+		}
+	}//for k fill list
+	if (mmax !=Mp) {PrintCmd("Error in processing list Ordering:\nmmax=");Rprintf(mmax);}
+	
+	//The list is now filled
+	//Below we draw the object Matrix from x max to xmin
+
+OUTLIST:
+	L=0; //init at L=0, 
+			//L will varie from one value to the other and will end up at L=1
+			//because it is where is the ending xmin in the list.
+	while (L!=-1){
+			k=list[L].pt;
+			L=list[L].next; //loading th next L for next round in the while
+			x1=MAccu[NumM].ptr[ 0*Mp + k];
+			y1=MAccu[NumM].ptr[ 1*Mp + k];
+			z1=MAccu[NumM].ptr[ 2*Mp + k];
+		NoDraw=0;
+			pt1 = MAccu[PtLinkM].ptr[0*Mp+k]; //get ptlink 1
+			if (pt1 == 0) NoDraw=1;
+			else {x3=MAccu[NumM].ptr[ 0*Mp + pt1-1]; //pt-1 because index is in Matrix math convention starting from 1 and not 0
+			y3=MAccu[NumM].ptr[ 1*Mp + pt1-1];
+			z3=MAccu[NumM].ptr[ 2*Mp + pt1-1];
+			}
+			
+			pt2 = MAccu[PtLinkM].ptr[1*Mp+k];//get ptlink 2
+			if (pt2 == 0) NoDraw=1;
+			else{x2=MAccu[NumM].ptr[ 0*Mp + pt2-1];
+			y2=MAccu[NumM].ptr[ 1*Mp + pt2-1];
+			z2=MAccu[NumM].ptr[ 2*Mp + pt2-1];
+			}
+			//Remarque: We just draw line 2 by 2    x1<->x2, x1<->x3
+			//It is enough to draw everything in the other points handling
+		if (NoDraw==0){
+			X1=y1-x1*(xp-y1)/zp;
+			Y1=z1-x1*(yp-z1)/zp;
+			X2=y2-x2*(xp-y2)/zp;
+			Y2=z2-x2*(yp-z2)/zp;
+			X3=y3-x3*(xp-y3)/zp;
+			Y3=z3-x3*(yp-z3)/zp;
+			if (x1>0){
+				Line(X1,Y1,X2,Y2,ColorGraph);
+				Line(X1,Y1,X3,Y3,ColorGraph);
+			}else{
+				Line(X1,Y1,X2,Y2,0);
+				Line(X1,Y1,X3,Y3,0);
+			}
+			
+			
+			}//if NoDraw
+
+		}//while
+
+	FREELIST:
+		free(list);
+	}//if DrawingMode 1
+
+
+
+	OutDrawObject:
+		return Error;
+
+	
+/*
+	float x,y,z;
+	float X0,X1,Y0,Y1;
+	int Error;
+	float dx,dy;
+	typedef struct BandDrawn{
+		float max;
+		float min;
+		}BandDrawn;
+	BandDrawn *band;
+	int a,b,st,N,i,init;
+
+		N=DrawZoneW/2;//(DimXmax-DimXmin)/Inc3D;
+		band = (BandDrawn*)malloc(N*sizeof(struct BandDrawn) );
+		if (band ==0) {PrintCmd("BandDrawn Allocation failed\n");goto OutDrawObject;}
+
+		init =0;
+
+			if (X0<Xmin3d || X0>Xmax3d) X0=Xmax3d; //box3d
+			if (Y0<Ymin3d || Y0>Ymax3d) Y0=Ymin3d;
+			FunctionStart=0;
+			if (GridSet == 0){
+			WinEraseRectangleReg(DrawZoneX,DrawZoneY,DrawZoneW,DrawZoneH);
+			Tracer3DAxis();
+			}
+			
+		LoopDrawObject:
+				if(StopProgram == 1) goto EndFunctionFX;
+		//x,y,z should be ready here DisplayObjectMatrix
+  				if (FunctionStart==0) {
+					X0=y-x*(xp-y)/zp;
+					Y0=z-x*(yp-z)/zp;
+					FunctionStart=1;
+					if (init==0)for (i=0;i<N;i++) {band[i].min =Y0;band[i].max =Y0;}
+				}else{
+					X1=y-x*(xp-y)/zp;
+					Y1=z-x*(yp-z)/zp;
+					if (Y0>DimYmin && Y0 < DimYmax && Y1>DimYmin && Y1 < DimYmax) 
+						if (X0>DimXmin && X0 < DimXmax && X1>DimXmin && X1 < DimXmax) {
+
+							a=(int)( (X1-DimXmin)*N /(DimXmax-DimXmin) );
+							b=(int)( (X1+Inc3D-DimXmin)*N /(DimXmax-DimXmin) );
+							if (init==0){Line(X0,Y0,X1,Y1,ColorGraph);
+								for (i=a; i <= b; i++){band[i].min =Y0; band[i].max =Y0;}
+							}else{
+							if ( band[a].min>= Y1 || Y1>=band[a].max ){//outside band
+							 Line(X0,Y0,X1,Y1,ColorGraph);
+							if (band[a].min >Y1) band[a].min=Y1;
+							if (band[a].max <Y1) band[a].max=Y1;
+							//Line(X1,band[a].min,X1,band[a].max,ColorGraph+2);
+							}else {
+									if ( band[a].min>= Y0){
+									Line( (band[a].min*(X1-X0)-Y0*X1+X0*Y1)/(Y1-Y0),band[a].min,X0,Y0,ColorGraph);
+									}
+									if ( band[a].max<= Y0){
+									Line( (band[a].max*(X1-X0)-Y0*X1+X0*Y1)/(Y1-Y0),band[a].max,X0,Y0,ColorGraph);
+									}
+							}
+						}
+						X0=X1;Y0=Y1;
+						}}
+				y=y+dy;Accu[N_AccuY].value=y;
+				if (y < Ymax3d) goto LoopDrawObject;
+				init=1; //first line done
+				y=Ymin3d;x=x-dx;Accu[N_AccuX].value=x;Accu[N_AccuY].value=y; FunctionStart =0; 
+				if (x > Xmin3d) goto LoopDrawObject;
+
+		EndDrawObject:
+			free(band);
+		OutDrawObject:
+			return Error;
+*/
+}
 
 
 //------------------- Matrix Operations Analysis ------------------------------------
 int MatrixPower(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine){
-	int Error=0;
+	int Error=1;
+	PrintCmd("Function Power of matrix is not yet implemented\n");
 	return Error;
 }
 int MatrixSubAddition(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSignP,int imaxLine){
