@@ -25,7 +25,8 @@
 	BOOL LoadTextFileToEdit(HWND hEdit, LPCTSTR pszFileName);
 	void DoFileOpen(HWND hwnd);
 	void DoFileSave(HWND hwnd);
-	char* DoLoadSound();
+	char* DoLoadFileReg();
+	char* DoSaveFileReg();
 
 	extern int Rabs(int);
 	extern Rprintf(float);
@@ -597,7 +598,7 @@ void DoFileSave(HWND hwnd)
 
 
 //------------------------ sound load -----------------
-char* DoLoadSound()
+char* DoLoadFileReg()
 {
 	OPENFILENAME ofn;
 	char szFileName[MAX_PATH] = "";
@@ -617,4 +618,28 @@ char* DoLoadSound()
 		HWND hEdit = GetDlgItem(hwnd, IDC_MAIN_EDIT);
 		return szFileName;
 	}
+	return 0;
+}
+
+char* DoSaveFileReg()
+{
+	OPENFILENAME ofn;
+	char szFileName[MAX_PATH] = "";
+	HWND hwnd=hmywin;
+	ZeroMemory(&ofn, sizeof(ofn));
+
+	ofn.lStructSize = sizeof(OPENFILENAME);
+	ofn.hwndOwner = hwnd;
+	ofn.lpstrFilter = "Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
+	ofn.lpstrFile = szFileName;
+	ofn.nMaxFile = MAX_PATH;
+	ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
+	ofn.lpstrDefExt = "txt";
+
+	if(GetSaveFileName(&ofn))
+	{
+		HWND hEdit = GetDlgItem(hwnd, IDC_MAIN_EDIT);
+		return szFileName;
+	}
+	return 0;
 }

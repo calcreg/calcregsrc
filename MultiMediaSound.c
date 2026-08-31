@@ -24,6 +24,8 @@ int PlaySoundReg(float , float , float );
 int GetAudioMicro(Matrix *MAccu,int NumM,float SamplesPerSecond);
 int CloseAudioDevice(void);
 int LoadSoundFile(Matrix *MAccu, int NumM, char *);
+int SaveMFile(Matrix *MAccu, int NumM,char*);
+int LoadMFile(Matrix *MAccu, int NumM,char*);
 
 
 
@@ -160,9 +162,11 @@ int PlaySoundMatrix(Matrix *MAccu, int NumM, float SamplesPerSecond){
                 // while the sound card is processing the sound buffer
         double x;
         int i,DataSize;
-		
+
+		if(MAccu[NumM].ptr == 0) {PrintCmd("Matrix not defined!\n Use defM n°,sizen=1,sizep for use with recsndM n°,NbrSamplesPerSec\n");return 0;}
 		 DataSize = MAccu[NumM].n * MAccu[NumM].p; //Matrix Size
-			// ** Initialize the sound format we will request from sound card **    
+
+		 // ** Initialize the sound format we will request from sound card **    
         WaveFormat.wFormatTag = WAVE_FORMAT_PCM;     // Uncompressed sound format
         WaveFormat.nChannels = 1;                    // 1=Mono 2=Stereo
         WaveFormat.wBitsPerSample = 16;               // Bits per sample per channel
@@ -194,7 +198,7 @@ int PlaySoundMatrix(Matrix *MAccu, int NumM, float SamplesPerSecond){
         // ** Create the wave header for our sound buffer **
         WaveHeader.lpData=(LPSTR)Data;
         //WaveHeader.dwBufferLength=BUFFERSIZE;
-        WaveHeader.dwBufferLength=DataSize;
+        WaveHeader.dwBufferLength=DataSize*2; //because it is short int
         WaveHeader.dwFlags=0;
         WaveHeader.dwLoops=0;
               
@@ -270,7 +274,7 @@ int GetAudioMicro(Matrix *MAccu,int NumM,float SamplesPerSecond){
 		//do we set no limit for recording memory or is it set by matrix size
 		//if (MAccu[NumM].ptr != 0) {free(MAccu[NumM].ptr);}
 		int DataSize = MAccu[NumM].n*MAccu[NumM].p;
-
+		if(MAccu[NumM].ptr == 0) {PrintCmd("Matrix not defined!\n Use defM n°,sizen=1,sizep for use with recsndM n°,NbrSamplesPerSec\n");return 0;}
 		//MMTIME MMTime = {0};
 		//MMTime.wType = TIME_BYTES;
 
@@ -425,7 +429,7 @@ BOOL LoadSoundFile(Matrix* MAccu, int NumM,char *pszFileName)
 						}
 				datafound:
 					//technic to get the int32 == int  with introduction of  int dat
-					dat= psz+4;
+					dat=psz+4;
 					datasize = *dat;
 					//sprintf(s,"data size=%d\n",datasize);
 					//PrintCmd(s);
@@ -436,6 +440,8 @@ BOOL LoadSoundFile(Matrix* MAccu, int NumM,char *pszFileName)
 						return FALSE;
 					}
 					if (MAccu[NumM].ptr !=0) free(MAccu[NumM].ptr);
+					//the datasize is for bytes, the info is coded on short int 2bytes
+					//so the real nbre of samples is datasize/2
 					MAccu[NumM].ptr = (float*)malloc(datasize/2*sizeof(float) ); //datasize/2 because int short and not char
 					if (MAccu[NumM].ptr == 0) {PrintCmd("Couldn't allocate memory for loading .wav file\n");return FALSE;}
 					short int *datawav;
@@ -450,6 +456,123 @@ BOOL LoadSoundFile(Matrix* MAccu, int NumM,char *pszFileName)
 		}
 		CloseHandle(hFile);
 	}else{PrintCmd("Couldn't load sound file!\n"); bSuccess=FALSE;}
+	return bSuccess;
+}
+
+//------------------------------ Save Matrix ---------------------------
+BOOL SaveMFile(Matrix* MAccu, int NumM,char *pszFileName)
+{
+	HANDLE hFile;
+	BOOL bSuccess = FALSE;
+	typedef struct mtxChunk{
+		char nam[6];
+		int n; //mtx n
+		int p;// mtx p
+		char dat[4];
+		int size;
+		}mtxChunk;
+		
+	hFile = CreateFile(pszFileName, GENERIC_WRITE, 0, NULL,
+		CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if(hFile != INVALID_HANDLE_VALUE)
+	{
+		DWORD dwFileSize;
+		char s[50];
+		//emplacement pour les donnees concernant le chunk de la matrice a copier
+		mtxChunk MChnk[1];
+
+		//prepare chunk 'matrix', 'data' -----------------------------------------		
+		strcpy(MChnk[0].nam,"matrix");
+		MChnk[0].n=MAccu[NumM].n;
+		MChnk[0].p=MAccu[NumM].p;
+		strcpy(MChnk[0].dat,"data");
+		MChnk[0].size=MAccu[NumM].n*MAccu[NumM].p;
+		
+		DWORD dwWritten;
+		//write chunk
+		//char pszText[]="CalcReg Tools : ";
+			//	WriteFile(hFile, pszText, (DWORD)strlen(pszText), &dwWritten, NULL);
+				if(WriteFile(hFile, MChnk, (DWORD)sizeof(MChnk), &dwWritten, NULL))
+				{
+		//write data
+					if(WriteFile(hFile, MAccu[NumM].ptr, MChnk[0].size*sizeof(float), &dwWritten, NULL))
+					{
+						bSuccess = TRUE; // It worked!
+					}else{PrintCmd("couldn't write mtx data in file.\n"); bSuccess= FALSE;}
+				}else{PrintCmd("couldn't write mtx chunk in file.\n"); bSuccess= FALSE;}
+		CloseHandle(hFile);
+	}else{PrintCmd("Couldn't open Mtx File for save!\n"); bSuccess=FALSE;}
+	return bSuccess;
+}
+
+//--------------------------- Load Matrix ------------------------------
+BOOL LoadMFile(Matrix* MAccu, int NumM,char *pszFileName)
+{
+	HANDLE hFile;
+	BOOL bSuccess = FALSE;
+	
+	hFile = CreateFile(pszFileName, GENERIC_READ, FILE_SHARE_READ, NULL,
+		OPEN_EXISTING, 0, NULL);
+	if(hFile != INVALID_HANDLE_VALUE)
+	{
+		DWORD dwFileSize;
+		char s[50];
+		dwFileSize = GetFileSize(hFile, NULL);
+		//sprintf(s,"file .wav size=%d\n",dwFileSize);
+		//PrintCmd(s);
+		if(dwFileSize != 0xFFFFFFFF)
+		{
+			LPSTR pszFileText;
+
+			pszFileText = (LPSTR)GlobalAlloc(GPTR, dwFileSize + 1);
+			if(pszFileText != NULL)
+			{
+				DWORD dwRead;
+
+				if(ReadFile(hFile, pszFileText, dwFileSize, &dwRead, NULL))
+				{
+					pszFileText[dwFileSize] = 0; // Add null terminator
+					//We fill in the Matrix
+					LPSTR  datastrt=0;
+					int i;
+					int datasize;
+					int *dat;
+					LPSTR psz = pszFileText;
+					for (i=0;i<dwFileSize;i++) {
+						if(*psz=='d' && *(psz+1)=='a' &&*(psz+2)=='t' && *(psz+3)=='a' ) 
+								{datastrt = psz +8;
+								//PrintCmd("Load Mtx found data chunk\n");
+								goto datafound;}
+								
+							psz++;
+						}
+				datafound:
+					//technic to get the int32 == int  with introduction of  int dat
+					dat=psz+4;
+					datasize = *dat;
+					//sprintf(s,"data size=%d\n",datasize);
+					//PrintCmd(s);
+
+					if (datastrt == 0) {
+						PrintCmd("Failed to find 'data' chunk!\n");
+						CloseHandle(hFile);
+						return FALSE;
+					}
+					if (MAccu[NumM].ptr !=0) free(MAccu[NumM].ptr);
+					MAccu[NumM].ptr = (float*)malloc(datasize*sizeof(float) ); //datasize/2 because int short and not char
+					if (MAccu[NumM].ptr == 0) {PrintCmd("Couldn't allocate memory for loading Matrix file.\n");return FALSE;}
+					float *datawav;
+					datawav=datastrt;
+					//for (i=0;i<datasize;i++) MAccu[NumM].ptr[i]=(float)datastrt[i];
+					for (i=0;i<datasize;i++) MAccu[NumM].ptr[i]=(float)datawav[i];
+					MAccu[NumM].n=1;MAccu[NumM].p=datasize;
+					bSuccess = TRUE; // It worked!
+				}
+				GlobalFree(pszFileText);
+			}
+		}
+		CloseHandle(hFile);
+	}else{PrintCmd("Couldn't load Mtx file!\n"); bSuccess=FALSE;}
 	return bSuccess;
 }
 

@@ -1,0 +1,6 @@
+
+//defM0,1,20000
+//recsndM0,10025
+//saveM0,"bonjour10000.m"
+loadM0,"bonjour10000.m"
+playsndM0,10025

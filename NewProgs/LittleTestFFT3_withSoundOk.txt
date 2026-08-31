@@ -1,0 +1,52 @@
+//Test FFT
+Ntot=40000
+tmp=1 //s
+kmax=500
+Nsp=Ntot/tmp
+Nyquist=Nsp/2
+defM0,1,Ntot
+fillM0,0,tmp
+pi=3.1415927
+f0=25 //Hz //f0<Nyquist!
+w=2*pi*f0
+M1=cos(w*M0)+0.5*cos(2*w*M0)
+loadsndM10,"testPrograms/haareg.wav"
+m=1
+select:
+M1(1,m)=M10(1,m)
+m=m+1
+m<Ntot =>goto select
+//plot
+gfxdim 0,Ntot,-70000,20000,1
+grid 100
+x=1
+Trf(x)=M1(1,x)
+
+//FFT
+defM2,1,kmax
+k=1
+loopfft:
+M2(1,k)=M1*trp(cos(2*pi*k*M0))
+k=k+1
+k<kmax=>goto loopfft
+high=Ntot*4096
+gfxdim 0,kmax,0,high,1
+x=1
+Trf(x)=abs(M2(1,x))
+
+
+//Rebuild sound
+t=1
+defM3,1,kmax
+fillM3,1,kmax //kstart=1 !
+defM4,1,Ntot
+rebuild:
+M4(1,t)=2/Ntot*M2*trp(cos (2*pi*t/Ntot*M3) )
+t=t+1
+t<Ntot=>goto rebuild
+
+//plot rebuilt graph
+gfxdim 0,Ntot,-80000,20000,1
+x=1
+Trf(x)=M4(1,x)
+playsndM4,44100

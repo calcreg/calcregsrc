@@ -1,0 +1,66 @@
+km=3000  // ------- kmax
+Nsp=8192 //--------- Nsp file2
+
+loadM3,"akoiseau.m"
+loadM7,"bkoiseau.m"
+bsr Removefreq
+bsr DisplaySpectrum
+bsr ReBuildSound
+goto boucle
+end
+
+Removefreq:
+fstrt=290
+fend=340
+L=fstrt
+bcl:
+M3(1,L)=0
+M7(1,L)=0
+L=L+1
+L<fend=>goto bcl
+rts
+
+ReBuildSound:
+f=0.5 //1/2
+pi=3.1415927
+w=2*pi*f
+
+
+defM4,1,Nsp
+defM5,1,km //same as M3
+fillM5,1,km
+t=1
+dt=2/Nsp
+loop2:
+M4(1,t)= 50*(M3*trp(cos(t*dt*w*M5))+M7*trp(sin(t*dt*w*M5)) )
+t=t+1
+t<Nsp=>goto loop2
+rts
+
+boucle:
+clavier = key(0)
+clavier == 9 => goto outing
+clavier == 8 => bsr jouer
+goto boucle
+
+outing:
+clscmd
+print0,"out"
+end
+
+jouer:
+playsndM4,Nsp
+rts
+end
+
+
+
+
+DisplaySpectrum:
+gfxdim -0.1,1200,-100,100,1
+grid10
+x=1
+Trf(x)=10*abs(M3(1,x))
+x=1
+Trf(x)=10*abs(M7(1,x))-10
+rts

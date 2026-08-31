@@ -1,0 +1,17 @@
+//Test FFT
+Ntot=1000
+tmp=1 //s
+Nsp=Ntot/tmp
+Nyquist=Nsp/2
+defM0,1,Ntot
+fillM0,0,tmp
+pi=3.1415927
+f0=50 //Hz //f0<Nyquist!
+w=2*pi*f0
+M1=cos(w*M0)
+//plot
+gfxdim 0,Ntot,-2,2,1
+grid 10
+x=1
+Trf(x)=M1(1,x)
+

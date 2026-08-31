@@ -171,7 +171,10 @@ extern int PlaySoundReg(float ,float ,float );
 extern int PlaySoundMatrix(Matrix *, int NumM, float);
 extern int GetAudioMicro(Matrix *, int NumM, float);
 extern int 	LoadSoundFile(Matrix *MAccu, int NumM,char*);
-extern char* DoLoadSound();
+extern int 	SaveMFile(Matrix *MAccu, int NumM,char*);
+extern int 	LoadMFile(Matrix *MAccu, int NumM,char*);
+extern char* DoLoadFileReg();
+extern char* DoSaveFileReg();
 
 //serial-Oscillo
 //extern Boolean  waitfordata(int NbrTrialToGet);
@@ -213,10 +216,10 @@ float SoundFrequency,SoundAmplitude,SoundDuration,SamplesPerSecond;
 
 #define OpListSize 9 // add the size if add new instructions or special codes in OperatorList
 static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListSize
-static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_trp_";
-//									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26    27
-static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_box3d_getserial_wait_bsr_rts_putserial_playsound_clscmd_defM_playsndM_fillM_recsndM_loadsndM_";
-//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23
+static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_trp_mtxn_mtxp_";
+//									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26    27     28     29
+static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_box3d_getserial_wait_bsr_rts_putserial_playsound_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_";
+//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25
 //char blabli[]= { {'hello'},0x1,{'hi'},0x0};
 
 //--------------labels
@@ -310,6 +313,8 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //						if Mtx1[size1 or n,p] * Mtx2[size p!=1,k] result is math matrix product Mtx[n,k]
 // M = scalar a, this is possible means full of the value scalar a
 // resulting calculation being M[size=1,1] is also taken as a scalar
+//saveM0   save the matrix 0 selection of name is done through the win32API
+//saveM1,"mtx.m" The the matrix 1 in file mtx.m
 
 //MathFunctions
 extern int MathError; //send back a code if error in the Math functions. MathError=1 out of range exponential
@@ -1325,12 +1330,62 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 				if (LoadSoundFile(MAccu, NumM,sndfilename)==FALSE){
 						Error=8; goto EndMain;}
 			}else{
-				if (LoadSoundFile(MAccu, NumM,DoLoadSound() )==FALSE){
+				if (LoadSoundFile(MAccu, NumM,DoLoadFileReg() )==FALSE){
 						Error=8; goto EndMain;}
 			}
 
 			OffsetLine=0;
 			}else{PrintCmd("loadsndM!\n");goto EndMain;}
+		}	
+//------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==24) {//loadsndM
+			if ( CodeOfOneLine[OffsetLine+1].code==1){//saveM
+			NumM=(int)CodeOfOneLine[OffsetLine+1].value;//n°Matrix MAccu to play
+			if (NumM<0 || NumM > NbrMaxMatrix/2){sprintf(s,"unauthorized number for Matrix\n 0<Mtx n°<%d\n",NbrMaxMatrix/2); PrintCmd(s);goto EndMain;}
+			char mtxfilename[50];
+			int TextIndex=0,i=0;
+			if (CodeOfOneLine[OffsetLine+2].code==10 &&
+						CodeOfOneLine[OffsetLine+3].code==1){
+						TextIndex=(int)CodeOfOneLine[OffsetLine+3].value;
+						}
+			if (TextIndex != 0){
+				while (WholeMnemoProg[TextIndex+i]!='"'){
+							mtxfilename[i]=WholeMnemoProg[TextIndex+i];i++;}
+				mtxfilename[i]=0; //terminate the ascii chain
+				if (SaveMFile(MAccu, NumM,mtxfilename)==FALSE){
+						Error=8; goto EndMain;}
+			}else{
+				if (SaveMFile(MAccu, NumM,DoSaveFileReg() )==FALSE){
+						Error=8; goto EndMain;}
+			}
+
+			OffsetLine=0;
+			}else{PrintCmd("saveM!\n");goto EndMain;}
+		}	
+//------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==25) {//loadM
+			if ( CodeOfOneLine[OffsetLine+1].code==1){//loadM
+			NumM=(int)CodeOfOneLine[OffsetLine+1].value;//n°Matrix MAccu to play
+			if (NumM<0 || NumM > NbrMaxMatrix/2){sprintf(s,"unauthorized number for Matrix\n 0<Mtx n°<%d\n",NbrMaxMatrix/2); PrintCmd(s);goto EndMain;}
+			char mtxfilename[50];
+			int TextIndex=0,i=0;
+			if (CodeOfOneLine[OffsetLine+2].code==10 &&
+						CodeOfOneLine[OffsetLine+3].code==1){
+						TextIndex=(int)CodeOfOneLine[OffsetLine+3].value;
+						}
+			if (TextIndex != 0){
+				while (WholeMnemoProg[TextIndex+i]!='"'){
+							mtxfilename[i]=WholeMnemoProg[TextIndex+i];i++;}
+				mtxfilename[i]=0; //terminate the ascii chain
+				if (LoadMFile(MAccu, NumM,mtxfilename)==FALSE){
+						Error=8; goto EndMain;}
+			}else{
+				if (LoadMFile(MAccu, NumM,DoLoadFileReg() )==FALSE){
+						Error=8; goto EndMain;}
+			}
+
+			OffsetLine=0;
+			}else{PrintCmd("loadM!\n");goto EndMain;}
 		}	
 //------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==18) {//clscmd
@@ -1465,7 +1520,7 @@ EndMain:
 	HighLight:
 		FldSetSelection (FieldProgTextPtr, (UInt16) i, (UInt16) i+1);
 	*/
-	printf("Error indication to be implemented\n");
+	sprintf (s,"Line %d\n",LineErrorCode);PrintCmd(s);
 }
  
  static int TraceFunctionOneVariable(floactet *CodeOfOneLine, floactet *CodeList)

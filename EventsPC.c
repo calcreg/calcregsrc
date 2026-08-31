@@ -44,7 +44,7 @@ extern float DrawZoneX, DrawZoneY,DrawZoneW,DrawZoneH;
 int GfxMove=1,GfxZoom=0,Pset=0; //at the begining the movability is set
 int GfxDerivate=0; // If =1 then Draw the function with its derivated
 int Button=0; //for the keyboard in CalcRegPC
-int ProgInExecution=0; //=1 while program in execution
+static int ProgInExecution=0; //=1 while program in execution
 /*
  * MainFormHandleEvent
  */

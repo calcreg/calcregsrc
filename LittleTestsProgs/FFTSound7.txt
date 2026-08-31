@@ -1,5 +1,5 @@
-Nsp=44100
-loadsndM0,"haareg.wav"
+Nsp=22050
+loadsndM0,"oiseau.wav"
 playsndM0,Nsp
 
 gfxdim -0.1,1000,-20000,20000,5
@@ -14,7 +14,7 @@ f=0.5 //1/2
 pi=3.1415927
 w=2*pi*f
 
-km=50  // ------- kmax
+km=800  // ------- kmax
 defM3,1,km
 defM7,1,km
 
@@ -59,7 +59,7 @@ end
 
 
 DisplaySpectrum:
-gfxdim -0.1,km,-100,100,1
+gfxdim -0.1,100,-100,100,1
 grid10
 x=1
 Trf(x)=abs(M3(1,x))

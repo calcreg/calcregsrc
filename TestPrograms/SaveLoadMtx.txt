@@ -1,0 +1,11 @@
+defM0,1,11
+fillM0,0,10
+saveM0,"Mtx1x11.m"
+print0,"File Saved"
+loadM1,"Mtx1x11.m"
+gfxdim -0.1,11,-1,11,1
+x=1
+Trf(x)=M0(1,x)
+x=1
+Trf(x)=M1(1,x)
+end

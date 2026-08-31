@@ -225,6 +225,7 @@ int MatrixSubAddition(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSi
 		//and division should be already done 
 		for (j=i;j<imaxLine;j++){
 			if (CodeListLine[j].code == 0xFF) {return 0;}// No matrix because it could have been M[1,1] =>scalar PrintCmd("no matrix???\n");return 9;}
+			if (CodeListLine[j].code == 1&&CodeListLine[j+1].code == 0xFF) {return 0;}// This is used to let the function mtxn(Mn°) work properly as they return a scalar and not a matrix 
 			if (CodeListLine[j].code == 15) {
 				MAccu[ResM].n=MAccu[(int)CodeListLine[j].value].n;
 				MAccu[ResM].p=MAccu[(int)CodeListLine[j].value].p;
@@ -352,11 +353,18 @@ int MatrixMultiplication(Matrix *MAccu,floactet *CodeListLine,int i, int imaxLin
 			if (MAccu[NewM].ptr == 0 ) {PrintCmd ("Error couldn't allocate memory for temporary matrix\n"); return 9;}
 			MAccu[NewM].n=MAccu[NumM1].n;
 			MAccu[NewM].p=MAccu[NumM2].p;
-
+			int M1n=MAccu[NumM1].n;
+			int M1p=MAccu[NumM1].p;
+			int M2n=MAccu[NumM2].n;
+			int M2p=MAccu[NumM2].p;
+			float *mat1=MAccu[NumM1].ptr;
+			float *mat2=MAccu[NumM2].ptr;
+			float Sum=0;
 				for (j=0;j<MAccu[NumM1].n;j++){
 					for (k=0;k<MAccu[NumM2].p;k++){
-						float Sum=0;
-						for (l=0;l<MAccu[NumM1].p;l++)Sum=Sum+MAccu[NumM1].ptr[j*MAccu[NumM1].p+l]*MAccu[NumM2].ptr[l*MAccu[NumM2].p+k];
+						Sum=0;
+						//for (l=0;l<MAccu[NumM1].p;l++)Sum=Sum+MAccu[NumM1].ptr[j*MAccu[NumM1].p+l]*MAccu[NumM2].ptr[l*MAccu[NumM2].p+k];
+						for (l=0;l<MAccu[NumM1].p;l++)Sum=Sum+mat1[j*M1p+l]*mat2[l*M2p+k];
 						MAccu[NewM].ptr[j*MAccu[NewM].p+k]=Sum;
 					}
 				}
@@ -410,6 +418,7 @@ int MathFunctionMatrices (Matrix *MAccu, floactet *CodeListLine,int i){
 		extern int NbrMaxMatrix; 
 		int m,NewM,Mn,Mp;
 		int j,k;
+		float val;
 		//we are in the case function(matrix):   [13][CodeVal],[15][n°]
 		//NumM > NbrMaxMatrix/2 for the temporary matrices for calculation
 		//These are free at the end of the line calculation.
@@ -546,6 +555,14 @@ int MathFunctionMatrices (Matrix *MAccu, floactet *CodeListLine,int i){
 					for (j=0;j<Mn*Mp; j++)MAccu[NewM].ptr[j] = MAccu[NumM].ptr[j];
 				}
 			break;
+			case 28:	//mtxn
+				val=(float)MAccu[NumM].n;
+				goto PlaceVal;
+			break;
+			case 29:	//mtxp
+				val=(float)MAccu[NumM].p;
+				goto PlaceVal;
+			break;
 		}
 	KeepOn:
 		if (MathError !=0 ) {sprintf(s,"Math Error = %d\n",MathError);PrintCmd(s);return 3;}
@@ -560,6 +577,20 @@ int MathFunctionMatrices (Matrix *MAccu, floactet *CodeListLine,int i){
 			}
 OutForPower:
 	return;
+	
+	PlaceVal:
+		if (MathError !=0 ) {sprintf(s,"Math Error = %d\n",MathError);PrintCmd(s);return 3;}
+		if (MathError == 0) {//Place scalar Result
+				CodeListLine[i].code=1; 
+				CodeListLine[i].value=val;
+				}
+		k=i+1;
+		while (CodeListLine[k].code !=0xFF && CodeListLine[k].code !=0) {
+			CodeListLine[k]=CodeListLine[k+1];
+			k++;
+			}
+	return;
+		
 }
 //-------------------------- End Coding Matrices --------------------------
 
