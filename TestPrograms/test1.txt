@@ -26,5 +26,4 @@ Trf(x)=M1(3,x)
 //PtLink
 gfxdim 1,100,-1,101,1
 x=1
-Trf(x)=M2(2,x)
-
+Trf(x)=M2(1,x)

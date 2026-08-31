@@ -1,0 +1,9 @@
+
+
+defM0,2,2
+pi=3.1415925
+teta=pi
+dataM0,cos(teta),2,sin(teta),4
+
+print M0(1,1)
+print M0(2,1)

@@ -1,0 +1,15 @@
+gfxdim -20,140,-25,5,1
+grid 10
+x=1
+y=1
+N=40
+a=N/2
+b=a
+m=N^2
+defM0,N,N
+fM0(x,y)= 5*exp (0.04*(-(x-a)^2-(y-b)^2))
+//print M0(1,5)
+defM1,3,m
+defM2,4,m
+fctobjM0,1,2
+dispobjM1,2,0

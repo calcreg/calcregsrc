@@ -1,0 +1,19 @@
+gfxdim -20,140,-25,5,1
+grid 10
+x=1
+y=1
+N=20
+a=N/2
+b=a
+m=N^2
+defM0,N,N
+fM0(x,y)= 5*exp (0.08*(-(x-a)^2-(y-b)^2))
+//print M0(1,5)
+defM1,3,m
+defM2,4,m
+fctobjM0,1,2
+defM3,3,3
+teta=3.141597/10
+dataM3,1,0,0,0,cos(teta),sin(teta),0,-sin(teta),cos(teta)
+M1=M3*M1
+dispobjM1,2,0

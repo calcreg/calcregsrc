@@ -165,6 +165,8 @@ extern float RMath_abs(float x);
 //Matrix
 extern int FillSphere(Matrix *MAccu,int NumM,int PtLinkM,float Radius,float period);
 extern int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode);
+static int FillMatrixTwoVariable(int NumM,floactet *CodeOfOneLine, floactet *CodeList);
+extern int FunctToObjMatrix(Matrix *MAccu,int Mfct,int Mobj,int PtLinkM);
 
 extern int MatrixPower(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine);
 extern int MatrixSubAddition(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSignP,int imaxLine);
@@ -227,10 +229,10 @@ float SoundFrequency,SoundAmplitude,SoundDuration,SamplesPerSecond;
 
 #define OpListSize 9 // add the size if add new instructions or special codes in OperatorList
 static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListSize
-static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_trp_mtxn_mtxp_";
-//									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26    27     28     29
-static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_colorgfx_";
-//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28            29
+static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_trp_mtxn_mtxp_fM_";
+//									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26    27     28     29     30 
+static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_colorgfx_dataM_fctobjM_";
+//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28            29           30       31 
 //char blabli[]= { {'hello'},0x1,{'hi'},0x0};
 
 //--------------labels
@@ -308,9 +310,11 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //gfxdim xmin,xmax,ymin,ymax,IncX //Gfx definition
 //box3d wx,wy,wz,Inc3d  wx width of the box from -wx to wx Xmax3d = wx =-Xmin3d
 //F1(x) = 8*x+2
-//Trf(x)= exp(x+1)+F1(x)
+//Trf(x)= exp(x+1)+F1(x)     Plot 2D
+//Trf(x,y)= exp(x+y)+F1(x)  Plot 3D
+
 //line x1,y1,x2,y2,color
-//x<10=>goto loop
+//x<10=>goto loop  available test condition: <,>,==
 //getserial Baudrate,SerFlag
 //putserial Baudrate,SerFlag,bytedata
 //key(0) or key(1) value from keyboard(0) or the mouse board rectangle(1)
@@ -336,6 +340,9 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //dispobjM objM,PtLinkM,DrawingMode   objM is the matrix containing the different points objM[3 or 4,npts], and PtLinkM is the matrix containing the link points
 //																	DrawingMode is the mode to draw: 0=transparent, 1=hidden faces not drawn
 //colorgfx n°color   This sets the color of the pencil
+//dataM n°mtx,a11,a12,a13,...,a21,a22,a23,...a31,a32,a33,...anp used to fill data in the mtx
+//fMn°(x,y)= exp(-(x2+y^2)^)  fills the matrix with the exponential, it starts from x=1 (y=1) up to Mn (Mp respectively)
+//ftobjM n°M1,n°M2,n°PtLinkM  transfert matrix style Meshgrid to an object with its PtLink Matrix to be displayable with dispobjM
 
 //MathFunctions
 extern int MathError; //send back a code if error in the Math functions. MathError=1 out of range exponential
@@ -427,12 +434,6 @@ void Execute(void) {
 	GridSet=0;//init
 	ColorGraph=1;
 	StepX=1;
-	/*PalmOs
-	FieldProgTextPtr=(FieldPtr)(FrmGetObjectPtr(Frm, (FrmGetObjectIndex(Frm, fld_prog))));
-	progtext = FldGetTextPtr(FieldProgTextPtr); //return the ptr to a the lock memory string of the fld_prog
-	if (progtext==0) {PrintCmd("Keep clicking  on Test <tst> to view different program examples...\nclick <exec> to launch them.");return;}
-	//this text cannot be modified from progtext, because the memory can be reallocated by the system
-	*/
 	#ifdef CalcRegSoftware
 		//Start Special Part for Win32
 		DWORD 	dwTextLength = GetWindowTextLength(hEditP);
@@ -443,15 +444,14 @@ void Execute(void) {
 		// No need to bother if there's no text.
 		progtext=(char*)malloc ((dwTextLength+1)*sizeof(char));
 		if (progtext == 0) {
-			//printf("can't open progtext\n");
-			MessageBox(NULL, "Can't open progtext!", "Error!",
+			MessageBox(NULL, "Can't alloc for Text Program!", "Error!",
 			MB_ICONEXCLAMATION | MB_OK);
 			goto FreeMemories;
 			}
 		#ifdef CalcRegSoftware	
 			GetWindowText(hEditP, progtext, dwTextLength+1);
 		#else
-			strcpy(progtext,myprog);
+			strcpy(progtext,myprog);//copy the program from CalcRegMyProg.h
 		#endif
 		//End Special Part for Win32
 	
@@ -466,30 +466,17 @@ void Execute(void) {
 	if (strstr(progtext,"longjumeau") !=0  ) CodageIdentity2=1;
 	MnemoProgSize=strlen(progtext);
 	
-	
-	
-	/* PalmOs
-	MemHdleProg = MemHandleNew(MnemoProgSize+AdditionalProgMem);//size+1 if overflow possibilities
-	if( MemHdleProg == 0){PrintCmd("can't allocate mnemoprog!");return;}
-    WholeMnemoProg = MemHandleLock(MemHdleProg);
-	*/
 	// win32 ->
 	WholeMnemoProg = (char*)malloc (MnemoProgSize+AdditionalProgMem);
 	if( WholeMnemoProg == 0){PrintCmd("can't allocate mnemoprog!");return;}
 	
 	//Copy of the text from the field to WholeMnemoProg
 	strcpy(WholeMnemoProg,progtext);
+	WholeMnemoProg[strlen(progtext)]=0; //make sure the program finishes correctly
 	RemoveComments(WholeMnemoProg);
-//	Nm=InsertMacros();//returns number of macros
-//	if (debug >0 ){	sprintf(s,"%d macros found\n",Nm); PrintCmd(s);}
-
 
 	NbrVar=CreateVariablesList(WholeMnemoProg);//gives back the exact number of Accu necessary, MemHdle is created, think to free memory at the end
-	/* PalmOs
-	MemHdleAccu = MemHandleNew(NbrVar*sizeof(struct NbrCmplx) +1);//size+1 if overflow possibilities
-	if( MemHdleAccu == 0){PrintCmd("can't allocate Accu!");return;}
-    Accu = MemHandleLock(MemHdleAccu);
-	*/
+
 	//win32 ->
     Accu = (NbrCmplx *) malloc(NbrVar*sizeof(struct NbrCmplx) +1);//size+1 if overflow possibilities
 	if(Accu == 0){PrintCmd("can't allocate Accu!");return;}
@@ -507,11 +494,6 @@ void Execute(void) {
 		if (VDemo != 0) {sprintf(s,"Version %d\n",VDemo); PrintCmd(s); 
 												if (VDemo == 1) {PrintCmd("Demo\n");LowPerformance();}
 												}
-		/*PalmOs
-		MemHdleCodeList = MemHandleNew(CodeListSize*sizeof(struct floactet));
-		if( MemHdleCodeList == 0){PrintCmd("Can't allocate CodeList!");goto FreeMemories;}
-		CodeList = MemHandleLock(MemHdleCodeList);
-		*/
 		//win32 ->
 		CodeList = (floactet *) malloc(CodeListSize*sizeof(struct floactet));
 		if( CodeList == 0){PrintCmd("Can't allocate CodeList!");goto FreeMemories;}
@@ -607,6 +589,8 @@ int CreateVariablesList(char *text){ // à revoir !
 	for (i=0;i<strlen(text);i++){
 		if (text[i]== 0x0A && text[i+1]==0x0D) {guillemet=0;istrLine=i+2;}
 		if (text[i]== 0x0A && text[i+1]!=0x0D) {guillemet=0;istrLine=i+1;}
+		if (text[i]== 0x0D && text[i+1]==0x0A) {guillemet=0;istrLine=i+2;}//added
+		if (text[i]== 0x0D && text[i+1]!=0x0A) {guillemet=0;istrLine=i+1;}//added
 		if (text[i]== '"') {guillemet=1;}
 		if(istrLine == 0 || (i-istrLine)>0 ) 	if (text[i]==Octet("=") && text [i+1] !=Octet (">")) {//there should be at least one Letter.
 				if (text[i-1]== Octet(")") ) goto NotNew; //Avoiding f(x)=... it is not a variable
@@ -762,9 +746,27 @@ int doMainMenu (int command)
 				PrintCmd("Low Precision\nUp to 1E-05\n");}
 		else {FunctionPrecision =1;PrintCmd("High Precision\nUp to1E-07\n");}
 		break;
-
+	//debug= -1 : Show List of floactet codes
+	//debug= -2 : Show Program after replacement of variables
+	//debug= -3 : Show convert lines
+	//debug= -4 : Show Info: size,labels
 	case DebugSCMenuId: //for display list of codes only
 		debug=-1;
+		Execute();
+		debug=0;
+		break;
+	case DebugSPMenuId: //for display programm after replacements of variables
+		debug=-2;
+		Execute();
+		debug=0;
+		break;
+	case DebugLEMenuId: //for display list of codes only
+		debug=-3;
+		Execute();
+		debug=0;
+		break;
+	case DebugInfoMenuId: //for display list of codes only
+		debug=-4;
 		Execute();
 		debug=0;
 		break;
@@ -926,7 +928,7 @@ float X0,X1,Y0,Y1,Y;
 		CodeListAdr=CodeList; //To transport CodeList out of here without any interference
 		ProgSize=strlen(WholeMnemoProg);
 
-		if (debug>0){sprintf(s,"Size=%d bytes\n",ProgSize); PrintCmd(s);}
+		if (debug==-4){sprintf(s,"Size=%d bytes\n",ProgSize); PrintCmd(s);}
 		//Prepare Labels List
 		istrt=0; i=0;
 		lblptr=0;
@@ -935,7 +937,7 @@ float X0,X1,Y0,Y1,Y;
 			if (WholeMnemoProg[i] ==0x0D) istrt=i+1;
 			if (WholeMnemoProg[i] == Octet(":") ){
 					Labels[lblptr].adr=istrt; //situation of the Label in WholeMnemoProg 
-					if (debug > 1) {sprintf(s,"label found Labels[%d].adr= %d\n",lblptr,istrt);PrintCmd(s);}
+					if (debug == -4) {sprintf(s,"Label[%d]@%d(Mnemo)\n",lblptr,istrt);PrintCmd(s);}
 					lblptr++;
 				}
 				i++;
@@ -953,29 +955,35 @@ float X0,X1,Y0,Y1,Y;
 	
 	i=offsetP; K=0; 
 	for (k=0; k<LineSize;k++){ 
+		if (WholeMnemoProg[i+k]==0x0D && WholeMnemoProg[i+k+1]==0x0A ){
+				InstructionLine[k]=0x0A;InstructionLine[k+1]=0;k=k+1;
+				goto AvoidDoubleEnter;} 
 		if (WholeMnemoProg[i+k]==0x0D ) goto OutLoadLine; 
 		if (WholeMnemoProg[i+k]==0x0A ) goto OutLoadLine; 
 		if (WholeMnemoProg[i+k]==0 ) goto OutLoadLine; 
 		InstructionLine[k]=WholeMnemoProg[i+k];
+
 		}
 	OutLoadLine:
 		InstructionLine[k]=0x0A;
 		InstructionLine[k+1]=0;
+	AvoidDoubleEnter:
 		K=k+1;
-		
-	//if (debug>0) PrintCmd(InstructionLine);
+		if(debug==-2)PrintCmd(InstructionLine);
+
 	offsetI = offsetP; //this is for the current position in wholeMnemoProg 
 	offsetP=offsetP+K;
 		i=0;
-		while(i<LineSize){if(InstructionLine[i]==0x0D) InstructionLine[i]=0x0A; i++;}//change the return code
+		while(i<LineSize){if(InstructionLine[i]==0x0D) {PrintCmd("there is more 0x0D\n");InstructionLine[i]=0x0A; }i++;}//change the return code
 		RemoveSpace(InstructionLine,LineSize); //remove the spaces " " from the line instruction
-		if (debug > 0) 	{sprintf(s,"\n---conv Line ---%s\n", InstructionLine);PrintCmd(s);}
+		if (debug > 0) 	{sprintf(s,"Conv: %s", InstructionLine);PrintCmd(s);}
+		if (debug ==-3) 	{sprintf(s,"Conv%4d Code(%d)| %s",nbrLine,CodeListOffset,InstructionLine);PrintCmd(s);}
 		if (CheckLabelDef(InstructionLine,LineSize) == 0) { 
 			//if (debug > 2) printf("No label \n");
 			Error = ConvertMnemo(InstructionLine, CodeList); //InstructionLine = Mnemolist for the test
 		}else {
 				Labels[lblptr].n=CodeListOffset;
-				if (debug > 2) {sprintf(s,"lbl [%d].n= %d\n",lblptr,CodeListOffset);PrintCmd(s);}
+				if (debug == -4) {sprintf(s,"Set Label[%d].n= %d (CodeList)\n",lblptr,CodeListOffset);PrintCmd(s);}
 				lblptr++;
 		}
 		nbrLine++;
@@ -986,7 +994,7 @@ float X0,X1,Y0,Y1,Y;
 	CodeList[CodeListOffsetMax].cmplx=0;
 
 
-	if (debug >0) {	PrintCmd("ok\n");sprintf(s," %d Lines,  %d codes  \n", nbrLine,CodeListOffsetMax);
+	if (debug == -4) {sprintf(s," %d Lines,  %d codes  \n", nbrLine,CodeListOffsetMax);
 	PrintCmd(s);}
 	
 	//Up to that point, the codeList contains [12][numerolbl] 
@@ -1005,11 +1013,12 @@ float X0,X1,Y0,Y1,Y;
 			c=CodeList[i].cmplx;
 			sprintf(s, " %d [%d][%d][%d]\n",i,a,b,c);PrintCmd(s);
 			}
-		PrintCmd ("----------------\n");
+		PrintCmd ("----------------\nExiting without launching.");
+		return 0;
 		}
 
 
-	if (debug > 0) PrintCmd("LAUNCHING...\n");
+	if (debug != 0) PrintCmd("LAUNCHING...\n");
 	CodeListOffset=0;
 	OffsetLine=0;
 	CountBreak=0; //init
@@ -1043,16 +1052,12 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 	CounterLineCode++;
 
 	
-	if (CodeOfOneLine[0].code == 11 &&CodeOfOneLine[0].value==0) {goto EndMain;}//end
-/*	if (CodeOfOneLine[0].code==11 && CodeOfOneLine[0].value==2) {//goto 
-			if (debug > 0 ) {PrintCmd("goto \n");}
-				if (CodeOfOneLine[1].code==12) {//the label
-				CodeListOffset = CodeOfOneLine[1].value;
-				OffsetLine=0;
-				goto OutInstructionHere;//jump to the end of the checks for instructions
-				}else {PrintCmd("goto has no label !\n"); goto EndMain;}
-	}
-*/
+	if (CodeOfOneLine[0].code == 11 &&CodeOfOneLine[0].value==0) {//end
+		Error =0;
+		if (debug !=0) PrintCmd("end\n");
+		goto EndMain;
+		}
+
 	if (CodeOfOneLine[0].code == 11 && CodeOfOneLine[0].value == -1 && CodeOfOneLine[3].code == 7){//Trf(x)=...
 			if (CodeOfOneLine[2].code != 9 ){ PrintCmd("Error syntaxe Trf(x)\n");goto EndMain;}
 
@@ -1063,9 +1068,19 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			goto AlmostEndLoop;
 		}
 	if (CodeOfOneLine[0].code == 11 && CodeOfOneLine[0].value == -1 && CodeOfOneLine[3].code == 10){//Trf(x)=...
-			if (CodeOfOneLine[2].code != 9 && CodeOfOneLine[4].code != 9){ PrintCmd("Error syntaxe Trf(x)\n");goto EndMain;}
+			if (CodeOfOneLine[2].code != 9 && CodeOfOneLine[4].code != 9){ PrintCmd("Error syntaxe Trf(x,y)\n");goto EndMain;}
 
 			if (TraceFunctionTwoVariable(CodeOfOneLine,CodeList) !=0 ) goto EndMain;
+			if (StopProgram==1) goto EndMain;
+			CodeListOffset=CodeListOffsetSave+NbrCodesCopied;
+			OffsetLine=0; ColorGraph++; 
+			goto AlmostEndLoop;
+		}
+	if (CodeOfOneLine[0].code == 11 && CodeOfOneLine[0].value == -2){ //fMn°mtx(x,y)=...
+			if(CodeOfOneLine[1].code != 1 || CodeOfOneLine[3].code != 9 ||
+				CodeOfOneLine[4].code != 10 || CodeOfOneLine[5].code != 9){ PrintCmd("Error syntaxe fM(x,y)\n");goto EndMain;}
+			int NumM=(int)CodeOfOneLine[1].value;
+			if (FillMatrixTwoVariable(NumM,CodeOfOneLine,CodeList) !=0 ) goto EndMain;
 			if (StopProgram==1) goto EndMain;
 			CodeListOffset=CodeListOffsetSave+NbrCodesCopied;
 			OffsetLine=0; ColorGraph++; 
@@ -1224,7 +1239,9 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==2) {//goto 
 			if (debug > 0 ) {PrintCmd("goto \n");}
 				if (CodeOfOneLine[OffsetLine+1].code==12) {//the label
+				if (debug == -4){sprintf(s,"goto from Code %d ",CodeListOffset);PrintCmd(s);}
 				CodeListOffset = CodeOfOneLine[OffsetLine+1].value;
+				if (debug == -4){sprintf(s,"to Code %d\n",CodeListOffset);PrintCmd(s);}
 				OffsetLine=0;
 				goto OutInstructionHere;//jump to the end of the checks for instructions
 				}
@@ -1534,7 +1551,7 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			int k;
 			for (k=0;k<MAccu[NumM].n*MAccu[NumM].p;k++)MAccu[NumM].ptr[k]=0;
 			OffsetLine=0;
-			}else{PrintCmd("Matrix!\n");goto EndMain;}
+			}else{PrintCmd("defM Matrix!\n");goto EndMain;}
 		}	
 		
 //------------
@@ -1570,6 +1587,37 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 		}	
 		
 //------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==31) {//fctobjM
+			if (CodeOfOneLine[OffsetLine+1].code==1&& CodeOfOneLine[OffsetLine+2].code==10 &&
+				CodeOfOneLine[OffsetLine+3].code==1&& CodeOfOneLine[OffsetLine+4].code==10 &&
+					CodeOfOneLine[OffsetLine+5].code==1) {
+			NumM = (int)CodeOfOneLine[OffsetLine+1].value;
+			int M2 = (int)CodeOfOneLine[OffsetLine+3].value;
+			int PtLinkM = (int)CodeOfOneLine[OffsetLine+5].value;
+			Error = FunctToObjMatrix(MAccu,NumM,M2,PtLinkM);
+			if (Error !=0) goto EndMain;
+ 			OffsetLine=0;
+			}else{PrintCmd("fctobjM !\n");goto EndMain;}
+		}	
+		
+//------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==30) {//dataM
+			if (CodeOfOneLine[OffsetLine+1].code==1){
+			NumM = (int)CodeOfOneLine[OffsetLine+1].value;
+			if (NumM > NbrMaxMatrix/2 ) {Error=1;PrintCmd("Matrix Nbr too high \n");goto EndMain;}
+			if (MAccu[NumM].ptr ==0) {Error=1;PrintCmd("Matrix not defined\n");goto EndMain;}
+
+			k=0;while(CodeOfOneLine[OffsetLine+2*k+2].code==10&&
+					CodeOfOneLine[OffsetLine+2*k+3].code==1){
+						MAccu[NumM].ptr[k]=CodeOfOneLine[OffsetLine+2*k+3].value;
+						if (k==MAccu[NumM].n*MAccu[NumM].p){Error=1;PrintCmd("Exceeding Mtx size in dataM filling\n");goto EndMain;}
+						k++;
+					}//while
+ 			OffsetLine=0;
+			}else{PrintCmd("dataM fill Matrix!\n");goto EndMain;}
+		}	
+		
+//------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==28) {//dispobjM
 			if (CodeOfOneLine[OffsetLine+1].code==1&& CodeOfOneLine[OffsetLine+2].code==10 &&
 				CodeOfOneLine[OffsetLine+3].code==1&& CodeOfOneLine[OffsetLine+4].code==10 &&
@@ -1596,13 +1644,13 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			if (debug > 0 ) {PrintCmd("bsr \n");}
 				if (CodeOfOneLine[OffsetLine+1].code==12) {//the label
 				i = CodeOfOneLine[OffsetLine+1].value; //save offset to go
-				//sprintf(s,"bsr = %d\n",i);PrintCmd(s);
-				//sprintf(s,"save  = %d\n",CodeListOffset);PrintCmd(s);
 				//remark:We just save CodeListOffset because it was changed above to the next line
 				SubRoutineStack[PointerSubRoutine] = CodeListOffset;//we save the following offset Line
+				if (debug == -4){sprintf(s,"bsr from code %d ",CodeListOffset);PrintCmd(s);}
 				PointerSubRoutine++;
-				CodeListOffset = i; //retrieive offset to go 
-				if (PointerSubRoutine >= MaxSubRoutine){PrintCmd("Max Subroutines reached!\n");goto EndMain;}
+				CodeListOffset = i; //retrieive offset to go
+				if (debug == -4){sprintf(s,"to code %d\n",i);PrintCmd(s);}
+				if (PointerSubRoutine >= MaxSubRoutine){Error =1;PrintCmd("Max Subroutines reached!\n");goto EndMain;}
 				OffsetLine=0;
 				goto OutInstructionHere;//gosubroutine to the end of the checks for instructions
 				}
@@ -1616,7 +1664,7 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			if (PointerSubRoutine >0){
 				PointerSubRoutine = PointerSubRoutine-1;
 				CodeListOffset = SubRoutineStack[PointerSubRoutine];
-				//sprintf(s,"Retreive CodeListOffset= %d\n",CodeListOffset);PrintCmd(s);
+				if (debug == -4){sprintf(s,"rts back to code: %d\n",CodeListOffset);PrintCmd(s);}
 				OffsetLine=0;
 				goto OutInstructionHere;//back from subroutine
 			}else {PrintCmd("rts => end !\n"); goto EndMain;}
@@ -1662,7 +1710,7 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 	//-------------------------------------------------------EndLoop---------------------------------
 	if (debug > 0 )PrintCmd("End\n");
 EndMain:
-	if (Error!=0) IndicError(CounterLineCode);
+	if (Error!=0){sprintf(s,"Error Indication= %d ",Error);PrintCmd(s);IndicError(CounterLineCode);}
 	return (0);
  }
 
@@ -1688,7 +1736,13 @@ EndMain:
 	HighLight:
 		FldSetSelection (FieldProgTextPtr, (UInt16) i, (UInt16) i+1);
 	*/
-	sprintf (s,"Line %d\n",LineErrorCode);PrintCmd(s);
+	int k,i=0;char p[CharMaxOneLine];
+	for(k=0;k<LineErrorCode;k++){while(WholeMnemoProg[i]!=0x0A&&i<strlen(WholeMnemoProg)){i++;}i++;}
+	k=0;
+	while (WholeMnemoProg[i]!=0x0A &&WholeMnemoProg[i]!=0){p[k]=WholeMnemoProg[i++];k++;}
+	p[k]=0;
+	sprintf (s,"Line %d\n%s",LineErrorCode,p);PrintCmd(s);
+	//PrintCmd(WholeMnemoProg);
 }
  
  static int TraceFunctionOneVariable(floactet *CodeOfOneLine, floactet *CodeList)
@@ -1705,7 +1759,6 @@ EndMain:
 			FunctionStart=0;
 			if (GridSet == 0){
 			WinEraseRectangleReg(DrawZoneX,DrawZoneY,DrawZoneW,DrawZoneH);
-			printf("TraceFunctionOneVariable rectangle to be set!\n");
 			TracerAxis(DrawZoneX+DrawZoneW/2,DrawZoneY+DrawZoneH/2,DrawZoneW, DrawZoneH);
 			}
 			
@@ -1848,13 +1901,61 @@ EndMain:
 			return Error;
 }
 
- 
+static int FillMatrixTwoVariable(int NumM,floactet *CodeOfOneLine, floactet *CodeList)
+ {
+	int N_AccuX,N_AccuY;
+	float x,y,z;
+	int Error,i;
+	float dx,dy;
+
+	int Mp = MAccu[NumM].p;
+	int Mn = MAccu[NumM].n;
+	if (MAccu[NumM].ptr == 0) {Error = 1; PrintCmd("fM: objM not defined!\n");goto EndFunctionFX;}
+
+			//fM n°mtx(AX,AY)= 
+			N_AccuX=(int)CodeOfOneLine[3].value;
+			N_AccuY=(int)CodeOfOneLine[5].value;
+			CodeListOffset=CodeListOffset+8; //to focus on the equation line
+			FillCodeOfOneLine(CodeList,CodeOfOneLine);//transfert one line 
+			x=1;
+			y=1;
+			Accu[N_AccuX].value=x;
+			Accu[N_AccuY].value=y;
+		LoopFillMtxFunction:
+		
+				ReplaceAccuByValue(CodeOfOneLine);
+
+				Error = ReplaceMAccuByValue(CodeOfOneLine); //get matrix values
+				if (Error !=0) {sprintf (s,"While replacing Mtx n°(n,p) by Values Error= %d \n", Error);PrintCmd(s);goto EndFunctionFX;}
+
+				Error = TreatParenthese(CodeOfOneLine);													//parenthese
+				if (Error != 0) {sprintf (s,"Parenthese Error = %d \n", Error);PrintCmd(s);goto EndFunctionFX;}
+				Error = CalculOneLine(CodeOfOneLine); //Calcul
+				if (Error != 0) {sprintf (s,"Error = %d \n", Error);PrintCmd(s);goto EndFunctionFX;}
+				if (CodeOfOneLine[0].code != 1) {PrintCmd("Error finishing fMn°(x,y) line\n");goto EndFunctionFX;}
+				z=CodeOfOneLine[0].value; //Math convention x starts at 1
+				FillCodeOfOneLine(CodeList,CodeOfOneLine);//transfert one line 
+				MAccu[NumM].ptr[((int)x-1)*Mp+((int)y-1)]=z;
+				y++;
+				Accu[N_AccuY].value=y;
+
+				if (y <= Mp) goto LoopFillMtxFunction;
+
+				y=1; x++;
+				Accu[N_AccuX].value=x; Accu[N_AccuY].value=y; 
+				if (x <= Mn) goto LoopFillMtxFunction;
+
+		EndFunctionFX:
+			return Error;
+}
+
+
+
  static int CheckLabelDef(char *InstructionLine,int Size){
 	int i=0;
 	while (i<Size && InstructionLine[i] != 0x0A){
-		//printf("InstructionLine[%d]=%c\n",i,InstructionLine[i]);
 		if (InstructionLine[i] == Octet(":") ) {
-			if (debug >0) {sprintf (s,"lbl:  %d letters\n",i);PrintCmd(s);} 
+			if (debug == -4) {sprintf (s,"Label=%s",InstructionLine);PrintCmd(s);} 
 		return (i);}
 		i++;
 	}
@@ -1982,8 +2083,16 @@ int StrtStr,EndStr,p,a,BackFromAccu=0;
 		//printf("MnemoListLine[%d]=%c\n",i,MnemoListLine[i]);
 		FunctionNumber=HandleMathFunctions(MnemoListLine,Iindex);
 		i=Iindex;
+		if (FunctionNumber == 30 ){
+			if (debug > 0) PrintCmd("Spécial fMn°(x,y) \n");
+			CodeList[CodeListOffset].code=11;	//Change it to instruction for spécial use
+			CodeList[CodeListOffset].value=-2; 	//Specific coding for display function fMn°(x,y)= ...
+			CodeListOffset++;
+			goto StartConvList;
+			//the function fMn°(x,y)= is actually using the job of the math function for coding it becomes an instruction with coding [11] [-1]
+		}//end coding search function
+
 		if (FunctionNumber == 4 ){
-			if (debug > 0) PrintCmd("Spécial Trf(x) \n");
 			CodeList[CodeListOffset].code=11;	//Change it to instruction for spécial use
 			CodeList[CodeListOffset].value=-1; 	//Specific coding for display function f(x)= ...
 			CodeList[CodeListOffset].cmplx=0;

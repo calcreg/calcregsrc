@@ -1,0 +1,11 @@
+gfxdim -10,20,-10,10,1
+grid 1
+x=1
+y=1
+defM0,10,10
+fM0(x,y)= 2*exp (-0.05*((x-5)^2+(y-5)^2))
+print M0(1,5)
+defM1,4,100
+defM2,4,100
+fctobjM0,1,2
+dispobjM1,2,0

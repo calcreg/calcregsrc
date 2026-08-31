@@ -22,6 +22,8 @@ extern HDC hDC;
 
 
 //#include "CalcReg.h"		// app
+
+
 //matrix
 typedef struct Matrix{
 	int n;	//n line
@@ -134,6 +136,7 @@ void FloatToString(float value, char *buffer, int Rounding);
 int FillSphere(Matrix *MAccu,int NumM,int PtLinkM,float Radius,float period);
 int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode);
 void FillQuadrilatere(float X1,float Y1,float X2,float Y2,float X3,float Y3,float X4,float Y4,int ColorGraph);
+int FunctToObjMatrix(Matrix *MAccu,int NumM,int M2,int PtLinkM);
 
 int MatrixPower(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine);
 int MatrixSubAddition(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSignP,int imaxLine);
@@ -224,6 +227,9 @@ float HlowPrecision=0.00001; //Low precision 1E-05;
 			if (MAccu[PtLinkM].ptr == 0) {Error = 1; PrintCmd("To fill Matrix sphere, PtLinkMatrix must be defined!\n");goto EndMain;}
 			if (MAccu[PtLinkM].p!=Mp) {PrintCmd("fillsphM: M.p should be same as PtLinkM.p\n");Error=1;goto EndMain;} 
 			if (MAccu[PtLinkM].n!=4) {PrintCmd("fillsphM: PtLinkM.n should be equal to 4\n");Error=1;goto EndMain;} 
+			//This line below if for eventual translations
+			if (MAccu[NumM].n==4)for (k=0;k<Mp;k++)MAccu[NumM].ptr[3*Mp+k]=1;
+			
 			NbrLatitude=Mp/(int)period;
 			for (j=0;j<NbrLatitude;j++){
 				for (k=0;k<(int)period;k++){
@@ -268,7 +274,7 @@ float HlowPrecision=0.00001; //Low precision 1E-05;
 	}
 
 int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode){
-	int Error,k,L,foundPlace,pt,pt1,pt2,NoDraw,m,mmax,xminPt,xmaxPt;
+	int Error,i,k,L,foundPlace,pt,pt1,pt2,NoDraw,m,mmax,minPt,maxPt;
 	float xmax,xmin,x,x1,y1,z1,x2,y2,z2,x3,y3,z3,x4,y4,z4,X1,Y1,X2,Y2,X3,Y3,X4,Y4;
 
 	int Mp = MAccu[NumM].p;
@@ -338,28 +344,30 @@ int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode){
 
 	//Here we need to find the points order to display in x from back to front
 	//therefore for x decreasing order.
-	ListOrder *list = (ListOrder*) malloc(Mp*sizeof (struct ListOrder));
+	ListOrder *list = (ListOrder*) malloc((Mp+1)*sizeof (struct ListOrder));
 	if (list==0) {PrintCmd("dispobjM: Can't allocate memory for ListOrder\n"); goto OutDrawObject;}
 
 	//Get the xmin of the whole object
 	xmin=MAccu[NumM].ptr[0*Mp+0];
+	minPt=0;//init
 	for (k=0;k<Mp;k++) if(MAccu[NumM].ptr[0*Mp+k] < xmin){
-										xmin = MAccu[0].ptr[0*Mp+k];
-										xminPt=k;
+										xmin = MAccu[NumM].ptr[0*Mp+k];
+										minPt=k;
 										}
 
 	//Get the xmax of the whole object
 	xmax=MAccu[NumM].ptr[0*Mp+0];
-	for (k=0;k<Mp;k++) if(MAccu[NumM].ptr[0*Mp+k] > xmax){
-										xmax = MAccu[0].ptr[0*Mp+k];
-										xmaxPt=k;
+	maxPt=0;
+	for (k=0;k<Mp;k++) if(MAccu[NumM].ptr[0*Mp+k] >= xmax){
+										xmax = MAccu[NumM].ptr[0*Mp+k];
+										maxPt=k;
 										}
 	//Set first value
-	list[0].pt = xminPt; //point on the first value in the matrix
+	list[0].pt = minPt; //point on the first value in the matrix
 	list[0].x = xmin;
 	list[0].next=1;
 	
-	list[1].pt = xmaxPt; //point on the first value in the matrix
+	list[1].pt = maxPt; //point on the first value in the matrix
 	list[1].x = xmax;
 	list[1].next=-1;//The end code of next is -1 it should be never read if below is done fine
 	mmax=2; //Therefore there are now two values in list[]
@@ -367,12 +375,12 @@ int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode){
 	//fill list[]
 	for(k=0;k<Mp;k++){
 		x=MAccu[NumM].ptr[0*Mp+k];
-		if(k != xminPt && k != xmaxPt){
+		if(k != minPt && k != maxPt){
 			foundPlace=0;m=0;
 			while (m<mmax && foundPlace==0){ //loop over the already stocked info in list to check where to put the new x data
 				if(m!=1)if(list[m].x <= x && x <= list[list[m].next].x){
 					//place this new point in between
-					if (mmax>=Mp) {PrintCmd("Error m>Mp\n"); goto OUTLIST;}	
+					if (mmax>=Mp) {PrintCmd("Error mmax>Mp\n");for(i=0;i<Mp;i++){sprintf(s,"list[%3d]:\n.x=%d\n.pt=%d\n.next=%d\n",i,(int)list[i].x,list[i].pt,list[i].next);PrintCmd(s);}goto FREELIST;}	
 					list[mmax].x=x;
 					list[mmax].pt=k;
 					list[mmax].next=list[m].next;
@@ -384,12 +392,14 @@ int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode){
 			}//while m
 		}
 	}//for k fill list
-	if (mmax !=Mp) {PrintCmd("Error in processing list Ordering:\nmmax=");Rprintf(mmax);}
+	if(list[1].next!=-1) {PrintCmd("list[1].next==-1!");goto FREELIST;}
+	if (mmax !=Mp) {PrintCmd("xmin=");Rprintf((float)xmin);PrintCmd("xmax=");Rprintf((float)xmax);
+				PrintCmd("Error in processing list Ordering:\nmmax=");Rprintf((float)mmax);goto FREELIST;}
 	
 	//The list is now filled
 
 OUTLIST:
-
+	
 	//Below we draw the object Matrix from x min to xmax
 	//               -----  Drawing Object with hidden faces -----
 	L=0; //init at L=0, 
@@ -439,10 +449,10 @@ OUTLIST:
 
 			FillQuadrilatere(X1,Y1,X2,Y2,X3,Y3,X4,Y4,ColorGraph);
 			
-				Line(X1,Y1,X2,Y2,0);
+			/*	Line(X1,Y1,X2,Y2,0);
 				Line(X1,Y1,X3,Y3,0);
 				Line(X2,Y2,X4,Y4,0);
-				Line(X3,Y3,X4,Y4,0);
+				Line(X3,Y3,X4,Y4,0);*/
 		//	goto FREELIST;
 			
 			}//if NoDraw
@@ -457,114 +467,89 @@ OUTLIST:
 		return Error;
 }
 
+
 void FillQuadrilatere(float X1,float Y1,float X2,float Y2,float X3,float Y3,float X4,float Y4,int ColorGraph){
-
-	int graphCase=0,k;
-	float m1,m2,m3,m4,p1,p2,p3,p4;
-	float x,x1,x2,x3,x4,y1,y2,y3,y4;
-
-	//      P1        
-	//           / \
-	//          /    \
-	//  P4   /       \    P2
-	//         \        /
-	//           \    /
-	//             \/
-	//              P3
-
-/*	x1=6;y1=10;
-	x2=10;y2=4;
-	x3=4;y3=2;
-	x4=1;y4=5;
-
-	X1=6;Y1=10;
-	X2=10;Y2=4;
-	X3=4;Y3=2;
-	X4=1;Y4=5;*/
 	Points X[4];
+	POINT quadpoints[4];
+	int k;
+	float x1,x2,y1,y2;
+	SetPolyFillMode(hDC,WINDING);
 	X[0].x=X1;X[0].y=Y1;
 	X[1].x=X2;X[1].y=Y2;
-	X[2].x=X3;X[2].y=Y3;
-	X[3].x=X4;X[3].y=Y4;
-
-/*				Line(X[0].x,X[0].y,X[1].x,X[1].y,0);
-				Line(X[0].x,X[0].y,X[2].x,X[2].y,0);
-				Line(X[1].x,X[1].y,X[3].x,X[3].y,0);
-				Line(X[2].x,X[2].y,X[3].x,X[3].y,0);
-*/
-
-	//Settle the different points as the drawing above
-	int k1,k2,k4;
-	x4=X1;
-	for (k=0;k<4;k++)if(x4>=X[k].x){k4=k;x4=X[k].x;y4=X[k].y;}
-	x2=X1;
-	for (k=0;k<4;k++)if(x2<=X[k].x){k2=k;x2=X[k].x;y2=X[k].y;}
-	x1=x2;
-	for (k=0;k<4;k++)if(x1>=X[k].x && k!=k2&& k!=k4){k1=k;x1=X[k].x;y1=X[k].y;}
-	for (k=0;k<4;k++)if(k!=k2&& k!=k4 && k!=k1){x3=X[k].x;y3=X[k].y;}
-
-	if (x4!=min(x1,min(x2,min(x3,x4)))){PrintCmd("There is a pb x4\n");return;}
-	if (x2!=max(x1,max(x2,min(x3,x4)))){PrintCmd("There is a pb x2\n");return;}
-	if (x3<x1){
-		PrintCmd("There is a pb x3<x1\n");
-		PrintCmd("X4,X1,X3,X2=...\n");
-		Rprintf(X4);
-		Rprintf(X1);
-		Rprintf(X3);
-		Rprintf(X2);
-		PrintCmd("x1,x3=...\n");
-		Rprintf(x1);Rprintf(x3);return;}
-
-		/*		Line(x1,y1,x2,y2,0);
-				Line(x2,y2,x3,y3,0);
-				Line(x3,y3,x4,y4,0);
-				Line(x4,y4,x1,y1,0);*/
-
-	//Calculate the coefficient director of the lines
-	if (x4!=x1)m4=(y4-y1)/(x4-x1);
-	else graphCase=4;
-	if (x4!=x3)m3=(y4-y3)/(x4-x3);
-	else graphCase=3;
-	if (x2!=x3)m2=(y2-y3)/(x2-x3);
-	else graphCase=2;
-	if (x2!=x1)m1=(y1-y2)/(x1-x2);
-	else graphCase=1;
-
-	//if (graphCase==0){ //We can apply the filling
-	//PrintCmd("draw\n");
-	p1=y1-m1*x1;p2=y2-m2*x2;p3=y3-m3*x3;p4=y4-m4*x4;
-		if(x1!=x4 && x3!=x4){x=x4;while(x<min(x3,x1)){Line(x,m3*x+p3,x,m4*x+p4,ColorGraph);x=x+(DimXmax-DimXmin)/DrawZoneW;}}
-		if(x2!=x1 && x4!=x3) if(x1<x3){x=x1;while(x<x3){Line(x,m1*x+p1,x,m3*x+p3,ColorGraph);x=x+(DimXmax-DimXmin)/DrawZoneW;}}
-		if(x2!=x1 && x2!=x3){x=max(x1,x3);while(x<x2){Line(x,m1*x+p1,x,m2*x+p2,ColorGraph);x=x+(DimXmax-DimXmin)/DrawZoneW;}}
-	//}
-	/*else{
-		switch(graphCase){
-			case 1:
-				PrintCmd("Case1\n");
-			break;
-			case 2:
-				PrintCmd("Case2\n");
-					p1=y1-m1*x1;p3=y3-m3*x3;p4=y4-m4*x4;
-				if (x1!=x4)x=x4;while(x<x1){Line(x,m3*x+p3,x,m4*x+p4,ColorGraph);x=x+(DimXmax-DimXmin)/DrawZoneW;}
-				x=x1;while(x<x3){Line(x,m1*x+p1,x,m3*x+p3,ColorGraph);x=x+(DimXmax-DimXmin)/DrawZoneW;}
-
-			break;
-			case 3:
-				PrintCmd("Case3\n");
-			break;
-			case 4:
-				//PrintCmd("Case4\n");
-				p1=y1-m1*x1;p2=y2-m2*x2;p3=y3-m3*x3;
-				if(x1<x3){x=x1;while(x<x3){Line(x,m1*x+p1,x,m3*x+p3,ColorGraph);x=x+(DimXmax-DimXmin)/DrawZoneW;}}
-				x=x3;while(x<x2){Line(x,m1*x+p1,x,m2*x+p2,ColorGraph);x=x+(DimXmax-DimXmin)/DrawZoneW;}
-			break;
-			
-		}
-	}*/
-	
+	X[2].x=X4;X[2].y=Y4;//P3 and P4 inverted to turn properly
+	X[3].x=X3;X[3].y=Y3;
+	//resizing according to gfxdim values
+	for (k=0;k<4;k++)if (X[k].x<DimXmin ) {goto out;}
+	for (k=0;k<4;k++)if (X[k].x >DimXmax ){goto out;}
+	for (k=0;k<4;k++)if (X[k].y<DimYmin ) {goto out;}
+	for (k=0;k<4;k++)if (X[k].y >DimYmax ){goto out;}
+	for (k=0;k<4;k++) X[k].x= (X[k].x-DimXmin)*DrawZoneW/(DimXmax-DimXmin)+DrawZoneX;
+	for (k=0;k<4;k++) X[k].y= -(X[k].y-DimYmin)*DrawZoneH/(DimYmax-DimYmin)+DrawZoneY+DrawZoneH;
+	for (k=0;k<4;k++) {quadpoints[k].x=(long) X[k].x;quadpoints[k].y=(long) X[k].y;}
+	Polygon (hDC,quadpoints,4);
+	//for (k=0;k<3;k++)WinDrawLine(X[k].x,X[k].y,X[k+1].x,X[k+1].y);
+	out:
+		return;
 }
 
+int FunctToObjMatrix(Matrix *MAccu,int NumM,int M2,int PtLinkM){
+	//NumM is a meshgrid
+	//M2 and PtLink will form the object
+	int Error,j,k;
+	int Mp = MAccu[NumM].p;
+	int Mn = MAccu[NumM].n;
+	int M2p = MAccu[M2].p;
+	int M2n = MAccu[M2].n;
+	int PtLinkMn = MAccu[PtLinkM].n;
+	int PtLinkMp = MAccu[PtLinkM].p;
+	if (MAccu[NumM].ptr == 0) {Error = 1; PrintCmd("fctobjM: objM not defined!\n");goto OutDrawObject;}
+	if (MAccu[M2].ptr == 0) {Error = 1; PrintCmd("fctobjM: objM not defined!\n");goto OutDrawObject;}
+	if (MAccu[PtLinkM].ptr == 0) {Error = 1; PrintCmd("fctobjM: PtLinkMatrix not defined!\n");goto OutDrawObject;}
+	if (M2n!=3 && M2n!=4) {PrintCmd("fctobjM: objM2n should be 3 or 4 \n");Error =1;goto OutDrawObject;}
+	if (PtLinkMp!=M2p) {PrintCmd("fctobjM: objMp should be same as PtLinkM.p\n");Error=1;goto OutDrawObject;} 
+	if (M2p!=Mp*Mn) {PrintCmd("fctobjM: objMp must be equal to M2n*M2p\n");Error=1;goto OutDrawObject;} 
+	if (PtLinkMn!=4) {PrintCmd("fctobjM: PtLinkM.n should be equal to 4\n");Error=1;goto OutDrawObject;} 
 
+	int period=Mn;			//x
+	int NbrLatitude=Mp;	//y
+			for (j=0;j<Mp;j++){
+				for (k=0;k<Mn;k++){
+					MAccu[M2].ptr[k+j*Mn]= k+1; //x
+					MAccu[M2].ptr[M2p+k+j*Mn]=j+1 ;//y
+					MAccu[M2].ptr[M2p*2+k+j*Mn]= MAccu[NumM].ptr[k*Mp+j];//z
+					}
+			}
+	//fillPtLinkM CAREFUL: the index on mtx are from 1 to p, but here in memory the tables start from 0, we thus add 1
+	//            Table of link
+	//				  P1 |
+	//			  P4 --   -- P2  
+	//					   |  P3
+	
+			for (j=0;j<NbrLatitude;j++){//index over y
+				for (k=0;k<period;k++){//index over x
+					if (j>0){
+					MAccu[PtLinkM].ptr[k+j*period]=(j-1)*period+k+1;// j-1,k
+					}else{//condition au limites
+						MAccu[PtLinkM].ptr[k+j*period]=0;// no link point index
+						}	
+					if (k<period-1){
+					MAccu[PtLinkM].ptr[M2p+k+j*period]=j*period+k+1+1;//j,k+1
+					}else{MAccu[PtLinkM].ptr[M2p+k+j*period]=0;//j*period+1;//j,k=0
+						}
+					if (j<NbrLatitude-1){
+					MAccu[PtLinkM].ptr[2*M2p+k+j*period]=(j+1)*period+k+1;//j+1,k
+					}else{MAccu[PtLinkM].ptr[2*M2p+k+j*period]=0;//no link point index
+						}
+					if (k>0){
+					MAccu[PtLinkM].ptr[3*M2p+k+j*period]=j*period+k-1+1;//j,k-1
+					}else{MAccu[PtLinkM].ptr[3*M2p+k+j*period]=0;//j*period+period-1+1;//j,period
+						}
+				}
+			}
+		EndMain:
+		OutDrawObject:
+	return Error;
+}
 
 
 

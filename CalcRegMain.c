@@ -5,6 +5,9 @@
  * BUSSY-SOCRATE REGAN
  *
  * --------------------*/
+//calcreg &
+//kill -9 n° process
+
 #include "windows.h"
 #include "CalcReg.h"
 #include <stdio.h>
@@ -271,14 +274,17 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			AppendMenu(hSubMenu, MF_STRING, btnstart, "Execute Prog");
 			AppendMenu(hSubMenu, MF_STRING, ID_FILE_Read, "Load");
 			AppendMenu(hSubMenu, MF_STRING, ID_FILE_Save, "Save");
-			//MenuSeparator(hSubMenu);
+			AppendMenu(hSubMenu, MF_SEPARATOR, 0, 0);
 			AppendMenu(hSubMenu, MF_STRING, DebugSCMenuId, "Debug Show Codes");
+			AppendMenu(hSubMenu, MF_STRING, DebugSPMenuId, "Debug Show Prog & Accu");
+			AppendMenu(hSubMenu, MF_STRING, DebugLEMenuId, "Debug Show Line Conversion");
+			AppendMenu(hSubMenu, MF_STRING, DebugInfoMenuId, "Debug Info Prog");
 			AppendMenu(hSubMenu, MF_STRING, DebugMenuId, "Debug");
-			//AppendMenu(hSubMenu, MF_STRING, TGfxDspMenuId, "Toogle Gfx Display");
+			AppendMenu(hSubMenu, MF_SEPARATOR, 0, 0);
 			AppendMenu(hSubMenu, MF_STRING, TBreakMenuId, "Toogle Break");
 			AppendMenu(hSubMenu, MF_STRING, cmplxMenuId, "Toogle Allow Complexe");
 			AppendMenu(hSubMenu, MF_STRING, PrecisionMenuId, "Toogle Precision");
-			//MenuSeparator(hSubMenu);			
+			AppendMenu(hSubMenu, MF_SEPARATOR, 0, 0);
 			AppendMenu(hSubMenu, MF_STRING, ID_FILE_EXIT, "Quit");
 			AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT)hSubMenu, "MODE");
 			hSubMenu = CreatePopupMenu();
@@ -338,6 +344,9 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			if (LOWORD(wParam) == ID_FILE_Save) DoFileSave(hwnd);
 			if (LOWORD(wParam) == btnstart) MainFormHandleEvent(btnstart);
 			if (LOWORD(wParam) == DebugSCMenuId) doMainMenu(DebugSCMenuId);
+			if (LOWORD(wParam) == DebugSPMenuId) doMainMenu(DebugSPMenuId);
+			if (LOWORD(wParam) == DebugLEMenuId) doMainMenu(DebugLEMenuId);
+			if (LOWORD(wParam) == DebugInfoMenuId) doMainMenu(DebugInfoMenuId);
 			if (LOWORD(wParam) == DebugMenuId) doMainMenu(DebugMenuId); 
 			if (LOWORD(wParam) == TGfxDspMenuId) doMainMenu(TGfxDspMenuId);
 			if (LOWORD(wParam) == TBreakMenuId) 

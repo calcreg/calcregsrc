@@ -3,6 +3,8 @@
 #include<stdio.h>
 #include <windows.h>
 
+#define MaxTextInCmdWin 500
+
 extern HDC hDC;
 extern HWND hEditP,hEditC;
 
@@ -51,6 +53,7 @@ extern HWND hEditP,hEditC;
 			p[size+nbrEnter]=0;
 			
 	DWORD dwTextLength = GetWindowTextLength(hEditC);
+	//if (dwTextLength > MaxTextInCmdWin){free(p);return;}
 	DWORD dwBufferSize = dwTextLength + 1+ size+nbrEnter;
 	LPSTR	 pszText = (LPSTR)GlobalAlloc(GPTR, dwBufferSize);
 			if(pszText != NULL)
