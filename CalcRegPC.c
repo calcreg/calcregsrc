@@ -306,6 +306,10 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //recsndM0,44100  Record sound at 44100 SamplesPerSec quality=16bits into Matrix 0 of size M0.nxp
 //printx,"blabli x=" put no spaces in the line before the guillemet
 //M1=trp(M0)  defines the matrix M1 as the transposed of M0, no need to use defM1 to create M1 matrix
+//matrix rules: if Mtx1[size1,p] * Mtx2[size1,p] it is a product like scalar for each componant one by one
+//						if Mtx1[size1 or n,p] * Mtx2[size p!=1,k] result is math matrix product Mtx[n,k]
+// M = scalar a, this is possible means full of the value scalar a
+// resulting calculation being M[size=1,1] is also taken as a scalar
 
 //MathFunctions
 extern int MathError; //send back a code if error in the Math functions. MathError=1 out of range exponential
@@ -1059,7 +1063,10 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			if (debug >0 ) {
 				sprintf(s,"A%d =",AccIndex);PrintCmd(s);
 				Rprintf(Accu[AccIndex].value);PrintCmd("+i*");Rprintf(Accu[AccIndex].cmplx);}  
-			}else PrintCmd("Error Accu, Missing value to load!\n");
+			}else {
+						PrintCmd("Error Accu, Missing value to load!\n");
+						Error = 6; goto EndMain;	
+					}
 		}}
 
 	//handle M n°(n,p)= ...   Matrix and  M n°= ... M
@@ -1103,11 +1110,21 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 						int j;
 						for (j=0;j<MAccu[NumM].n*MAccu[NumM].p;j++)
 							MAccu[NumM].ptr[j]=MAccu[NumM2].ptr[j]; 
-					}else{
-							PrintCmd("Should be Matrix =Matrix\n not equal to scalar or else !\n");
+					}
+					
+					else {if(CodeOfOneLine[OffsetLine+1].code == 8 && 
+						CodeOfOneLine[OffsetLine+2].code == 1 &&
+						MAccu[NumM].n==1 &&MAccu[NumM].p==1){
+						//it is in fact a scalar sizeM =[1,1]... therefore we put a scalar
+						MAccu[NumM].ptr[0]=CodeOfOneLine[OffsetLine+2].value; // n°mtx
+					}else{			
+							PrintCmd("Should be Matrix =Matrix\n or M[size 1,1] equal to scalar !\n");
+							sprintf(s,"M%d[size n=%d,p=%d]=",NumM,MAccu[NumM].n,MAccu[NumM].n);
+							PrintCmd(s);
 							Error =6;
 							goto EndMain;
 							}
+					}
 				}
 	}
 	

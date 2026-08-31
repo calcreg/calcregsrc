@@ -1,0 +1,61 @@
+Nsp=44100
+loadsndM0,"haareg.wav"
+playsndM0,Nsp
+
+gfxdim -0.1,1000,-20000,20000,5
+grid100
+x=1
+Trf(x)=M0(1,x)
+
+M1=M0 //to get same mtx size
+fillM1,0,2 // up to 2sec?
+
+f=0.5 //1/2
+pi=3.1415927
+w=2*pi*f
+
+defM3,1,100
+k=1
+loop:
+M3(1,k)= 0.00001*M0*trp(cos(k*w*M1))
+k=k+1
+k<100=>goto loop
+bsr DisplaySpectrum
+
+Nsp=4096
+defM4,1,Nsp
+defM5,1,100 //same as M3
+fillM5,1,100
+t=1
+loop2:
+M4(1,t)= M3*trp(cos(t*w*M5))
+t=t+1
+t<Nsp=>goto loop2
+
+bsr jouer
+
+boucle:
+clavier = key(0)
+clavier == 9 => goto outing
+clavier == 8 => bsr jouer
+goto boucle
+
+outing:
+clscmd
+print0,"out"
+end
+
+jouer:
+playsndM4,Nsp
+rts
+end
+
+
+
+
+DisplaySpectrum:
+gfxdim -0.1,100,-100,100,1
+grid10
+x=1
+Trf(x)=abs(M3(1,x))
+rts

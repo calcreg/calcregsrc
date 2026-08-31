@@ -1,0 +1,26 @@
+
+loadsndM0,"haareg.wav"
+playsndM0,44100
+
+gfxdim -0.1,1000,-20000,20000,5
+grid100
+x=1
+Trf(x)=M0(1,x)
+
+M1=M0 //to get same mtx size
+fillM1,0,2 // up to 2sec?
+
+f=0.5 //1/2
+pi=3.1415927
+w=2*pi*f
+defM3,1,100
+k=1
+loop:
+M3(1,k)= 0.00001*M0*trp(cos(k*w*M1))
+k=k+1
+k<100=>goto loop
+gfxdim -0.1,100,-100,100,1
+grid10
+x=1
+Trf(x)=abs(M3(1,x))
+

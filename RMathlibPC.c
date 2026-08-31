@@ -224,7 +224,7 @@ int MatrixSubAddition(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSi
 		//Matrices should appear only in addition as the multiplication 
 		//and division should be already done 
 		for (j=i;j<imaxLine;j++){
-			if (CodeListLine[j].code == 0xFF) {PrintCmd("no matrix???\n");return 9;}
+			if (CodeListLine[j].code == 0xFF) {return 0;}// No matrix because it could have been M[1,1] =>scalar PrintCmd("no matrix???\n");return 9;}
 			if (CodeListLine[j].code == 15) {
 				MAccu[ResM].n=MAccu[(int)CodeListLine[j].value].n;
 				MAccu[ResM].p=MAccu[(int)CodeListLine[j].value].p;
@@ -378,8 +378,14 @@ int MatrixMultiplication(Matrix *MAccu,floactet *CodeListLine,int i, int imaxLin
 
 		//done result is in NewM
 		//Now we put the matrix result in the CodeListLine
+		if(MAccu[NewM].n==1 &&MAccu[NewM].p==1){
+		//it is in fact a scalar sizeM =[1,1]... therefore we put a scalar
+		CodeListLine[i].code=1; //mtx
+		CodeListLine[i].value=MAccu[NewM].ptr[0]; // n°mtx
+		}else{
 		CodeListLine[i].code=15; //mtx
 		CodeListLine[i].value=NewM; // n°mtx
+		}
 		i++;
 		//sprintf(s,"Matrix Size nxp=%dx%d\n",MAccu[NewM].n,MAccu[NewM].p);
 		//PrintCmd (s);	

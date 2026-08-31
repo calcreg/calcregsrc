@@ -1,0 +1,28 @@
+lim=20000
+gfxdim -0.1,lim,-25000,25000,1
+grid 10
+defM0,1,200000
+//recsndM0,44100
+loadsndM0,"haareg.wav"
+
+playsndM0,44100
+bsr draw
+end
+
+
+draw:
+grid10
+t=1
+x=1
+loop:
+z=x*t
+a=M0(1,z)
+y=x
+x=x+1
+z=x*t
+b=M0(1,z)
+line y,a,x,b,3
+x<lim =>goto loop
+rts
+
+end

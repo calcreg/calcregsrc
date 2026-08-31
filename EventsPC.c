@@ -44,7 +44,7 @@ extern float DrawZoneX, DrawZoneY,DrawZoneW,DrawZoneH;
 int GfxMove=1,GfxZoom=0,Pset=0; //at the begining the movability is set
 int GfxDerivate=0; // If =1 then Draw the function with its derivated
 int Button=0; //for the keyboard in CalcRegPC
-
+int ProgInExecution=0; //=1 while program in execution
 /*
  * MainFormHandleEvent
  */
@@ -59,9 +59,16 @@ int MainFormHandleEvent(int event) {
 		switch (event) {
 	
    			case btnstart:	
-				GfxMove=1;	GfxDerivate=0;GfxZoom=0; //Re-init each time we launch with EXE 
-				SetUpTextProg(0);
-				Execute();
+				if (ProgExecution == 1){
+					PrintCmd ("program didn't finish yet\n");
+					return true;
+				}else{
+					GfxMove=1;	GfxDerivate=0;GfxZoom=0; //Re-init each time we launch with EXE 
+					SetUpTextProg(0);
+					ProgInExecution=1;
+					Execute();
+					ProgInExecution=0;
+				}
    				break;
 				
 			case btnCP:

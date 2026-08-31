@@ -1,0 +1,9 @@
+gfxdim -0.1,100,-10,10,1
+grid 10
+
+x=1
+defM0,1,100
+fillM0,0,10
+Trf(x)=M0(1,x)
+end
+
