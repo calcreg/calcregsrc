@@ -1,0 +1,21 @@
+//#COMPLEXE
+clscmd
+pi=3.1415927
+km=10000 //fmax
+Nsp=2000
+
+R=20000 //ohms
+C=10E-6 //F
+print (1/(R*C)),"f="
+defM0,1,km 
+//M0 = transfer function
+defM1,1,km
+fillM1,0,1  //values up to 1s
+
+//M2= R*i*C*2*pi*M1/(1+R*i*C*2*pi*M1)
+M2= 1/(1+R*i*C*2*pi*M1)
+//M1= 2*i*M1
+gfxdim -1,km,-2,1,10
+grid (km/5)
+x=1
+Trf(x)=10*ln (mod(M2(1,x)))/ln10
