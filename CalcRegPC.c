@@ -159,7 +159,7 @@ extern float RMath_ach(float x);
 extern float RMath_abs(float x);
 
 //Matrix
-extern int RMath_FFT(Matrix *MAccu,int NumMfct,int NumMa,int NumMb);
+extern int RMath_FFT(Matrix *MAccu,int NumMfct,int NumMa,int NumMb,int Strt, int Stop);
 
 extern int FillSphere(Matrix *MAccu,int NumM,int PtLinkM,float Radius,float period);
 extern int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode);
@@ -405,7 +405,8 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //						mod=0 : merge matrix M2 at the end of M1 resulting size is M1p+M2p
 //						mod>0 : copy (replace data) at position p=mod
 //fftM0,1,2  Perform the fft of signal fct(t) in M0, the coeff ak and bk are output in M1 and M2. M0,M1 and M2 should have Mn=1. N=M0.p and Kmax=M1.p=M2.p
-
+//fftM0,1,2,a,b   same as standard fft but taking window [a,b]
+//						if a=b=0 same as fftM0,1,2
 
 
 //MathFunctions
@@ -1794,11 +1795,18 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==37) {//fftM
 			if (CodeOfOneLine[OffsetLine+1].code==1&& CodeOfOneLine[OffsetLine+2].code==10 &&
 			CodeOfOneLine[OffsetLine+3].code==1&& CodeOfOneLine[OffsetLine+4].code==10 &&
-			CodeOfOneLine[OffsetLine+5].code==1) {
+			CodeOfOneLine[OffsetLine+5].code==1){
 			int Mfct=(int)CodeOfOneLine[OffsetLine+1].value;
 			int Ma=(int)CodeOfOneLine[OffsetLine+3].value;
 			int Mb=(int)CodeOfOneLine[OffsetLine+5].value;
-			switch(RMath_FFT(MAccu,Mfct,Ma,Mb)){
+			int Strt,Stop;
+			if (CodeOfOneLine[OffsetLine+6].code==10 &&
+				CodeOfOneLine[OffsetLine+7].code==1&& CodeOfOneLine[OffsetLine+8].code==10 &&
+				CodeOfOneLine[OffsetLine+9].code==1) {
+				Strt=(int)CodeOfOneLine[OffsetLine+7].value;
+				Stop=(int)CodeOfOneLine[OffsetLine+9].value;
+			}else {Strt=0;Stop=0;}//See manual: fftM01,2 <=> fftM0,1,2,0,0
+			switch(RMath_FFT(MAccu,Mfct,Ma,Mb,Strt,Stop)){
 			case 2:
 				PrintCmd("Matrix Mfct not defined\n");
 				goto EndMain;
@@ -1829,6 +1837,10 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 				break;
 			case 9:
 				PrintCmd("Matrix Ma and Mb should have same size\n");
+				goto EndMain;
+				break;
+			case 10:
+				PrintCmd("fftM: Strt and Stop not properly defined \n");
 				goto EndMain;
 				break;
 			}

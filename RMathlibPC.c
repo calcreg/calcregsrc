@@ -134,7 +134,7 @@ void Line(float x1, float y1, float x2, float y2, float Color); //line x1,y1,x2,
 void FloatToString(float value, char *buffer, int Rounding);
 
 //Matrix
-int RMath_FFT(Matrix *MAccu,int NumMfct,int NumMa,int NumMb);
+int RMath_FFT(Matrix *MAccu,int NumMfct,int NumMa,int NumMb,int Strt, int Stop);
 
 int FillSphere(Matrix *MAccu,int NumM,int PtLinkM,float Radius,float period);
 int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode);
@@ -224,7 +224,7 @@ float HlowPrecision=0.00001; //Low precision 1E-05;
 //-------------------------------------------------------------------------------------
 //-------------------------   Coding For matrices --------------------------
 
-int RMath_FFT(Matrix *MAccu,int NumMfct,int NumMa,int NumMb){
+int RMath_FFT(Matrix *MAccu,int NumMfct,int NumMa,int NumMb,int Strt, int Stop){
 //d'abord, generation du cosinus et sinus pour la suite 2pik/T,k allant de 1 à N
 int Error,N,K,k,i;
 float cosa,sina,SaveCs,SaveSn,NewCs,Suma,Sumb;
@@ -238,6 +238,7 @@ float cosa,sina,SaveCs,SaveSn,NewCs,Suma,Sumb;
 //Error=7 <=> Matrix Mb not defined
 //Error=8 <=> Matrix Mb mtx.n should =1
 //Error=9 <=> Matrix Ma and Mb should have same size
+//Error =10 <=> Strt and Stop not properly defined
 	if (MAccu[NumMfct].ptr==0){Error=2;return Error;}
 	if (MAccu[NumMfct].n!=1){Error=4;return Error;}
 	if (MAccu[NumMa].ptr==0){Error=5;return Error;}
@@ -248,20 +249,22 @@ float cosa,sina,SaveCs,SaveSn,NewCs,Suma,Sumb;
 	K=MAccu[NumMa].p;
 	if (MAccu[NumMa].p != MAccu[NumMb].p){Error=9;return Error;}
 	if (N==0){Error=3;return Error;}
-for (k=0;k<K;k++){
+	if (Strt==0 && Stop ==0) {Strt=0;Stop=N;}
+	if (Stop<Strt||Stop==Strt||Stop-Strt<=2){Error=10;return Error;}
+for (k=0;k<K;k++){ //Here N is NOT always =Stop-Strt
 	cosa=cos(2*pi*k/N);//=cos(2*pi*k*dt/T);  because dt/T=1/N
 	sina=sin(2*pi*k/N);//=sin(2*pi*k*dt/T);
 	SaveCs=1;SaveSn=0;Suma=0;Sumb=0;
 //The sum coeff a and b is made while calculating cos and sin at each step
-	for(i=0;i<N;i++){
+	for(i=Strt;i<Stop;i++){
 		Suma=Suma+SaveCs*MAccu[NumMfct].ptr[i];//j*p+i, j=0 car Mfct dim1xp
 		Sumb=Sumb+SaveSn*MAccu[NumMfct].ptr[i];//j*p+i, j=0 car Mfct dim1xp
 		NewCs=SaveCs*cosa-SaveSn*sina;
 		SaveSn=SaveSn*cosa+sina*SaveCs;
 		SaveCs=NewCs;
 	}
-	MAccu[NumMa].ptr[k]=2*Suma/N;
-	MAccu[NumMb].ptr[k]=2*Sumb/N;
+	MAccu[NumMa].ptr[k]=2*Suma/(Stop-Strt);
+	MAccu[NumMb].ptr[k]=2*Sumb/(Stop-Strt);
 }
 }
 
