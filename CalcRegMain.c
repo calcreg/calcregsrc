@@ -32,7 +32,7 @@
 	
 	BOOL SaveTextFileFromEdit(HWND hEdit, LPCTSTR pszFileName);
 	BOOL LoadTextFileToEdit(HWND hEdit, LPCTSTR pszFileName);
-	void DoFileOpen(HWND hwnd);
+	void DoFileOpen(HWND hwnd,int Reopen); //reopen=0 just open, Reopen=1 load LastFileName
 	void DoFileSave(HWND hwnd);
 	char* DoLoadFileReg();
 	char* DoSaveFileReg();
@@ -49,12 +49,14 @@ HWND		btn_0,btn_1,btn_2,btn_3,btn_4,btn_5,btn_6,btn_7,btn_8,btn_9;
 HWND		btn_10,btn_11,btn_12,btn_13,btn_14,btn_15,btn_16,btn_17,btn_18,btn_19;
 HWND hmywin,mybtn;
 HBRUSH hbrush;
+//HBRUSH BrushTable[16];
 HDC			hDC;
 RECT		drawrect,wndrect;
 RECT		prect,brect;
 COLORREF	colpen,colbrush;
-	HFONT hfDefault;
-	HWND hEditP,hEditC;//txt win
+HFONT hfDefault;
+HWND hEditP,hEditC;//txt win
+unsigned char LastFileName[100];
 
 int			x,y;
 // for the execution at start
@@ -114,12 +116,6 @@ void Paint(HWND hwnd)
 	valrect.bottom = wndrect.top + 335;
 	//FillRect(hDC,&valrect,CreateSolidBrush(0xFFFFFF));
 	//FrameRect(hDC,&valrect,CreateSolidBrush(0x000000));
-	/*				#ifdef CalcRegSoftware
-				//-----
-			#else 
-				if (startExecution == 1){Execute();startExecution=0;}
-			#endif
-	*/
 }
 
 void cColor(HWND hwnd, int opt)
@@ -169,8 +165,8 @@ void ObjectCreation(HWND hwnd)
 	btn_gfxpset = CreateWindow("BUTTON","*",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+300,wndrect.top+55,12,14,hwnd,0,hinst,NULL);			
 	btn_gfxwork = CreateWindow("BUTTON","Z",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+300,wndrect.top+70,12,14,hwnd,0,hinst,NULL);			
 	btn_gfxmove = CreateWindow("BUTTON","M",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+300,wndrect.top+85,12,14,hwnd,0,hinst,NULL);			
+	if (BreakActivated==1) btn_brk = CreateWindow("BUTTON","Break",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+45,50,25,hwnd,0,hinst,NULL);
 
-	//btn_brk = CreateWindow("BUTTON","Break",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+45,50,25,hwnd,0,hinst,NULL);			
 	//btn_ClProg = CreateWindow("BUTTON","clr prog",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+15,50,25,hwnd,0,hinst,NULL);			
 	btn_test = CreateWindow("BUTTON","Test",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+75,50,25,hwnd,0,hinst,NULL);			
 	btn_ClCmd = CreateWindow("BUTTON","Clear",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+205,50,25,hwnd,0,hinst,NULL);			
@@ -227,7 +223,8 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 
 		case WM_CREATE:
 			ObjectCreation(hwnd);
-			hbrush= CreateSolidBrush(0xAAAAFF);			
+			hbrush= CreateSolidBrush(0x8888FF);
+			
 		//Creation txt window heditProg
 		long lfHeight;
 		#ifdef CalcRegSoftware
@@ -271,7 +268,9 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 
 			hSubMenu = CreatePopupMenu();
 			AppendMenu(hSubMenu, MF_STRING, btnstart, "Execute Prog");
-			AppendMenu(hSubMenu, MF_STRING, ID_FILE_Read, "Load");
+			AppendMenu(hSubMenu, MF_STRING, ID_FILE_Read, "Load as");
+			AppendMenu(hSubMenu, MF_STRING, reload, "Re-load");
+			AppendMenu(hSubMenu, MF_SEPARATOR, 0, 0);
 			AppendMenu(hSubMenu, MF_STRING, ID_FILE_Save, "Save");
 			AppendMenu(hSubMenu, MF_SEPARATOR, 0, 0);
 			AppendMenu(hSubMenu, MF_STRING, DebugSCMenuId, "Debug Show Codes");
@@ -339,8 +338,9 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 		case WM_COMMAND:
 		#ifdef CalcRegSoftware
 			if (LOWORD(wParam) == ID_FILE_EXIT) CloseProc(hwnd); 
-			if (LOWORD(wParam) == ID_FILE_Read) DoFileOpen(hwnd);
+			if (LOWORD(wParam) == ID_FILE_Read) DoFileOpen(hwnd,0);
 			if (LOWORD(wParam) == ID_FILE_Save) DoFileSave(hwnd);
+			if (LOWORD(wParam) == reload) DoFileOpen(hwnd,1);
 			if (LOWORD(wParam) == btnstart) MainFormHandleEvent(btnstart);
 			if (LOWORD(wParam) == DebugSCMenuId) doMainMenu(DebugSCMenuId);
 			if (LOWORD(wParam) == DebugSPMenuId) doMainMenu(DebugSPMenuId);
@@ -594,11 +594,13 @@ BOOL LoadTextFileToEdit(HWND hEdit, LPCTSTR pszFileName)
 	return bSuccess;
 }
 
-void DoFileOpen(HWND hwnd)
+void DoFileOpen(HWND hwnd,int Reopen)
 {
 	OPENFILENAME ofn;
+	HWND hEdit;
 	char szFileName[MAX_PATH] = "";
-
+	if (Reopen !=0) {	HWND hEdit = GetDlgItem(hwnd, IDC_MAIN_EDIT);
+								LoadTextFileToEdit(hEdit, LastFileName);return;}
 	ZeroMemory(&ofn, sizeof(ofn));
 
 	ofn.lStructSize = sizeof(OPENFILENAME);
@@ -611,8 +613,23 @@ void DoFileOpen(HWND hwnd)
 
 	if(GetOpenFileName(&ofn))
 	{
-		HWND hEdit = GetDlgItem(hwnd, IDC_MAIN_EDIT);
+		hEdit = GetDlgItem(hwnd, IDC_MAIN_EDIT);
 		LoadTextFileToEdit(hEdit, szFileName);
+		strcpy(LastFileName,szFileName); //save filename
+		unsigned char titlewin[100];
+		//detect name without the extension
+		unsigned char *name;
+
+		if(strlen(LastFileName)>20) {
+			//Search for the '/' code
+			unsigned char p[2]={0x5c,0};
+			unsigned char *newname;
+			name=LastFileName;
+			newname=strstr(LastFileName,p);
+			while (newname!=0) {newname=strstr(newname+1,p);if (newname!=0)name=newname+1;}
+			}
+		sprintf(titlewin,"%s         -- %s --",WINDOWTITLEREG,name);
+		SetWindowText(hwnd,titlewin);
 	}
 }
 

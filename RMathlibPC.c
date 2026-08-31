@@ -20,7 +20,7 @@ extern void SelectionStylo(COLORREF);
 extern HWND hmywin;
 extern HDC hDC; 
 extern HBRUSH 	hbrush;
-
+static HBRUSH 	BrushTable[16];
 
 //#include "CalcReg.h"		// app
 
@@ -281,7 +281,9 @@ float HlowPrecision=0.00001; //Low precision 1E-05;
 int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode){
 	int Error,i,k,L,foundPlace,pt,pt1,pt2,NoDraw,m,mmax,minPt,maxPt;
 	float xmax,xmin,x,x1,y1,z1,x2,y2,z2,x3,y3,z3,x4,y4,z4,X1,Y1,X2,Y2,X3,Y3,X4,Y4;
-
+	float nx,ny,nz,normn,ux,uy,uz,normab,vx,vy,vz,wx,wy,wz,alfa,beta,gama,delta,cosalfa;
+	float Lx=-10,Ly=-10,Lz=-10;//Light coordinates
+	//SelectObject(hDC,BrushTable[10]);
 	SelectObject(hDC,hbrush);
 
 	int Mp = MAccu[NumM].p;
@@ -347,10 +349,13 @@ int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode){
 	}//if DrawingMode 0
 
 	//						---- DrawingMode 1  ----
-	if (DrawingMode == 1 || DrawingMode == 2){ //only visible faces
-	//DrawingMode 1=3D display, 2=Projection on 2D display
+	if (DrawingMode == 1 || DrawingMode == 2 ||DrawingMode == 3){ //only visible faces
+	//DrawingMode 1=3D display, 2=Projection on 2D display,3=display with colors raytracing faces
 	//Here we need to find the points order to display in x from back to front
 	//therefore for x decreasing order.
+	//Creation d'une palette de Brush
+	for (i=0;i<16;i++){BrushTable[i]= CreateSolidBrush(i*0x000011);}
+
 	ListOrder *list = (ListOrder*) malloc((Mp+1)*sizeof (struct ListOrder));
 	if (list==0) {PrintCmd("dispobjM: Can't allocate memory for ListOrder\n"); goto OutDrawObject;}
 
@@ -444,7 +449,8 @@ OUTLIST:
 		if (NoDraw==0){//ok to draw
 		
 			//Here we have to make the test of over riding and hiding lines
-			if (DrawingMode == 1){
+			if (DrawingMode == 1 || DrawingMode == 3){
+			zp=50;
 			X1=y1-x1*(xp-y1)/zp;
 			Y1=z1-x1*(yp-z1)/zp;
 			X2=y2-x2*(xp-y2)/zp;
@@ -453,6 +459,39 @@ OUTLIST:
 			Y3=z3-x3*(yp-z3)/zp;
 			X4=y4-x4*(xp-y4)/zp;
 			Y4=z4-x4*(yp-z4)/zp;
+			if (DrawingMode==3){ //setting the ColorGraph of the brush
+				nx=(y2-y1)*(z3-z1)-(y3-y1)*(y2-y1);//vecteur normal au Plan du quadrilatere
+				ny=(x3-x1)*(z2-z1)-(z3-z1)*(x2-x1);
+				nz=(x2-x1)*(y3-y1)-(x3-x1)*(y2-y1);
+				normn=RMath_sqrt(nx*nx+ny*ny+nz*nz);
+				//normn=sqrt(nx*nx+ny*ny+nz*nz);
+				ux=nx/normn;//vecteur unitaire u (base locale)
+				uy=ny/normn;
+				uz=nz/normn;
+				normab=RMath_sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1));
+				//normab=sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1));
+				vx=((y2-y1)*uz-uy*(z2-z1))/normab;//vecteur unitaire base locale
+				vy=(ux*(z2-z1)-(x2-x1)*uz)/normab;
+				vz=((x2-x1)*uy-(y2-y1)*ux)/normab;
+				wx=vy*uz-vz*uy;//vecteur unitaire base (w,v,u) 
+				wy=ux*vz-uz*vx;
+				wz=vx*uy-ux*vy;
+				//light coordinates=Lx,Ly,Lz
+				alfa=Lx*wx+Ly*wy+Lz*wz;
+				beta=Lx*vx+Ly*vy+Lz*vz;
+				gama=Lx*ux+Ly*uy+Lz*uz;
+//				cosalfa=-(wx*alfa+vx*beta-ux*gama);
+				cosalfa=-(wx*alfa+vx*beta-ux*gama);
+				ColorGraph=(int)(11+2*(1-cosalfa));
+				if (ColorGraph>=15)ColorGraph=15;
+				if (ColorGraph<9)ColorGraph=9;
+				
+//				if (cosalfa>=0)ColorGraph=(int)8*(cosalfa+1);
+//				else ColorGraph=0;
+				//SelectObject(hDC,CreateSolidBrush(0x111111*ColorGraph));//set brush color
+				SelectObject(hDC,BrushTable[ColorGraph]);//set brush color
+
+				}
 			}else{//DrawingMode==2
 			X1=y1;X2=y2;X3=y3;X4=y4; //we projecte with similarity with the 3D but on 2D none perspective
 			Y1=z1;Y2=z2;Y3=z3;Y4=z4;
@@ -483,6 +522,8 @@ void FillQuadrilatere(float X1,float Y1,float X2,float Y2,float X3,float Y3,floa
 	POINT quadpoints[4];
 	int k;
 	float x1,x2,y1,y2;
+	//SelectObject(hDC,BrushTable[ColorGraph]);//set brush color
+	
 	SetPolyFillMode(hDC,WINDING);
 	X[0].x=X1;X[0].y=Y1;
 	X[1].x=X2;X[1].y=Y2;
@@ -615,7 +656,7 @@ int ModifObject(Matrix* MAccu,int NumM,int PtLinkM,int IndexP,int Vect,int mod){
 
 //modobj NumM,PtLinkM,IndexP,Vect2,mod
 //NumM is the object matrix PtLink its link matrix
-//VectP is the Point Index in the matrix NumM where the modif is localised
+//IndexP is the Point Index in the matrix NumM where the modif is localised
 //Vect2 is a vector to assist the change, direction and intensity
 //mod is the mode: 
 //				0 flatten with plane orthogonal to Vect2 starting at point VectP
@@ -623,7 +664,8 @@ int ModifObject(Matrix* MAccu,int NumM,int PtLinkM,int IndexP,int Vect,int mod){
 //				2 exponential narrow change along Vect2 with an exponantial centered in VectP 
 //				3
 //P0
-float alfa,d,d2,x,y,z,x0,y0,z0;
+float alfa,d,x,y,z,x0,y0,z0,a1,a2,d1,d2,b1,c1,b2,c2,d11,d22,n1,n2;
+
 int k;
 	int Mp = MAccu[NumM].p;
 	int Mn = MAccu[NumM].n;
@@ -648,6 +690,7 @@ switch (mod){
 	y0=MAccu[NumM].ptr[1*Mp+IndexP-1]+b; //point yA
 	z0=MAccu[NumM].ptr[2*Mp+IndexP-1]+c; //point  zA
 	d=a*x0+b*y0+c*z0; //Plan Equation: ax+by+cz=d
+	n2=a*a+b*b+c*c; //vect norm square
 			for (k=0;k<Mp;k++){
 				x=MAccu[NumM].ptr[0*Mp+k];
 				y=MAccu[NumM].ptr[1*Mp+k];
@@ -656,7 +699,8 @@ switch (mod){
 				if (d2-d<0){ //( a*(x-x0)+b*(y-y0)+c*(z-z0) <0 ){ scalar vector AM1.n<0
 					//we project the point on the plan of 
 					//normal vector Vect and point P
-					alfa=(d-d2)/(a*a+b*b+c*c);
+					alfa=(d-d2)/n2;
+					//alfa=(d2-n2)/n2;
 					//proj. on plan coordinates:
 					MAccu[NumM].ptr[0*Mp+k]=x+alfa*a;
 					MAccu[NumM].ptr[1*Mp+k]=y+alfa*b;
@@ -709,6 +753,115 @@ switch (mod){
 				MAccu[NumM].ptr[0*Mp+k]=x+alfa*a;
 				MAccu[NumM].ptr[1*Mp+k]=y+alfa*b;
 				MAccu[NumM].ptr[2*Mp+k]=z+alfa*c;			
+		}
+	break;
+	case 4: //coupage exponentiel
+	//		     ___	
+	//		    /	   \
+	//		    |   __|
+	//			|   |		<----    same as setting an exponential where x remains unchanged
+	//			|   |__
+	//          \___/
+	x0=MAccu[NumM].ptr[0*Mp+IndexP-1]; //point xA c'est le point sur l'objet
+	y0=MAccu[NumM].ptr[1*Mp+IndexP-1]; //point yA
+	z0=MAccu[NumM].ptr[2*Mp+IndexP-1]; //point  zA
+		for (k=0;k<Mp;k++){
+				x=MAccu[NumM].ptr[0*Mp+k];
+				y=MAccu[NumM].ptr[1*Mp+k];
+				z=MAccu[NumM].ptr[2*Mp+k];
+				d2=(y-y0)*(y-y0)+(z-z0)*(z-z0); //distance Pt-P0
+				alfa=RMath_exp(-d2*(a*a+b*b+c*c));//vect grand, base serrée et hauteur grande
+				MAccu[NumM].ptr[0*Mp+k]=x;
+				MAccu[NumM].ptr[1*Mp+k]=y+alfa*b;
+				MAccu[NumM].ptr[2*Mp+k]=z+alfa*c;			
+		}
+	break;
+	case 5: //coupage exponentiel
+	//		     ___	
+	//		    /	   \
+	//		    |   __|
+	//			|   |		<----    same as setting an exponential where x remains unchanged
+	//			|   |__
+	//          \___/
+	x0=MAccu[NumM].ptr[0*Mp+IndexP-1]; //point xA c'est le point sur l'objet
+	y0=MAccu[NumM].ptr[1*Mp+IndexP-1]; //point yA
+	z0=MAccu[NumM].ptr[2*Mp+IndexP-1]; //point  zA
+		for (k=0;k<Mp;k++){
+				x=MAccu[NumM].ptr[0*Mp+k];
+				y=MAccu[NumM].ptr[1*Mp+k];
+				z=MAccu[NumM].ptr[2*Mp+k];
+				d2=(y-y0)*(y-y0)+(z-z0)*(z-z0); //distance Pt-P0
+				alfa=RMath_exp(-8*d2*(a*a+b*b+c*c));//vect grand, base serrée et hauteur grande
+				MAccu[NumM].ptr[0*Mp+k]=x;
+				MAccu[NumM].ptr[1*Mp+k]=y+alfa*b;
+				MAccu[NumM].ptr[2*Mp+k]=z+alfa*c;			
+		}
+	break;
+	case 6: //coupage plan
+	//		     ___	
+	//		    /	   \
+	//          |     /
+	//		    |    / P1
+	//			|   /		<----    same as setting an exponential where x remains unchanged
+	//			|   \   P2
+	//			|     \
+	//          \___/
+	x0=MAccu[NumM].ptr[0*Mp+IndexP-1]+a; //point xA c'est le point sur l'objet
+	y0=MAccu[NumM].ptr[1*Mp+IndexP-1]+b; //point yA
+	z0=MAccu[NumM].ptr[2*Mp+IndexP-1]+c; //point  zA
+	//vecteur normal plan P1: n1(a1,b1,c1)
+	//vecteur normal plan P2: n2(a2,b2,c2)
+	a1=a;b1=0.5*(b-1.732*c);c1=0.5*(1.732*b+c);
+	a2=a;b2=0.5*(b+1.732*c);c2=0.5*(-1.732*b+c);
+	d1=a1*x0+b1*y0+c1*z0; //d of Plan P1
+	n1=a1*a1+b1*b1+c1*c1; //vect norm square
+	d2=a2*x0+b2*y0+c2*z0; //d of Plan P2
+	n2=a2*a2+b2*b2+c2*c2; //vect norm square
+	float m1=a*a1+b*b1+c*c1;
+	float m2=a*a2+b*b2+c*c2;
+	for (k=0;k<Mp;k++){
+				x=MAccu[NumM].ptr[0*Mp+k];
+				y=MAccu[NumM].ptr[1*Mp+k];
+				z=MAccu[NumM].ptr[2*Mp+k];
+				if((x-x0)*a1+(y-y0)*b1+(z-z0)*c1 < 0 
+					&& (x-x0)*a2+(y-y0)*b2+(z-z0)*c2 < 0){
+						if ( (x-x0)*a+(y-y0)*b+(z-z0)*c < 0 ){
+						d11=a1*x+b1*y+c1*z;
+						alfa=(d1-d11)/m1;
+					//proj. on plan coordinates:
+						MAccu[NumM].ptr[0*Mp+k]=x+alfa*a;
+						MAccu[NumM].ptr[1*Mp+k]=y+alfa*b;
+						MAccu[NumM].ptr[2*Mp+k]=z+alfa*c;
+						}
+						else{
+						d22=a2*x+b2*y+c2*z;
+						alfa=(d2-d22)/m2;
+					//proj. on plan coordinates:
+						MAccu[NumM].ptr[0*Mp+k]=x+alfa*a;
+						MAccu[NumM].ptr[1*Mp+k]=y+alfa*b;
+						MAccu[NumM].ptr[2*Mp+k]=z+alfa*c;
+						
+						}
+					
+					
+			}
+		}
+	break;
+	case 7:
+	//the coordinate of Vect=a is the width of the cylinder hole
+	x0=MAccu[NumM].ptr[0*Mp+IndexP-1]; //point xA c'est le point sur l'objet
+	y0=MAccu[NumM].ptr[1*Mp+IndexP-1]+b; //point yA
+	z0=MAccu[NumM].ptr[2*Mp+IndexP-1]+c; //point  zA
+		for (k=0;k<Mp;k++){
+				x=MAccu[NumM].ptr[0*Mp+k];
+				y=MAccu[NumM].ptr[1*Mp+k];
+				z=MAccu[NumM].ptr[2*Mp+k];
+				
+				if (x>0 && ((y-y0)*(y-y0)+(z-z0)*(z-z0))<(b*b+c*c)) {
+				MAccu[NumM].ptr[0*Mp+k]=x0+a;//x0-a;
+				MAccu[NumM].ptr[1*Mp+k]=y;
+				MAccu[NumM].ptr[2*Mp+k]=z;
+				}
 		}
 	break;
 
@@ -1787,7 +1940,7 @@ float RMath_exp(float x){
 */
 	if (x == 0) return 1; //e(0)= 1
 	Inv=0;
-	if (Rabs(x)>60) return exp(x); //we use the double float library when it goes out of our RMath-exp job.
+	if (Rabs(x)>60) return (float)exp((double)x); //we use the double float library when it goes out of our RMath-exp job.
 	if (x<0) {x=-x;Inv=1;}//Invert for e(-x) 
 
 	a=(int)(x*0x200);

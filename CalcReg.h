@@ -68,6 +68,7 @@
 #define DebugSPMenuId 3026
 #define DebugLEMenuId 3027
 #define DebugInfoMenuId 3028
+#define reload 3029
 
 //-----Don't change these ID they are used in a loop from 1353 to 1378! -----------------
 #define btntan 1353

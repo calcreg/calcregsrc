@@ -5,31 +5,15 @@ defM0,4,N
 pi=3.1415927
 a=4
 b=4
+CylDim=0.5 //width of cyl. hole
 mod=0
 red=0.9 //reduction factor
 
+NbrSqPtMax=2*10 //for squeleton (10lines)
+
+//menu pos
 menx=50
 meny=360//30//360
-createbtn10,menx,meny,40,20,"mode"
-createbtn11,(menx+40),meny,40,20,"move"
-createbtn12,menx,(meny+40),100,20,"save object.m"
-createbtn13,menx,(meny+60),100,20,"Big Display"
-createbtn14,menx,(meny+80),100,20,"Read Object.m"
-createbtn7,(menx+80),meny,30,20,"Rx-"
-createbtn8,(menx+110),meny,30,20,"Rx+"
-createbtn9,menx,(meny+120),100,20,"QUIT"
-createbtn1,(menx+140),(meny),30,20,"Ry-"
-createbtn15,(menx+170),(meny),30,20,"Ry+"
-createbtn4,(menx+200),(meny),30,20,"Rz-"
-createbtn16,(menx+230),(meny),30,20,"Rz+"
-createbtn2,(menx),(meny+20),60,20,"magnify"
-createbtn3,(menx+60),(meny+20),50,20,"shrink"
-createbtn5,(menx+190),(meny+50),50,20,"UNDO"
-createbtn17,(menx+110),(meny+20),50,20,"Mag Z-"
-createbtn6,(menx+160),(meny+20),50,20,"Mag Z+"
-createbtn18,(menx+170),(meny+120),80,20,"RESTART"
-
-
 
 defM1,4,N
 fillsphM0,1,1.5,100
@@ -47,6 +31,36 @@ defM12,4,4
 defM13,4,4
 defM14,4,N//Mtx backup from Undo
 defM15,4,4 //elongate
+
+defM16,3,NbrSqPtMax //mtx of point for squeleton
+defM17,4,NbrSqPtMax //link points
+
+StartMenu:
+createbtn10,menx,meny,40,20,"mode"
+createbtn11,(menx+40),meny,40,20,"move"
+createbtn12,menx,(meny+40),100,20,"save object.m"
+createbtn13,menx,(meny+60),100,20,"Big Display"
+createbtn14,menx,(meny+80),100,20,"Read Object.m"
+createbtn7,(menx+80),meny,30,20,"Rx-"
+createbtn8,(menx+110),meny,30,20,"Rx+"
+createbtn1,menx,(meny+120),100,20,"QUIT"
+createbtn9,(menx+140),(meny),30,20,"Ry-"
+createbtn15,(menx+170),(meny),30,20,"Ry+"
+createbtn4,(menx+200),(meny),30,20,"Rz-"
+createbtn16,(menx+230),(meny),30,20,"Rz+"
+createbtn2,(menx),(meny+20),60,20,"magnify"
+createbtn3,(menx+60),(meny+20),50,20,"shrink"
+createbtn5,(menx+190),(meny+50),50,20,"UNDO"
+createbtn17,(menx+110),(meny+20),50,20,"Mag Z-"
+createbtn6,(menx+160),(meny+20),50,20,"Mag Z+"
+createbtn18,(menx+170),(meny+120),80,20,"RESTART"
+createbtn19,(menx+110),(meny+80),80,20,"Squeleton"
+
+
+
+
+
+
 
 dataM2,cos(pi/2),sin(-pi/2),0,0, sin(pi/2),cos(pi/2),0,0, 0,0,1,0, 0,0,0,1
 dataM3,cos(pi/2),0,sin(pi/2),0, 0,1,0,0, sin(-pi/2),0,cos(pi/2),0, 0,0,0,1
@@ -80,7 +94,7 @@ c==6 => bsr elongate
 c==17 => bsr shorten
 c==7 => bsr roulm
 c==8 => bsr roule
-c==1 => bsr roly
+c==9 => bsr roly
 c==15=>bsr rolmy
 c==5 => bsr undo
 c==10=>bsr mode
@@ -91,7 +105,8 @@ c==12=>saveM0
 c==13=>bsr bigDisplay
 c==14=>bsr ChargerMtx
 c==18=> bsr restart
-c==9 => goto exit
+c==19=> bsr squeleton
+c==1 => goto exit
 goto loop
 
 restart:
@@ -144,7 +159,8 @@ mod==3=>wtext0,10,"stiff stress                  "
 mod==4=>wtext0,10,"large exponential cut  "
 mod==5=>wtext0,10,"stiff exponential cut   "
 mod==6=>wtext0,10,"blade cut                    "
-mod==7=>goto init
+mod==7=>wtext0,10,"cylinder hole              "
+mod==8=>goto init
 rts
 init:
 wtext0,10,"flatten mode=                        "
@@ -164,7 +180,7 @@ M9=M14
 bsr display
 rts
 
-modif:
+modif: // ------------------- MODIF OBJ ------------------
 key(0)
 mx=key(3)
 mx==1=>goto modif
@@ -180,7 +196,9 @@ getindM0,7,8,3 //result in M8 3 better points
 
 keepon:
 m=M8(1,1)
-dataM7,0,(key(5)-key(1)),(key(6)-key(2))//vecteur
+a=0
+mod==7=> a=CylDim //a is the depth of the cylinder hole
+dataM7,a,(key(5)-key(1)),(key(6)-key(2))//vecteur
 
 modobjM0,1,m,7,mod
 bsr display
@@ -212,6 +230,8 @@ mx==1=>goto bcl
 goto loop
 end
 
+//--------------------------------------------------------
+
 zero:
 
 print0,"index zero"
@@ -222,7 +242,7 @@ goto bcl
 bigDisplay:
 action 0
 gfxdim-3,3,-3,3,1
-dispobjM0,1,1
+dispobjM0,1,3
 rts
 
 display:
@@ -299,6 +319,79 @@ M0=M6*M0
 M6(1,3)=-M6(1,3) //back to M6 
 M6(3,1)=-M6(3,1)
 bsr display
+rts
+
+
+//------------------------------ Squeleton -------------------------
+
+squeleton:
+bouton=2
+loopbtn:
+killbtn bouton
+bouton=bouton+1
+bouton<20 => goto loopbtn
+//menx and meny are defined at top
+createbtn1,menx,(meny+120),100,20,"QUIT"
+//createbtn2,menx,(meny+20),100,20,"Create 3D object"
+createbtn3,(menx+170),(meny+120),120,20,"Create 3D Object"
+createbtn4,(menx+80),meny,30,20,"Rx-"
+createbtn5,(menx+110),meny,30,20,"Rx+"
+createbtn6,(menx+140),(meny),30,20,"Ry-"
+createbtn7,(menx+170),(meny),30,20,"Ry+"
+createbtn8,(menx+200),(meny),30,20,"Rz-"
+createbtn9,(menx+230),(meny),30,20,"Rz+"
+
+createbtn18,(menx+190),(meny+50),50,20,"UNDO"
+createbtn19,(menx+100),(meny+50),80,20,"Back"
+
+nsqpt=0 //nbr point in squeleton
+action 0 //clean gfx screen
+gfxdim-2,2,-2,2,1
+SqLoop:
+c=key(0)
+mx=key(3) //left click
+mx==1=>bsr SqPlacePt
+c==3 => goto CreateObject
+c==19=> goto BackFrSq
+c==1 => goto exit
+goto SqLoop
+
+
+CreateObject:
+wtext0,0,"In preparation"
+rts
+
+BackFrSq:
+goto StartMenu
+
+SqPlacePt:
+mx=key(3)
+key(0) //to give process
+mx==1 =>goto SqPlacePt //wait stop press left mouse
+pt=nsqpt+1 //start at one not 0
+M16(2,pt)=key(1)
+M16(3,pt)=key(2)
+M16(1,pt)=0
+M17(1,pt)=pt+1 //point the next
+nsqpt=nsqpt+1  //one point more is set in the list
+bsr SqDisplay
+rts
+
+SqDisplay:
+nsqpt<2=>goto OutSqDisp
+pt=1
+LpSqDisp:
+m=pt
+g1=M16(2,m)
+g2=M16(3,m)
+m=m+1
+g3=M16(2,m)
+g4=M16(3,m)
+
+line g1,g2,g3,g4,1
+pt=pt+1
+pt<nsqpt=>goto LpSqDisp
+OutSqDisp:
 rts
 
 

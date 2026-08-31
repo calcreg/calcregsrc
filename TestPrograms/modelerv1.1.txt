@@ -9,7 +9,7 @@ mod=0
 red=0.9 //reduction factor
 
 menx=50
-meny=360//30//360
+meny=30//360
 createbtn10,menx,meny,40,20,"mode"
 createbtn11,(menx+40),meny,40,20,"move"
 createbtn12,menx,(meny+40),100,20,"save object.m"
@@ -67,8 +67,8 @@ dataM7,0,0,(-1.6)
 //modobjM0,1,1,7,1//M,ptlink,ind,vect,mod
 
 teta=pi/10
-bsr display
 bsr mode
+bsr display
 
 loop:
 c=key(0)
@@ -138,16 +138,13 @@ rts
 mode:
 gfxdim0,10,0,10,1
 mod=mod+1
-mod==1=>wtext0,10,"large stress                 "
-mod==2=>wtext0,10,"medium stress            "
-mod==3=>wtext0,10,"stiff stress                  "
-mod==4=>wtext0,10,"large exponential cut  "
-mod==5=>wtext0,10,"stiff exponential cut   "
-mod==6=>wtext0,10,"blade cut                    "
-mod==7=>goto init
+mod==4=>goto init
+clscmd
+print mod,"stress mode="
 rts
 init:
-wtext0,10,"flatten mode=                        "
+clscmd
+print 0,"flatten mode="
 mod=0
 rts
 
@@ -170,25 +167,15 @@ mx=key(3)
 mx==1=>goto modif
 M9=M0
 gfxdim -3,8,-8,3,1
-mod>0=>goto stress
 dataM7,0,key(1),key(2)
-getindM0,7,8,3 //result in M8 3 better points
-goto keepon
-stress:
-dataM7,0,key(1),key(2)
+
 getindM0,7,8,3 //result in M8 3 better points
 
-keepon:
-m=M8(1,1)
+da=M8(1,1)
 dataM7,0,(key(5)-key(1)),(key(6)-key(2))//vecteur
 
-modobjM0,1,m,7,mod
+modobjM0,1,da,7,mod
 bsr display
-gfxdim -3,8,-8,3,1
-line (M0(2,m)),(-2),(M0(2,m)),2,1
-line (-2),(M0(3,m)),2,(M0(3,m)),1
-line key(1),(-2),key(1),2,2
-line (-2),key(2),2,key(2),2
 line key(1),key(2),key(5),key(6),3
 pt2=M8(1,1)
 pt2==0=>goto zero

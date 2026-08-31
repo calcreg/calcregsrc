@@ -235,8 +235,8 @@ float SoundFrequency,SoundAmplitude,SoundDuration,SamplesPerSecond;
 static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListSize
 static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_trp_mtxn_mtxp_fM_";
 //									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26    27     28     29     30 
-static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_action_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_colorgfx_dataM_fctobjM_getindM_modobjM_";
-//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28            29           30       31             32         33
+static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_action_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_colorgfx_dataM_fctobjM_getindM_modobjM_killbtn_";
+//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28            29           30       31             32         33       34
 //char blabli[]= { {'hello'},0x1,{'hi'},0x0};
 
 //--------------labels
@@ -347,6 +347,7 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //saveM0   save the matrix 0 selection of name is done through the win32API
 //saveM1,"mtx.m" The the matrix 1 in file mtx.m
 //createbtn n°btn,x,y,width,height,"btnname"  use key(0) == n°btn  to reach btn data for those you created n°btn>=10 is safer not ot interact with the small keyboard already existing
+//killbtn  n°btn     destroys the button n°btn     
 //fillsphM n°mtx,n°PtLinkMtx,Radius,nbr data for phi=2pi    This fills the matrix as a sphere, the dimension should be Mn=3 and Mp a multiple of a
 //																							PtLinkMtx is the matrix which contains the link to four index p of points in the sphere
 //																							Mtx should be Mn=3 or 4, Mp is set by user. PtlinkMtx :Mn=4, Mp[PtLinkMtx] = Mp[Mtx]
@@ -404,7 +405,7 @@ int StartInfoDone=0;
 int GfxBigDisplay=-1;
 int CountBreak=0; //init
 int DispBrk=0;
-int BreakActivated=-1; //init brk 1 activated, -1 for disabled at start
+int BreakActivated=1; //init brk 1 activated, -1 for disabled at start
 int StopProgram=0;
 extern int GfxDerivate; //if =1 Then Draw function with its derivated
 int systate=1; //1=displacement of gfx, zoom etc... is Active
@@ -421,7 +422,6 @@ extern int AudioDeviceState;
 
 int offsetI = 0; //During the line convertion into codes it contains the position of th eline in wholeMnemoProg
 //----------------------------------
-
 
 extern unsigned char Copyright[];
 extern  char Copyright2[];
@@ -1397,6 +1397,79 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			PutSerialData();//0=quiet
 			OffsetLine=0;
 			}else{PrintCmd("putserial!\n");goto EndMain;}
+		}	
+		
+		
+//-------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==32) {//killbtn
+			if (CodeOfOneLine[OffsetLine+1].code==1) {
+			int btnNbr=(int)CodeOfOneLine[OffsetLine+1].value;
+			if (btnNbr < 20 ) {
+				switch(btnNbr){
+					case 0:
+						if (btn_0 !=0)DestroyWindow(btn_0);
+					break;
+					case 1:
+						if (btn_1 !=0)DestroyWindow(btn_1);
+					break;
+					case 2:
+						if (btn_2 !=0)DestroyWindow(btn_2);
+					break;
+					case 3:
+						if (btn_3 !=0)DestroyWindow(btn_3);
+					break;
+					case 4:
+						if (btn_4 !=0)DestroyWindow(btn_4);
+					break;
+					case 5:
+						if (btn_5 !=0)DestroyWindow(btn_5);
+					break;
+					case 6:
+						if (btn_6 !=0)DestroyWindow(btn_6);
+					break;
+					case 7:
+						if (btn_7 !=0)DestroyWindow(btn_7);
+					break;
+					case 8:
+						if (btn_8 !=0)DestroyWindow(btn_8);
+					break;
+					case 9:
+						if (btn_9 !=0)DestroyWindow(btn_9);
+					break;
+					case 10:
+						if (btn_10 !=0)DestroyWindow(btn_10);
+					break;
+					case 11:
+						if (btn_11 !=0)DestroyWindow(btn_11);
+					break;
+					case 12:
+						if (btn_12 !=0)DestroyWindow(btn_12);
+					break;
+					case 13:
+						if (btn_13 !=0)DestroyWindow(btn_13);
+					break;
+					case 14:
+						if (btn_14 !=0)DestroyWindow(btn_14);
+					break;
+					case 15:
+						if (btn_15 !=0)DestroyWindow(btn_15);
+					break;
+					case 16:
+						if (btn_16 !=0)DestroyWindow(btn_16);
+					break;
+					case 17:
+						if (btn_17 !=0)DestroyWindow(btn_17);
+					break;
+					case 18:
+						if (btn_18 !=0)DestroyWindow(btn_18);
+					break;
+					case 19:
+						if (btn_19 !=0)DestroyWindow(btn_19);
+					break;
+				}
+			}else PrintCmd("button not killed, nbr btn >20");
+			OffsetLine=0;
+			}else{PrintCmd("killbtn!\n");goto EndMain;}
 		}	
 //-------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==17) {//createbtn
