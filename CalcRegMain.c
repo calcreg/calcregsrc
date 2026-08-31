@@ -336,6 +336,11 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			Paint(hwnd);
 			break;
 
+
+	//	case WM_SETREDRAW:
+	//		Paint(hwnd);
+	//		break;
+
 		case WM_COMMAND:
 		#ifdef CalcRegSoftware
 			if (LOWORD(wParam) == ID_FILE_EXIT) CloseProc(hwnd); 
@@ -536,7 +541,8 @@ MSG			msg;
 
 	RegisterClass(&wc);
 
-	hwnd = CreateWindow("CalcReg",WINDOWTITLEREG,WS_OVERLAPPEDWINDOW|DS_3DLOOK,CW_USEDEFAULT,0,CW_USEDEFAULT,0,0,0,hInstance,0);
+	//hwnd = CreateWindow("CalcReg",WINDOWTITLEREG,WS_OVERLAPPEDWINDOW|DS_3DLOOK,CW_USEDEFAULT,0,CW_USEDEFAULT,0,0,0,hInstance,0);
+	hwnd = CreateWindow("CalcReg",WINDOWTITLEREG,WS_OVERLAPPEDWINDOW|DS_3DLOOK,20,10,750,560,0,0,hInstance,0);
 
 	hmywin=hwnd; //for external purpose
 	
@@ -547,6 +553,14 @@ MSG			msg;
 	colpen   = 0x000000;
 	colbrush = 0xffffff;
 	Paint(hwnd);
+	
+// --- start modif to get the picture unchanged when windows disappears
+	//RECT lpRect; //valrect to get a mouse value between -10 and 10
+	//GetClientRect(hwnd,&lpRect);
+
+	//InvalidateRect( hwnd,&lpRect,FALSE);//False means do not erase
+
+//--- end modif
 
 	while(GetMessage(&msg,0,0,0))
 	{

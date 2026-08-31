@@ -133,7 +133,7 @@ static IndicError( int LineErrorCode);
 int CreateVariablesList(char *text);//gives back the number of Accu necessary
 extern int CompareVarNames(char* txt, int i1, int i2);
 
-
+static int ReorgVarList(int nbrvar,char *prog);//returns 0 if ok
 static void ChangeNamesToAccu(char *text);
 static int ReplaceInMnemoProg(char *ttr,char *str);
 int CalculFAccu(floactet *CodeOfOneLine,int NbrFAccu,float ValX, float *ResultY);
@@ -524,6 +524,7 @@ void Execute(void) {
 	RemoveComments(WholeMnemoProg);
 
 	NbrVar=CreateVariablesList(WholeMnemoProg);//gives back the exact number of Accu necessary, MemHdle is created, think to free memory at the end
+	if (ReorgVarList(NbrVar,WholeMnemoProg) !=0) goto FreeMemories;
 
 	//win32 ->
     Accu = (NbrCmplx *) malloc(NbrVar*sizeof(struct NbrCmplx) +1);//size+1 if overflow possibilities
@@ -599,6 +600,39 @@ FreeMemories:
 	#endif
 }
 
+int ReorgVarList(int nbrvar,char *prog){
+	int m,Error=0;
+	int i,j,saveindex;
+	char text[100];
+	m=0;
+	while (m< nbrvar){
+	i=m+1;
+	 while(i<nbrvar){
+	 j=0;
+		while (prog[AccuVar[m].adr+j]==prog[AccuVar[i].adr+j]
+				&& prog[AccuVar[m].adr+j]!='='){ j++; }
+		if(prog[AccuVar[m].adr+j] == '=' ) { //plus court ?
+				if (prog[AccuVar[i].adr+j] == '=' ) {
+					sprintf(text,"Error in Var List:\nSame Variable twice\nvar%d and var%d j=%d",m,i,j);
+					PrintCmd(text);
+					Error =1; goto EndReorgList;
+					}
+		//exchange places
+		saveindex=AccuVar[m].adr;
+		AccuVar[m].adr=AccuVar[i].adr;
+		AccuVar[i].adr=saveindex;
+		//sprintf(text,"Swap names\n var %d and var %d\n",m,i);
+		//PrintCmd(text);
+		i=m+1; //redemarrage à partir de var m+1, pour reorganiser avec les autre var
+		}else{//L'ordre n'est pas à changer
+		i++;//aller à la variable suivante
+		}
+	}//end while i
+	m++;
+	}//endwhile m
+ EndReorgList:
+	return Error;
+}
 
 int CreateVariablesList(char *text){ // à revoir ! 
   //The first use of this function is to enumerate the Accu var. The spaces don't need to be removed
@@ -737,7 +771,8 @@ static void ChangeNamesToAccu(char *text){
 		}
 		txt=text;
 	#ifdef CalcRegSoftware
-		if (strlen(text)-SizeInit  > 100+AdditionalProgMem) PrintCmd("warning:\nincrease workspace size!\n"); 
+		if (strlen(text) > SizeInit + AdditionalProgMem) PrintCmd("warning:\nincrease workspace size!\n"); 
+
 	#endif
 		if (debug >0 ){sprintf(s,"Mem Chg %d bytes\n",SizeInit-strlen(text) );
 								PrintCmd(s);
