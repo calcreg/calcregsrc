@@ -6,6 +6,8 @@
  *  --------------*/
 
 
+
+
 /* Includes */
 #include <windows.h>			// system
 #include <Stdio.h>
@@ -147,6 +149,8 @@ float DrawZoneX=320;//125;
 float DrawZoneY=25;
 float DrawZoneH=300;
 float DrawZoneW=450-195;//450
+
+float lastcolor; //pencolor
 
 
 extern int GridSet; //for the grid =0 grid off, =1 grid on color Red
@@ -1517,28 +1521,25 @@ void TracerAxis(int centerx,int centery,int width, int height){
 
 void Line(float x1, float y1, float x2, float y2,float color){
 	COLORREF	colpen  ;
-	HPEN	hpen	;
-
-/*Drawingzone Square
-#define DrawZoneX 90
-#define DrawZoneY 90
-#define DrawZoneH 70
-#define DrawZoneW 70*/
-
+	HPEN	hpen;
+	if (lastcolor != color ){
 	colpen   = 0x000000;
 	hpen	= CreatePen(PS_SOLID,1,colpen);
 	SelectObject(hDC,hpen);
-
 	if (color == 1)SelectionStylo(0x0A0AFF);//red
 	if (color == 2)SelectionStylo(0x0AFF0A);//green
 	if (color == 3)SelectionStylo(0xFF0A0A);//blue
 	if (color == 4)SelectionStylo(0x0A0AFF);//yellow
 	if (color == 5)SelectionStylo(0xFF0FFF);//
 	if (color == 6)SelectionStylo(0x0FFFFF);//
-
+	if (color >6) SelectionStylo(0x0111111*(color-6));
+	if (color>22) SelectionStylo(0x0001111*(color-22));
+	if (color>38) SelectionStylo(0x0111100*(color-38));
+	if (color>54) SelectionStylo(0x0110011*(color-54));
+	if (color>70) SelectionStylo(0x000000);
+	lastcolor = color;
+	}
 	
-	//x2-x1 =160
-	//y2-y1=160
 	//resizing according to gfxdim values
 	if (x1<DimXmin ) {goto out;}
 	if (x1 >DimXmax ){goto out;}
@@ -1553,7 +1554,7 @@ void Line(float x1, float y1, float x2, float y2,float color){
 	y1=(y1-DimYmin)/(DimYmax-DimYmin)*160;
 	x2=(x2-DimXmin)/(DimXmax-DimXmin)*160;
 	y2=(y2-DimYmin)/(DimYmax-DimYmin)*160;
-	//WinDrawLine(0,10,160,160);
+
 	WinDrawLine ( x1*DrawZoneW/160+DrawZoneX,
 									-y1*DrawZoneH/160+DrawZoneY+DrawZoneH,
 										x2*DrawZoneW/160+DrawZoneX,
@@ -1561,7 +1562,6 @@ void Line(float x1, float y1, float x2, float y2,float color){
 	
 
 	out:
-	//WinSetForeColorRGB(&OldPenColor,&OldPenColor2); //Set OldColor
 		return;
 	}
 

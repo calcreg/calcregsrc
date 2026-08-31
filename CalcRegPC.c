@@ -291,16 +291,20 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //gfxdim xmin,xmax,ymin,ymax,IncX //Gfx definition
 //box3d wx,wy,wz,Inc3d  wx width of the box from -wx to wx Xmax3d = wx =-Xmin3d
 //F1(x) = 8*x+2
-//Tf(x)= exp(x+1)+F1(x)
+//Trf(x)= exp(x+1)+F1(x)
 //line x1,y1,x2,y2,color
 //x<10=>goto loop
 //getserial Baudrate,SerFlag
 //putserial Baudrate,SerFlag,bytedata
 //key(0) or key(1) value from keyboard(0) or the mouse board rectangle(1)
-//wait nbrticks
+
 //clscmd    clears the cmd window
 //defM 1,5,3    Create matrix M1 with dimension n=5, p=3;
 //fillM 2,1.5,3  fill matrix M2 from value 1.5 to 3
+//loadsndM n°mtx
+//loadsndM n°mtx,"myfile.wav" put no space in the line before the guillemet
+//recsndM0,44100  Record sound at 44100 SamplesPerSec quality=16bits into Matrix 0 of size M0.nxp
+//printx,"blabli x=" put no spaces in the line before the guillemet
 
 //MathFunctions
 extern int MathError; //send back a code if error in the Math functions. MathError=1 out of range exponential
@@ -511,7 +515,7 @@ int CreateVariablesList(char *text){ // à revoir !
 	int i,istrLine=0,k;
 	int N_Accu=0,MaxPossibleSize;
 	int MemSize;
-	int SizeText,K;
+	int SizeText,K,guillemet;
 
 
 	SizeText = strlen(text);
@@ -540,12 +544,13 @@ int CreateVariablesList(char *text){ // à revoir !
 	// La programmation ci-dessous est à revoir: 
 	// la recherche est faite plusieurs fois 
 	for (i=0;i<strlen(text);i++){
-		if (text[i]== 0x0A && text[i+1]==0x0D) istrLine=i+2;
-		if (text[i]== 0x0A && text[i+1]!=0x0D) istrLine=i+1;
+		if (text[i]== 0x0A && text[i+1]==0x0D) {guillemet=0;istrLine=i+2;}
+		if (text[i]== 0x0A && text[i+1]!=0x0D) {guillemet=0;istrLine=i+1;}
+		if (text[i]== '"') {guillemet=1;}
 		if(istrLine == 0 || (i-istrLine)>0 ) 	if (text[i]==Octet("=") && text [i+1] !=Octet (">")) {//there should be at least one Letter.
 				if (text[i-1]== Octet(")") ) goto NotNew; //Avoiding f(x)=... it is not a variable
 				if(text[istrLine] == 'M' ) goto NotNew; //Avoiding Matrix... it is not a variable
-
+				if (guillemet == 1) goto NotNew; //avoid ascii chains containing = sign like "var a= "
 				for(k=0;k<MaxPossibleSize;k++){
 						if(CompareVarNames(text,istrLine,AccuVar[k].adr) == 0 ) goto NotNew;
 						}
@@ -571,7 +576,7 @@ static void ChangeNamesToAccu(char *text){
 	char *buf,*buf2;
 	//MemHandle h,h2;
 	int i,k,iptr,nptr,test,SizeInit;
-	static char *ntxt,*nbuf,AStr[10],*txt;
+	static char *ntxt,*nbuf,AStr[10],*txt,*left;
 	//AccuVar.n numero
 	//AccuVar.adr emplacement
 	SizeInit=strlen(text);
@@ -606,6 +611,10 @@ static void ChangeNamesToAccu(char *text){
 			txt=text+nptr; //Do the job after that one just done (to fix pb for fake variables founds)
 		Loop2:
 			ntxt=strstr(txt,str); //search the token str in the txt string returns 0 when no more occurrence
+			//
+			left=ntxt; //avoid the ascii chains "blabla..."
+			if(ntxt!=0)while (*left !=0x0a && left >text){left--;if (*left=='"'){txt++;goto Loop2;}}//Avoid changing the symboles taken in ascii chains
+			//
 			if ( ntxt !=0 ) {//sprintf(s,"char=%c%c",txt,txt+1);PrintCmd(s);
 				if( 'a' <*(ntxt+strlen(str) ) && *(ntxt+strlen(str) )<'z') {txt=ntxt+strlen(str);goto Loop2;}				
 				if( 'A' <*(ntxt+strlen(str) ) && *(ntxt+strlen(str) )<'Z') {txt=ntxt+strlen(str);goto Loop2;}				
@@ -1453,8 +1462,11 @@ EndMain:
 			}
 			
 		LoopDrawFunction:
-				
 				ReplaceAccuByValue(CodeOfOneLine);
+
+				Error = ReplaceMAccuByValue(CodeOfOneLine); //get matrix values
+				if (Error !=0) {sprintf (s,"While replacing Mtx n°(n,p) by Values Error= %d \n", Error);PrintCmd(s);goto EndFunctionFX;}
+
 				Error = TreatParenthese(CodeOfOneLine);													//parenthese
 				if (Error != 0) {sprintf (s,"Parenthese Error = %d \n", Error);PrintCmd(s);goto EndFunctionFX;}
 				if(StopProgram == 1) goto EndFunctionFX;
@@ -1529,6 +1541,10 @@ EndMain:
 		LoopDrawFunction:
 				
 				ReplaceAccuByValue(CodeOfOneLine);
+
+				Error = ReplaceMAccuByValue(CodeOfOneLine); //get matrix values
+				if (Error !=0) {sprintf (s,"While replacing Mtx n°(n,p) by Values Error= %d \n", Error);PrintCmd(s);goto EndFunctionFX;}
+
 				Error = TreatParenthese(CodeOfOneLine);													//parenthese
 				if (Error != 0) {sprintf (s,"Parenthese Error = %d \n", Error);PrintCmd(s);goto EndFunctionFX;}
 				if(StopProgram == 1) goto EndFunctionFX;
@@ -2162,7 +2178,10 @@ int iptrstrt=0,Aind, Mn,Mp,NumM;
 			if(debug > 0) {sprintf(s,"MAccu =%d\n",(int)CodeOfOneLine[i].value); PrintCmd(s);}
 			if(CodeOfOneLine[i+2].code!=1 ||
 				CodeOfOneLine[i+3].code!=10 ||CodeOfOneLine[i+4].code!=1 ||
-				CodeOfOneLine[i+5].code!=7 ) {PrintCmd("Syntaxe Matrix!\n");
+				CodeOfOneLine[i+5].code!=7 ) {
+				PrintCmd("Syntaxe Matrix!\n");
+				sprintf(s,"[%d],[%d],[%d],[%d]\n",(int)CodeOfOneLine[i+2].code,(int)CodeOfOneLine[i+3].code,(int)CodeOfOneLine[i+4].code,(int)CodeOfOneLine[i+5].code);
+				PrintCmd(s);
 				return 9;
 				}else {
 				NumM = (int) CodeOfOneLine[i].value;
