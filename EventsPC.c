@@ -50,12 +50,17 @@ int ProgInExecution=0; //=1 while program in execution
 
 void Execute(){
 		//Launching EXECUTE as a Thread for multitask handling
+		//En cas de plantage voir la taille de la pile (0 = taille par default )dans CreateThread
 		HANDLE hThread1;
 		DWORD Thread1ID, Thread1Param = 100;
 		hThread1 = CreateThread(NULL, 0, Thread_Execute, &Thread1Param, 0, &Thread1ID);
 		if (hThread1 == NULL){
 			PrintCmd("Error on launching the Thread EXE!\n");
 		}
+		/*else{
+			//We set the priority one point under the windows priority
+			SetThreadPriority(hThread1,THREAD_PRIORITY_BELOW_NORMAL);
+		}*/
 }
 
 

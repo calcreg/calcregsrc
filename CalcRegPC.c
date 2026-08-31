@@ -200,6 +200,8 @@ extern float Oscilloscope(float a);
 extern void GetOscilloData(int info);
 extern void Wait(int Time);
 extern PutSerialData();
+extern HANDLE hSerialPC;
+extern int SerialOpened;
 
 //Math dimensions of the square for drawing (the hardware display is rearranged afterwards)
 extern float DimXmin;
@@ -580,6 +582,9 @@ DWORD WINAPI Thread_Execute( LPVOID lpParam ){
 	
 	if (displayval==1) {if (AllowComplexe !=1)Rprintf(LastValCalculated.value); //display for little digital calculator
 									else RCPrintf(LastValCalculated);}
+	if (SerialOpened==1){SerialOpened=0;CloseHandle(hSerialPC);
+										//PrintCmd("CloseSerial device\n");
+										}//Close the Serial Device used
 	/*PalmOs
 	if (BreakActivated ==1)WinDrawChars("       ",7,BrkX,BrkY); //clean the "brk area"
 	if (Keypad==0) FrmShowObject(Frm, (FrmGetObjectIndex(Frm, btnkeypad)));
@@ -1445,7 +1450,9 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			CodeOfOneLine[OffsetLine+3].code==1) {
 			BaudRate=CodeOfOneLine[OffsetLine+1].value;
 			SerFlag=CodeOfOneLine[OffsetLine+3].value;
-			GetOscilloData(0);//0=quiet
+			if (CodeOfOneLine[OffsetLine+4].code==10&& CodeOfOneLine[OffsetLine+5].code==1){
+			GetOscilloData((int)CodeOfOneLine[OffsetLine+5].value);
+			}else GetOscilloData(0);//0=Size by default (=1000 data to read)
 			OffsetLine=0;
 			}else{PrintCmd("getserial!\n");goto EndMain;}
 		}	

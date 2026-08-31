@@ -1,7 +1,10 @@
 
 /* Includes */
 #include <windows.h>			// system
-#include <Stdio.h>
+#include <stdio.h>
+#include    <stdlib.h>
+//#include    <string.h>
+#include    <commdlg.h>
 
 
 //serial-Oscillo
@@ -12,6 +15,7 @@ int  waitfordata(int NbrTrialToGet);
 float Oscilloscope(float a);
 void GetOscilloData(int info);
 void PutSerialData();
+HANDLE OpenAndPrepareSerial(char *COM_Name);
 
 extern void PrintCmd(char * s) ;
 void Wait(int Time);
@@ -20,17 +24,23 @@ extern int CheckForBreak();
 
 //Serial
 int SerialReady=0; //Serial device opened =1, closed =0
-unsigned char Oscillo[OscilloSize];
+unsigned char Oscillo[2*OscilloSize];//2* because of the several trails to get the data
 unsigned char SerialDataToSend[DataToSendSize];//data to send
-int SerialLibOpened=0;
+int SerialOpened=0;
 
 int  NbrTrialSerial=20; //Nbr of trials to get the full Tablesize data loaded
 int BaudRate = 28800;
 int SerFlag = 0;
-char	*strErrSerLibOpen = "Error opening serial library";
-char	*strErrSerPortOpen = "Error opening serial port";
 
 extern int BreakActivated;
+extern int StopProgram;
+
+char msg_s[100]; // This is a msg char for display error messages
+
+//Serial Device PC
+HANDLE hSerialPC;
+
+
 
 
 void Wait(int Time){
@@ -50,37 +60,82 @@ void Wait(int Time){
 float Oscilloscope(float a){
 	if (a > OscilloSize) {PrintCmd("Serial Data Overflow index!\n"); return 0;}
 	if (SerialReady ==0) {PrintCmd("Serial Device not opened!\n"); return 0;}
-	return  5.0*(float)Oscillo[(int) a]/255.0 - 2.5;
+	//return  5.0*(float)Oscillo[(int) a]/255.0 - 2.5;
+	return  (float)Oscillo[(int) a];
 }
 
-void GetOscilloData(int info){
-	/*
-	Err		Error;
-	SerSettingsType sstSetup;
-
-	//Open the Serial library , then the Serial Port 
-	if (SerialLibOpened==0){ //Always do here
-		Error = SysLibFind("Serial Library", &SerIORef);
-		if (Error) {
-			FrmCustomAlert (AlertGenericAlert, strErrSerLibOpen, "can't open library","can't open library" );
-			SerClearErr(SerIORef);
-			return;		
-		}
-	SerialLibOpened=1;
+void GetOscilloData(int SizeToRead){
+			// Open the Serial Port
+	if (SerialOpened==0){ //Always do here
+		hSerialPC = OpenAndPrepareSerial("COM9");
+		if (hSerialPC==0) return;	
+	SerialOpened=1;
 	}
 
-	Error = SerOpen(SerIORef, 0,BaudRate);
-	if (Error) {
-		FrmCustomAlert (AlertGenericAlert, strErrSerPortOpen, "can't open port","can't open port" );
-		SerClearErr(SerIORef);
-		return;
-	}	
+//***************Read Operation******************//
+    DWORD dwBytesRead = 0;
+    int nread = OscilloSize;
+	int reallyread=0;
+	int NbrTrials=0;
+	while(reallyread<OscilloSize){
+	NbrTrials++;
+	if (StopProgram ==1){
+		PrintCmd("Acquisition Aborded\n");
+		CloseHandle(hSerialPC);
+		return ;
+	}
 	
-	
-   SerIOConnected = true;	
-	sstSetup.baudRate = BaudRate;
+	if (NbrTrials>10){
+		PrintCmd("Exceeded 10 Cycles for Serial reading\n");
+		PrintCmd(" Data Acquisition\n   -- problem! --\n");
+		CloseHandle(hSerialPC);
+		return ;
+	}
+    if (!ReadFile(hSerialPC, Oscillo+reallyread, nread, &dwBytesRead, NULL)) 
+    {
+        PrintCmd("error reading from input buffer \n");
+		PrintCmd("  Data Acquisition\n   -- problem! --\n");
+		if (SerialReady == 1) PrintCmd("keeping old data\n");
+		CloseHandle(hSerialPC);
+		return ;
+	}
+    else {
+		reallyread=dwBytesRead+reallyread;
+	}
+	}
+	if (SizeToRead!=0){
+	sprintf(msg_s,"Nbr Bytes read is: %d\n",reallyread);
+	PrintCmd(msg_s);
+	}
+	SerialReady = 1; //here it means that OSC(x) has got the data	
+}
 
-// SerFlag = 0	8bits; 
+HANDLE OpenAndPrepareSerial(char *COM_Name){
+    HANDLE hSerial;
+    COMMTIMEOUTS timeouts;
+    COMMCONFIG dcbSerialParams;
+   // hSerial = CreateFile("COM9",GENERIC_READ | GENERIC_WRITE,0,NULL,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL);
+
+   hSerial = CreateFile(COM_Name,GENERIC_READ | GENERIC_WRITE,0,NULL,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL);
+ 
+    if ( hSerial == INVALID_HANDLE_VALUE) {
+        if (GetLastError() == ERROR_FILE_NOT_FOUND){
+            sprintf(msg_s,"serial port %s does not exist\n",COM_Name);
+			PrintCmd(msg_s);
+        }
+        PrintCmd("some other errors occured.\n");
+    }
+ 
+ 
+    //DCB    dcbSerialParams ;
+    //GetCommState( hSerial, &dcbSerialParams.dcb);
+    if (!GetCommState(hSerial, &dcbSerialParams.dcb)) {
+        PrintCmd("Serial error getting state \n");
+		CloseHandle(hSerial);
+		return 0;
+    }
+/* from PALMOS program
+ // SerFlag = 0	8bits; 
 //				=1	8bits|parityOdd;
 //				=2	8bits|parityEven
 //				=3	8bits|parityEven|BitStop1
@@ -118,98 +173,64 @@ void GetOscilloData(int info){
 //serSettings.ctsTimeout = SysTicksPerSecond() / 2;
 //err = SerSetSettings(refNum, &serSettings);
 
-
-		if (!waitfordata(NbrTrialSerial)){//try 10 times to get proper data
-				PrintCmd("  Data Acquisition\n   -- problem! --\n");
-				if (SerialReady == 1) PrintCmd("keeping old data\n");
-				return;
-			}
-		else if (info!=0) {PrintCmd("Data Acquired.\n");}
-	SerialReady = 1; //here it means that OSC(x) has got the data
-
-	if (!SerIOConnected)
-		return;
-		
-	Error = SerClose (SerIORef); //close the port
-	*/
-	PrintCmd ("Oscillo serial not yet implemented\n");
-	}
-
-void PutSerialData(int info){
-/*	Err		Error;
-	SerSettingsType sstSetup;
-
-		// Open the Serial library , then the Serial Port
-	if (SerialLibOpened==0){ //Always do here
-		Error = SysLibFind("Serial Library", &SerIORef);
-		if (Error) {
-			FrmCustomAlert (AlertGenericAlert, strErrSerLibOpen, "can't open library","can't open library" );
-			SerClearErr(SerIORef);
-			return;		
-		}
-	SerialLibOpened=1;
-	}
-
-	Error = SerOpen(SerIORef, 0,BaudRate);
-	if (Error) {
-		FrmCustomAlert (AlertGenericAlert, strErrSerPortOpen, "can't open port","can't open port" );
-		SerClearErr(SerIORef);
-		return;
-	}	
-	
-	
-   SerIOConnected = true;	
-	sstSetup.baudRate = BaudRate;
-
-// SerFlag = 0	8bits; 
-//				=1	8bits|parityOdd;
-//				=2	8bits|parityEven
-//				=3	8bits|parityEven|BitStop1
-//				=4	8bits|parityOdd|bitStop1|AutoM-RTS-CTS
-//				=5	8bits|parityEven|bitStop1|AutoM-RTS-CTS
-
-
-	if (SerFlag==0) sstSetup.flags = serSettingsFlagBitsPerChar8;
-	if (SerFlag==1) sstSetup.flags = serSettingsFlagBitsPerChar8 | serSettingsFlagParityOnM;		
-	if (SerFlag==2) sstSetup.flags = serSettingsFlagBitsPerChar8 |
-													serSettingsFlagParityOnM | serSettingsFlagParityEvenM;		
-	if (SerFlag==3){ sstSetup.flags = serSettingsFlagBitsPerChar8 |
-													serSettingsFlagParityOnM | serSettingsFlagParityEvenM|
-														serSettingsFlagStopBits1;
-							sstSetup.ctsTimeout = SysTicksPerSecond() / 2;}
-	if (SerFlag==4){ sstSetup.flags = serSettingsFlagBitsPerChar8 |
-													serSettingsFlagParityOnM | serSettingsFlagParityEvenM|
-														serSettingsFlagStopBits1 | serSettingsFlagRTSAutoM |
-															serSettingsFlagCTSAutoM;
-							sstSetup.ctsTimeout = SysTicksPerSecond() / 2;}
-	if (SerFlag==5){ sstSetup.flags = serSettingsFlagBitsPerChar8 |
-													serSettingsFlagParityOnM |
-														serSettingsFlagStopBits1 | serSettingsFlagRTSAutoM |
-															serSettingsFlagCTSAutoM;
-							sstSetup.ctsTimeout = SysTicksPerSecond() / 2;}
-								
-	
-//Example and description
-//SerSettingsType serSettings;
-//serSettings.baudRate = 19200;
-//serSettings.flags = serSettingsFlagBitsPerChar8 |
-//serSettingsFlagParityOnM | serSettingsFlagParityEvenM |
-//serSettingsFlagStopBits1 | serSettingsFlagRTSAutoM |
-//serSettingsFlagCTSAutoM;
-//serSettings.ctsTimeout = SysTicksPerSecond() / 2;
-//err = SerSetSettings(refNum, &serSettings);
-
-	//unsigned char SerialDataToSend[DataToSendSize] 
-	SerSend(SerIORef, SerialDataToSend, 1, &Error); //At the moment just send one byte
-	if (Error !=errNone ) PrintCmd("putserial Sending Error\n");
-
-	if (!SerIOConnected)
-		return;
-		
-	Error = SerClose (SerIORef); //close the port
 */
-	PrintCmd ("PutSerialdata Not yet implemented\n");
+    dcbSerialParams.dcb.DCBlength = sizeof(dcbSerialParams.dcb);
+    dcbSerialParams.dcb.BaudRate = CBR_9600;
+    dcbSerialParams.dcb.ByteSize = 8;
+    dcbSerialParams.dcb.StopBits = ONESTOPBIT;
+    dcbSerialParams.dcb.Parity = NOPARITY;
+ 
+    dcbSerialParams.dcb.fBinary = TRUE;
+    dcbSerialParams.dcb.fDtrControl = DTR_CONTROL_DISABLE;
+    dcbSerialParams.dcb.fRtsControl = RTS_CONTROL_DISABLE;
+    dcbSerialParams.dcb.fOutxCtsFlow = FALSE;
+    dcbSerialParams.dcb.fOutxDsrFlow = FALSE;
+    dcbSerialParams.dcb.fDsrSensitivity= FALSE;
+    dcbSerialParams.dcb.fAbortOnError = FALSE;//TRUE;
+ 
+    if (!SetCommState(hSerial, &dcbSerialParams.dcb)) 
+    {
+        PrintCmd("Serial error setting serial port Params \n");
+		CloseHandle(hSerial);
+		return 0;
+    }
+ 
+ 
+    GetCommTimeouts(hSerial,&timeouts);
+    //COMMTIMEOUTS timeouts = {0};
+ 
+    timeouts.ReadIntervalTimeout = MAXDWORD;
+    timeouts.ReadTotalTimeoutConstant = 50;
+    timeouts.ReadTotalTimeoutMultiplier = 10;
+    timeouts.WriteTotalTimeoutConstant = 0;
+    timeouts.WriteTotalTimeoutMultiplier= 0;
+ 
+    if(!SetCommTimeouts(hSerial, &timeouts)) 
+    {
+        PrintCmd("Serial error setting port Timeouts \n");
+		CloseHandle(hSerial);
+		return 0;
+    }
+ return hSerial;
+}
+
+void PutSerialData(){
+		// Open the Serial Port
+	if (SerialOpened==0){ //Always do here
+		hSerialPC = OpenAndPrepareSerial("COM9");
+		if (hSerialPC==0) return;	
+	SerialOpened=1;
 	}
+
+    //****************Write Operation*********************//
+    int nwrite = 1;
+    DWORD dwBytesWritten = 0;
+ 
+    if (!WriteFile(hSerialPC, SerialDataToSend, nwrite, &dwBytesWritten, NULL)){ 
+        PrintCmd("error writing to output buffer \n");
+    }
+
+}
 	
 
 int  waitfordata(int NbrTrialToGet){
