@@ -404,15 +404,17 @@ int FillSphere(Matrix *MAccu,int NumM,int PtLinkM,float Radius,float period){
 	return Error;
 	}
 
+	float Clrgfx3Da=9,Clrgfx3Db=5.5;
 	float Lx=-10,Ly=-10,Lz=-10;//Light coordinates
 int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode){
 	int Error,i,k,L,foundPlace,pt,pt1,pt2,NoDraw,m,mmax,minPt,maxPt;
 	float xmax,xmin,x,x1,y1,z1,x2,y2,z2,x3,y3,z3,x4,y4,z4,X1,Y1,X2,Y2,X3,Y3,X4,Y4;
 	float nx,ny,nz,normn,normn2,ux,uy,uz,normab,vx,vy,vz,wx,wy,wz,alfa,beta,gama,delta,cosalfa;
 	float NormL=RMath_sqrt(Lx*Lx+Ly*Ly+Lz*Lz);
-	
+	int ColorOVF=0;
 	//SelectObject(hDC,BrushTable[10]);
 	SelectObject(hDC,hbrush);
+	SelectionStylo(0);
 
 	int Mp = MAccu[NumM].p;
 	int Mn = MAccu[NumM].n;
@@ -477,7 +479,7 @@ int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode){
 	}//if DrawingMode 0
 
 	//						---- DrawingMode 1  ----
-	if (DrawingMode == 1 || DrawingMode == 2 ||DrawingMode == 3){ //only visible faces
+	if (DrawingMode == 1 || DrawingMode == 2 ||DrawingMode == 3 ||DrawingMode == 4||DrawingMode == 5){ //only visible faces
 	//DrawingMode 1=3D display, 2=Projection on 2D display,3=display with colors raytracing faces
 	//Here we need to find the points order to display in x from back to front
 	//therefore for x decreasing order.
@@ -578,7 +580,7 @@ OUTLIST:
 		if (NoDraw==0){//ok to draw
 		
 			//Here we have to make the test of over riding and hiding lines
-			if (DrawingMode == 1 || DrawingMode == 3){
+			if (DrawingMode == 1 || DrawingMode == 3||DrawingMode == 4||DrawingMode == 5){
 			zp=zp3dDisplay;
 			X1=y1-x1*(xp-y1)/zp;
 			Y1=z1-x1*(yp-z1)/zp;
@@ -588,38 +590,8 @@ OUTLIST:
 			Y3=z3-x3*(yp-z3)/zp;
 			X4=y4-x4*(xp-y4)/zp;
 			Y4=z4-x4*(yp-z4)/zp;
-			if (DrawingMode==3){ //setting the ColorGraph of the brush
-/*				nx=(y2-y1)*(z3-z1)-(y3-y1)*(y2-y1);//vecteur normal au Plan du quadrilatere
-				ny=(x3-x1)*(z2-z1)-(z3-z1)*(x2-x1);
-				nz=(x2-x1)*(y3-y1)-(x3-x1)*(y2-y1);
-				normn=RMath_sqrt(nx*nx+ny*ny+nz*nz);
-				//normn=sqrt(nx*nx+ny*ny+nz*nz);
-				ux=nx/normn;//vecteur unitaire u (base locale)
-				uy=ny/normn;
-				uz=nz/normn;
-				normab=RMath_sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1));
-				//normab=sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1));
-				vx=((y2-y1)*uz-uy*(z2-z1))/normab;//vecteur unitaire base locale
-				vy=(ux*(z2-z1)-(x2-x1)*uz)/normab;
-				vz=((x2-x1)*uy-(y2-y1)*ux)/normab;
-				wx=vy*uz-vz*uy;//vecteur unitaire base (w,v,u) 
-				wy=ux*vz-uz*vx;
-				wz=vx*uy-ux*vy;
-				//light coordinates=Lx,Ly,Lz
-				alfa=Lx*wx+Ly*wy+Lz*wz;
-				beta=Lx*vx+Ly*vy+Lz*vz;
-				gama=Lx*ux+Ly*uy+Lz*uz;
-//				cosalfa=-(wx*alfa+vx*beta-ux*gama);
-				cosalfa=-(wx*alfa+vx*beta-ux*gama);
-				ColorGraph=(int)(11+2*(1-cosalfa));
-				if (ColorGraph>=15)ColorGraph=15;
-				if (ColorGraph<9)ColorGraph=9;
-				
-//				if (cosalfa>=0)ColorGraph=(int)8*(cosalfa+1);
-//				else ColorGraph=0;
-				//SelectObject(hDC,CreateSolidBrush(0x111111*ColorGraph));//set brush color
-				SelectObject(hDC,BrushTable[ColorGraph]);//set brush color
-*/
+			if (DrawingMode==3 || DrawingMode==4||DrawingMode == 5){ //setting the ColorGraph of the brush
+
 				nx=(y2-y1)*(z3-z1)-(y3-y1)*(y2-y1);//vecteur normal au Plan du quadrilatere
 				ny=(x3-x1)*(z2-z1)-(z3-z1)*(x2-x1);
 				nz=(x2-x1)*(y3-y1)-(x3-x1)*(y2-y1);
@@ -632,10 +604,23 @@ OUTLIST:
 				//light coordinates=Lx,Ly,Lz
 				gama=-Lx*ux-Ly*uy-Lz*uz; //-p.L
 				cosalfa=gama/(NormL*normab);
-				ColorGraph=(int)(16+15*(cosalfa));
-				//ColorGraph=(int)(11+2*(1-cosalfa));
-				//if (ColorGraph>=15)ColorGraph=15;
-				//if (ColorGraph<9)ColorGraph=9;
+		//cosalfa=cosalfa*cosalfa;
+				int AvLightFactor;
+if (DrawingMode != 5){
+				if ((nx*Lx+ny*Ly+nz*Lz)>0)AvLightFactor=2;//half color for transparency
+				else AvLightFactor=1; //face tournée vers le loin
+				ColorGraph=(int)(Clrgfx3Da+AvLightFactor*(Clrgfx3Db+Clrgfx3Db*(cosalfa)));//half color for transparency
+				if (ColorGraph>31 && ColorOVF<ColorGraph)ColorOVF=ColorGraph;
+				}else{
+				if ((nx*Lx+ny*Ly+nz*Lz)<0)AvLightFactor=2;//half color for transparency
+				else AvLightFactor=1; //face tournée vers le loin
+				ColorGraph=(int)(Clrgfx3Da+AvLightFactor*(Clrgfx3Db+Clrgfx3Db*(cosalfa)));//half color for transparency
+				if (ColorGraph>31 && ColorOVF<ColorGraph)ColorOVF=ColorGraph;				
+				}
+				if (DrawingMode == 4||DrawingMode == 5) SelectionStylo(8*ColorGraph+7);
+				//COLORREF	colpen   = 8*ColorGraph+7;
+				//HPEN hpen	= CreatePen(PS_SOLID,1,colpen);
+				//SelectObject(hDC,hpen);
 				SelectObject(hDC,BrushTable[ColorGraph]);//set brush color
 
 				}
@@ -660,6 +645,14 @@ OUTLIST:
 	}//if DrawingMode 1
 
 	OutDrawObject:
+		if (ColorOVF!=0){
+		sprintf(s,"ColorOVF:\nColorGraph reach %d\nSolve Problem with action 4,a,b",ColorOVF);
+		PrintCmd(s);
+		PrintCmd("ColorGraphMax=a+2b*(1+cosalfa)\n");
+
+		ColorOVF=0;//re-init
+		}
+
 		return Error;
 }
 
@@ -1825,7 +1818,11 @@ int MathFunctionMatrices (Matrix *MAccu, floactet *CodeListLine,int i){
 				MAccu[NewM].p=Mn; //inversion for transposition
 				MAccu[NewM].n=Mp;
 				if (NumM!=NewM){
-					for (j=0;j<Mn*Mp; j++)MAccu[NewM].ptr[j] = MAccu[NumM].ptr[j];
+					//for (j=0;j<Mp; j++)MAccu[NewM].ptr[j] = MAccu[NumM].ptr[j];
+				for (j=0;j<Mp; j++)
+						for (k=0;k<Mn;k++)
+						MAccu[NewM].ptr[Mn*j+k] = MAccu[NumM].ptr[Mp*k+j];
+		
 				}
 			break;
 			case 28:	//mtxn

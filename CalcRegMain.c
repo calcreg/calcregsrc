@@ -25,6 +25,11 @@
 #define ID_FILE_Read 9003
 #define ID_FILE_Save 9004
 
+void	HandleInfo();
+DWORD WINAPI RecupererMSG(LPVOID LpParam);
+int RecupeMessage=0; //pour la recupération de MSG pour key(0)
+
+
 	//extern void DrawLine(int x, int y);
 	extern void Execute(void);
 	extern int doMainMenu(int);
@@ -497,6 +502,7 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 	return 0;
 }
 
+
 int APIENTRY WinMain(HINSTANCE hInstance,HINSTANCE hPrev,LPSTR cmdline,int CmdShow)
 {
 HWND		hwnd;
@@ -733,3 +739,40 @@ char* DoSaveFileReg()
 	}
 	return 0;
 }
+
+/*BOOL PostThreadMessage(
+
+    DWORD idThread,	// thread identifier
+    UINT Msg,	// message to post
+    WPARAM wParam,	// first message parameter
+    LPARAM lParam 	// second message parameter
+   );	
+ */
+
+void	HandleInfo(){
+		HANDLE hThreadInfo;
+		DWORD ThreadInfoID, ThreadInfoParam = 100;
+		MSG Msg;
+		//hThreadInfo = CreateThread(NULL, 0, RecupererMSG, &ThreadInfoParam, 0, &ThreadInfoID);
+		//if (hThreadInfo == NULL){
+			//PrintCmd("Can't open Thread HandleInfo for key(0)!\n");
+			PeekMessage(&Msg, hmywin, 0, 0,PM_REMOVE);
+			TranslateMessage(&Msg);
+			DispatchMessage(&Msg);
+			RecupeMessage=0;
+		//}
+	return;
+}
+DWORD WINAPI RecupererMSG(LPVOID ThreadInfoParam){
+	MSG Msg;
+	PrintCmd("Msg\n");
+	RecupeMessage=1; //signifie que le message est en attente de reception
+	while (GetMessage(&Msg, hmywin, 0, 0)){
+	TranslateMessage(&Msg);
+	DispatchMessage(&Msg);
+	}
+	RecupeMessage=0;//signifie que le message est recupéré
+	PrintCmd("Msg Out\n");
+	return 0;
+	}
+

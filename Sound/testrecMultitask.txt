@@ -1,0 +1,12 @@
+gfxdim -0.1,20000,-8000,8000,1
+grid 1000
+Nsp=44100
+defM0,1,(4*Nsp)
+action5,0 //No Multitask rec snd
+recsndM0,Nsp
+wait5000
+x=1
+Trf(x)=M0(1,x)
+playsndM0,Nsp
+print0
+end

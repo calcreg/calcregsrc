@@ -1,0 +1,40 @@
+Nsp=44100
+km=500
+tmp=0.2 
+defM0,1,(tmp*Nsp)
+defM1,1,(tmp*Nsp)
+defM2,1,(tmp*Nsp)
+defM3,1,km
+defM4,1,km
+h=0
+action5,1 //No Multitask rec snd
+recsndM0,Nsp
+wait (tmp*1000)
+gfxdim -100,(tmp*Nsp/10),-8000,8000,1
+grid 10000
+x=1
+Trf(x)=M0(1,x)
+b=100
+loop:
+recsndM1,Nsp
+playsndM0,Nsp
+recsndM2,Nsp
+M1=b*M1
+playsndM1,Nsp
+fftM0,3,4,1,1000
+gfxdim -10,km,-400,400,1
+grid 100
+colorgfx 1
+x=1
+Trf(x)=abs(M3(1,x))
+x=1
+Trf(x)=abs(M4(1,x))
+WaitRec:
+a=key(8)
+a==1=>goto WaitRec
+M0=b*M2
+h=h+1
+h<100 => goto loop
+
+print0
+end

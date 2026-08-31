@@ -77,7 +77,8 @@ extern void ShowKeyPad();
 extern void DeleteProg();
 extern void decodeCreator();
 extern void decodeCopyRight();
-
+// pour l'instruction key(0) multitache
+extern void HandleInfo(); //dans CalcRegMain.c
 
 // Graphic functions
 extern void TracerAxis(int centerx,int centery,int width, int height);//color 0black 1red 2green 3blue
@@ -236,6 +237,7 @@ extern int GfxZoom,GfxMove;
 extern int Button;
 extern int XpenDown,YpenDown,MouseLeftClick,PenMoved,XpenUp,YpenUp;
 MSG Msg;
+extern int RecupeMessage; //dan CalcRegMain.c
 
 //Sound
 float SoundFrequency,SoundAmplitude,SoundDuration,SamplesPerSecond;
@@ -348,6 +350,8 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //						key(4)mousemoved=1, not moved=0
 //						key(5)=XpenUp
 //						key(6)=YpenUp
+//						key(7)=AudioPlaying=>1 ou 0
+//						key(8)=AudioRecording=>1 ou 0
 
 //clscmd    clears the cmd window
 //defM 1,5,3    Create matrix M1 with dimension n=5, p=3;
@@ -469,7 +473,9 @@ extern int SerFlag;
 extern unsigned char SerialDataToSend[];
 //audio device
 extern int AudioDeviceState;
+extern int AudioRecording;
 extern int SoundPlaying;
+extern int MultiTaskSnd;
 
 //----------------------------------
 
@@ -540,6 +546,7 @@ DWORD WINAPI Thread_Execute( LPVOID lpParam ){
 	GridSet=0;//init
 	ColorGraph=1;
 	StepX=1;
+	MultiTaskSnd=0;
 	#ifdef CalcRegSoftware
 		//Start Special Part for Win32
 		DWORD 	dwTextLength = GetWindowTextLength(hEditP);
@@ -641,10 +648,10 @@ DWORD WINAPI Thread_Execute( LPVOID lpParam ){
 	
 	//close audio device eventually
 	if (AudioDeviceState == 1) {CloseAudioDevice();AudioDeviceState = 0;}
-
+	if (AudioRecording == 1){PrintCmd("Waiting Recording to finish\n");while (AudioRecording==1){;;}}
 	//free matrix memories
-	for (i=0;i<NbrMaxMatrix;i++) if (MAccu[i].ptr!=0) free (MAccu[i].ptr);
-	for (i=0;i<NbrMaxMatrix;i++) if (MAccu[i].Cptr!=0) free (MAccu[i].Cptr);
+	for (i=0;i<NbrMaxMatrix;i++) if (MAccu[i].ptr!=0) {free (MAccu[i].ptr);MAccu[i].ptr=0;}
+	for (i=0;i<NbrMaxMatrix;i++) if (MAccu[i].Cptr!=0){ free (MAccu[i].Cptr);MAccu[i].Cptr=0;}
 	free(CodeList);
 	
 	if (displayval==1) {if (AllowComplexe !=1)Rprintf(LastValCalculated.value); //display for little digital calculator
@@ -1480,7 +1487,7 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 //-------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==10) {//action
 			if (CodeOfOneLine[OffsetLine+1].code==1){
-			extern float Lx,Ly,Lz;
+			extern float Lx,Ly,Lz,Clrgfx3Da,Clrgfx3Db;
 				switch((int)CodeOfOneLine[OffsetLine+1].value){
 					case 0: //clr gfx area
 						WinEraseRectangleReg(DrawZoneX+1,DrawZoneY,DrawZoneW,DrawZoneH);//Define the erasing rectangle dimensions	
@@ -1506,8 +1513,19 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 						Lx=CodeOfOneLine[OffsetLine+3].value;
 						Ly=CodeOfOneLine[OffsetLine+5].value;
 						Lz=CodeOfOneLine[OffsetLine+7].value;
-						}else PrintCmd("action: Syntaxe error for Light coordinates\n");
+						}else PrintCmd("action: Syntaxe error\nLight coordinates\n");
 					break;
+					case 4: 
+						if (CodeOfOneLine[OffsetLine+2].code==10 &&CodeOfOneLine[OffsetLine+3].code==1 &&
+						CodeOfOneLine[OffsetLine+4].code==10 &&CodeOfOneLine[OffsetLine+5].code==1){
+						Clrgfx3Da=CodeOfOneLine[OffsetLine+3].value;
+						Clrgfx3Db=CodeOfOneLine[OffsetLine+5].value;
+						}else PrintCmd("action: Syntaxe error\nColor Light calculation\n");
+					break;
+					case 5: //Multitask Thread on/off
+						if (CodeOfOneLine[OffsetLine+2].code==10 &&CodeOfOneLine[OffsetLine+3].code==1 ){
+						MultiTaskSnd=(int)CodeOfOneLine[OffsetLine+3].value;
+						}else PrintCmd("action: Syntaxe error\nMultiTask Thread Sound setting.\n");
 				}
 			}else{PrintCmd("action parameter!\n");}
 		}	
@@ -2066,7 +2084,7 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			Error = DisplayObjectMatrix(MAccu,NumM,PtLinkM,DrawingMode);
 			if (Error !=0) goto EndMain;
  			OffsetLine=0;
-			}else{PrintCmd("Display Matrix Object!\n");goto EndMain;}
+			}else{PrintCmd("DispobjM!\n");goto EndMain;}
 		}	
 		
 //------------
@@ -3121,16 +3139,10 @@ CalculFAccuComplexe(floactet *CodeLine, int i,float *ResultY,float *ResultY_cmpl
 		else 	valX_cmplx=CodeLine[i+1].cmplx;
 
 		CodeList = CodeListAdr; //Transporte the full list adresse here
-		/* PalmOs
-		MemHdle = MemHandleNew(SizeBufferCodes*sizeof (struct floactet) );
-		if( MemHdle == 0){PrintCmd("Cannot allocate BufferCodes!");return;}
-		BufferCodes = MemHandleLock(MemHdle);
-		*/
 		//win32 ->
 		BufferCodes = (floactet*) malloc(SizeBufferCodes*sizeof (struct floactet) );
 		if( BufferCodes == 0){PrintCmd("Cannot allocate BufferCodes!");return;}
-		
-		
+				
 		OfPtr = FAccu[NbrFAccu];
 		
 		if (CodeList[OfPtr+0].code != 14 || CodeList[OfPtr+0].value != NbrFAccu ) {
@@ -3432,11 +3444,11 @@ void HandleCalculOneLineMsgError(int Error){
 		if (CodeVal==25 ) {val=0;PrintCmd("Activate Complexe before use arg(z)\n");MathError=8;goto KeepOn;}	//arg(z)
 		if (CodeVal==26 ) {
 								if(CodeListLine[i+1].value==0){
-								MSG Msg;
-								GetMessage(&Msg, NULL, 0, 0);
+								/*MSG Msg;
+								PeekMessage(&Msg, NULL, 0, 0,PM_NOREMOVE);
 								TranslateMessage(&Msg);
-								DispatchMessage(&Msg);
-
+								DispatchMessage(&Msg);*/
+								HandleInfo();
 								val=(float)Button;Button=0;goto KeepOn;}
 								if(CodeListLine[i+1].value==1){
 								//MSG Msg;
@@ -3926,11 +3938,12 @@ OutForPower:
  		if (CodeVal==26 ) {
 								switch((int)CodeListLine[i+1].value){
 								case 0:
-								GetMessage(&Msg, hmywin, 0, 0);
+							/*	//GetMessage(&Msg, hmywin, 0, 0);
+								PeekMessage(&Msg, NULL, 0, 0,PM_REMOVE);
 								TranslateMessage(&Msg);
-								DispatchMessage(&Msg);
-								
-
+								DispatchMessage(&Msg);*/
+								//if (RecupeMessage==0) 
+								HandleInfo(); //si RecupeMessage=1 alors le message est en attente dans le thread, donc on n'y va pas.
 								val=(float)Button;Button=0;
 								break;
 								
@@ -3958,6 +3971,9 @@ OutForPower:
 								break;
 								case 7:
 								val = (float)SoundPlaying;
+								break;
+								case 8:
+								val = (float)AudioRecording;
 								break;
 								}
 							}	//key

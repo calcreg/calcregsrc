@@ -1,0 +1,24 @@
+Nsp=44100
+tmp=0.1 
+defM0,1,(tmp*Nsp)
+defM1,1,(tmp*Nsp)
+defM2,1,(tmp*Nsp)
+h=0
+action5,1 //No Multitask rec snd
+recsndM0,Nsp
+wait (tmp*1000)
+gfxdim -100,(tmp*Nsp/10),-8000,8000,1
+grid 10000
+x=1
+Trf(x)=M0(1,x)
+loop:
+recsndM1,Nsp
+playsndM0,Nsp
+recsndM2,Nsp
+playsndM1,Nsp
+M0=M2
+h=h+1
+h<10 => goto loop
+
+print0
+end

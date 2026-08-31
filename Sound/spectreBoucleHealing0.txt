@@ -1,0 +1,24 @@
+//Record while playing sound
+//Player is in multitask
+Nsp=92000
+defM1,1,Nsp
+defM2,1,Nsp
+defM3,1,Nsp
+defM4,1,Nsp
+fillM1,0,1
+
+M2=8192*cos(2*3.1415*(10000*M1)*M1)
+playsndM2,Nsp
+recsndM3,Nsp
+action5,0 //no multitask
+print0,"change"
+
+wait5000
+playsndM2,Nsp
+recsndM4,Nsp
+
+gfxdim 0,Nsp,-400,4000,1
+grid 15000
+x=10
+Trf(x)=50*abs(M3(1,x))/abs(M4(1,x))
+end

@@ -31,6 +31,7 @@ int LoadMFile(Matrix *MAccu, int NumM,char*);
 
 //threads:
 DWORD WINAPI ThreadPlayHandleFinish(LPVOID lpParam);		
+DWORD WINAPI ThreadHandleWavInEnd(LPVOID lpParam);
 
 
 extern void PrintCmd(char *);
@@ -48,7 +49,8 @@ extern void PrintCmd(char *);
 //important for external use like closing	 
 HWAVEOUT     hWaveOut;          // Handle to sound card output
 int AudioDeviceState=0; // 0=closed; 1=opened
-
+int AudioRecording=0;
+int MultiTaskSnd=0;
 
           
 int PlaySoundReg(float SoundFrequency, float SoundAmplitude, float SoundDuration){
@@ -250,7 +252,8 @@ int PlaySoundMatrix(Matrix *MAccu, int NumM, float SamplesPerSecond,int mode, in
 			PrintCmd("Error on launching the Thread PlaySnd!\n");
 	        if (WaitForSingleObject(Done,INFINITE) != WAIT_OBJECT_0){
 			Message("Error waiting for sound to finish");
-			return TRUE;}  
+			//return TRUE;
+			}  
 			
 			// ** Unprepare our wav header **
 			if (waveOutUnprepareHeader(hWaveOut,&WaveHeader,sizeof(WaveHeader)) != MMSYSERR_NOERROR)
@@ -319,62 +322,47 @@ int CloseAudioDevice(void){
 
 
 //-------------------------- Audio Microphone -------------------------
+float *AccuMptr; //pour le transfer de donnée à partir de Data
+int DataSizeWavIn;	//Sauvegarde taille des données
+short int *DataWavIn;	//Sauvegarde de Data pour WaveIn
+HWAVEIN hWaveInSave;//Sauvegarde de hWaveIn
+WAVEHDR WaveHeaderIn;	//sauvegarde de du Header de WaveIn
 
 int GetAudioMicro(Matrix *MAccu,int NumM,float SamplesPerSecond){
 
-        HWAVEIN     hWaveIn;          // Handle to sound card input
-		 
-        WAVEFORMATEX WaveFormat;        // The sound format
-        WAVEHDR      WaveHeader;        // WAVE header for our sound data
-         MMRESULT result;      
- //       char         Data[BUFFERSIZE];  // Sound data buffer
-        HANDLE       Done;              // Event Handle that tells us the sound has finished being played.
+      
+    HWAVEIN     hWaveIn;          // Handle to sound card input		 
+    WAVEFORMATEX WaveFormat;        // The sound format
+    //WAVEHDR      WaveHeader;        // WAVE header for our sound data
+    MMRESULT result;      
                 // This is a real efficient way to put the program to sleep
                 // while the sound card is processing the sound buffer
-        double x;
-        int i;
-		unsigned char s[50];
+    double x;
+    int i;
+	unsigned char s[50];
 		//do we set no limit for recording memory or is it set by matrix size
 		//if (MAccu[NumM].ptr != 0) {free(MAccu[NumM].ptr);}
-		int DataSize = MAccu[NumM].n*MAccu[NumM].p;
-		if(MAccu[NumM].ptr == 0) {PrintCmd("Matrix not defined!\n Use defM n°,sizen=1,sizep for use with recsndM n°,NbrSamplesPerSec\n");return 0;}
-		//MMTIME MMTime = {0};
-		//MMTime.wType = TIME_BYTES;
+	int DataSize = MAccu[NumM].n*MAccu[NumM].p;
+	if(MAccu[NumM].ptr == 0) {PrintCmd("Matrix not defined!\n Use defM n°,sizen=1,sizep for use with recsndM n°,NbrSamplesPerSec\n");return 0;}
 
-		short int *Data=(short int *)malloc(DataSize*sizeof(short int));
-		//unsigned char *Data=(char *)malloc(DataSize*sizeof(char));
-		if (Data == 0 ) {
-			Message("Error While allocating memory for sound");
-			return 0;
-			}
-			// ** Initialize the sound format we will request from sound card **    
-        WaveFormat.wFormatTag = WAVE_FORMAT_PCM;     // Uncompressed sound format
-        WaveFormat.nChannels = 1;                    // 1=Mono 2=Stereo
-        WaveFormat.wBitsPerSample = 16;               // Bits per sample per channel
-        WaveFormat.nSamplesPerSec =(int)SamplesPerSecond; //44100;           // Sample Per Second
-        WaveFormat.nBlockAlign = WaveFormat.nChannels * WaveFormat.wBitsPerSample / 8;
-        WaveFormat.nAvgBytesPerSec = WaveFormat.nSamplesPerSec * WaveFormat.nBlockAlign;    
-        WaveFormat.cbSize = 0;
+	short int *Data=(short int *)malloc(DataSize*sizeof(short int));
+	//unsigned char *Data=(char *)malloc(DataSize*sizeof(char));
+	if (Data == 0 ) {
+		Message("Error While allocating memory for sound");
+		return 0;
+		}
+
+	while (AudioRecording == 1){;;} //wait that previou sound is recorded
+
+		// ** Initialize the sound format we will request from sound card **    
+    WaveFormat.wFormatTag = WAVE_FORMAT_PCM;     // Uncompressed sound format
+    WaveFormat.nChannels = 1;                    // 1=Mono 2=Stereo
+    WaveFormat.wBitsPerSample = 16;               // Bits per sample per channel
+    WaveFormat.nSamplesPerSec =(int)SamplesPerSecond; //44100;           // Sample Per Second
+    WaveFormat.nBlockAlign = WaveFormat.nChannels * WaveFormat.wBitsPerSample / 8;
+    WaveFormat.nAvgBytesPerSec = WaveFormat.nSamplesPerSec * WaveFormat.nBlockAlign;    
+    WaveFormat.cbSize = 0;
 	
-        // ** Create our "Sound is Done" event **
-    //  Done = CreateEvent (0, FALSE, FALSE, 0);
-    /*          
-        // ** Open the audio device **
-        if (waveInOpen(&hWaveIn,0,&pFormat,(DWORD) Done,0L,CALLBACK_EVENT) != MMSYSERR_NOERROR) 
-              {PrintCmd("Micro Sound card\ncannot be opened.\n");return TRUE;}
-//		else AudioDeviceState=1; 
-  
-result = waveInOpen(&hWaveIn, WAVE_MAPPER,&WaveFormat,
-            0L, 0L, WAVE_FORMAT_DIRECT);
-if (result )
- {
-  char fault[256];
-  waveInGetErrorText(result, fault, 256);
-	PrintCmd(fault);
-	PrintCmd( "Failed to open waveform input device.");
-	return 0;
- }
-*/
 	result = waveInOpen(&hWaveIn, 0, &WaveFormat, 0, 0, CALLBACK_NULL);
 
 if (result)
@@ -387,65 +375,101 @@ if (result)
  }
 
         
-        // ** Create the wave header for our sound buffer **
-        WaveHeader.lpData=(LPSTR)Data;
-        //WaveHeader.lpData=Data;
-        //WaveHeader.dwBufferLength=BUFFERSIZE;
-        WaveHeader.dwBufferLength=DataSize*2;//*2 because it is short int
-        WaveHeader.dwFlags=0;
-        WaveHeader.dwLoops=0;
+    // ** Create the wave header for our sound buffer **
+    WaveHeaderIn.lpData=(LPSTR)Data;
+    WaveHeaderIn.dwBufferLength=DataSize*2;//*2 because it is short int
+    WaveHeaderIn.dwFlags=0;
+    WaveHeaderIn.dwLoops=0;
               
-        // ** Prepare the header for Recording with sound card **
-        if (waveInPrepareHeader(hWaveIn,&WaveHeader,sizeof(WaveHeader)) != MMSYSERR_NOERROR)
-        {
-              Message("Micro Error preparing Header!");
-              return TRUE;
-        }
+    // ** Prepare the header for Recording with sound card **
+    if (waveInPrepareHeader(hWaveIn,&WaveHeaderIn,sizeof(WaveHeaderIn)) != MMSYSERR_NOERROR)
+		{Message("Micro Error preparing Header!");return TRUE;}
               
-        // ** Record sound! **
-      //  ResetEvent(Done);  // Reset our Event so it is non-signaled, it will be signaled again with buffer finished
-              
-        if (waveInAddBuffer(hWaveIn,&WaveHeader,sizeof(WaveHeader)) != MMSYSERR_NOERROR)
-        {
-              Message("Error reading sound card!");
-              return TRUE;
-        }
+    if (waveInAddBuffer(hWaveIn,&WaveHeaderIn,sizeof(WaveHeaderIn)) != MMSYSERR_NOERROR)
+    {Message("Error reading sound card!");return TRUE;}
            
 // Commence sampling input
 	result = waveInStart(hWaveIn);
-	if (result){Message( "Failed to start recording");return;}
+	if (result){Message( "Failed to start recording");return 0;}
 
+	//Loading data for the Thread
+	AccuMptr=MAccu[NumM].ptr;
+	DataWavIn=Data;
+	DataSizeWavIn=DataSize;
+	hWaveInSave=hWaveIn;
+	if (MAccu[NumM].ptr != 0) {
+		MAccu[NumM].n=1; MAccu[NumM].p=DataSize;
+	}else {
+		PrintCmd("Micro matrix not defined!\nData unavailable\n");
+		goto CloseTheDevice;
+	}
+	
+	
+	HANDLE hThreadW;
+	DWORD ThreadWavInID, ThreadWavInParam = 100;
+	if (MultiTaskSnd==1){
+	hThreadW = CreateThread(NULL, 0, ThreadHandleWavInEnd, &ThreadWavInParam, 0, &ThreadWavInID);
+	if (hThreadW == NULL){
+		PrintCmd("Error on launching the Thread EndWavIn!\n");
+		goto NoMultiTaskSnd;
+		}
+		return FALSE;
+	}
 
- // Wait until finished recording
- do {} while (waveInUnprepareHeader(hWaveIn, &WaveHeader, sizeof(WAVEHDR))==WAVERR_STILLPLAYING);
+NoMultiTaskSnd:
+		//We do the usual program.
+	AudioRecording=0;
 
-		 /*  
-        //Wait until recording sound finishes
-        if (WaitForSingleObject(Done,INFINITE) != WAIT_OBJECT_0)
-        {
-              Message("Error waiting for sound to finish recording");
-              return TRUE;
-        }  */
-		//MAccu[NumM].ptr = (float *) malloc (DataSize*sizeof(float) );
-		if (MAccu[NumM].ptr != 0) {
-			MAccu[NumM].n=1; MAccu[NumM].p=DataSize;
-			for (i=0;i<DataSize;i++){
-				MAccu[NumM].ptr[i] = (float) Data[i];
-			//	MAccu[NumM].ptr[i] = Data[i];
-				}
-		}else PrintCmd("Error allocation for micro matrix memory!\nData unavailable\n");
-        // close the wav device **
-        if (waveInClose(hWaveIn) != MMSYSERR_NOERROR)
-        {
-              Message("Micro Sound card cannot be closed!");
-              return TRUE;
+		// Wait until finished recording
+ do {} while (waveInUnprepareHeader(hWaveIn, &WaveHeaderIn, sizeof(WAVEHDR))==WAVERR_STILLPLAYING);
+
+	if (MAccu[NumM].ptr != 0) {
+		for (i=0;i<DataSize;i++){
+			MAccu[NumM].ptr[i] = (float) Data[i];
+			}
+	}
+    // close the wav device **
+	CloseTheDevice:
+ if (waveInClose(hWaveIn) != MMSYSERR_NOERROR)
+      {
+        Message("Micro Sound card cannot be closed!");
+        return TRUE;
         } 
-           
-        //Release our event handle **
-        CloseHandle(Done);
+    //Release our event handle **
+        //CloseHandle(Done);
         free (Data); //release memory
+		AudioRecording=0; //Now the full program can end, no risk for matrix free problems
         return FALSE;
 }
+
+
+
+DWORD WINAPI ThreadHandleWavInEnd(LPVOID lpParam){
+	int i;
+	AudioRecording=1; //Only here it has to be set because it is important to avoid ending program and freeing the matrix too early
+	// Wait until finished recording
+ do {} while (waveInUnprepareHeader(hWaveInSave, &WaveHeaderIn, sizeof(WAVEHDR))==WAVERR_STILLPLAYING);
+	//PrintCmd("Hello From Micro Thread\n");
+	if (AccuMptr != 0) {
+		for (i=0;i<DataSizeWavIn;i++){
+			AccuMptr[i] = (float) DataWavIn[i];
+			}
+	}
+    // close the wav device **
+    if (waveInClose(hWaveInSave) != MMSYSERR_NOERROR)
+      {
+        Message("Micro Sound card cannot be closed!");
+	AudioRecording=0; //Now the full program can end, no risk for matrix free problems
+        return 0;
+        } 
+	AudioRecording=0; //Now the full program can end, no risk for matrix free problems
+           
+    //Release our event handle **
+        //CloseHandle(DoneWavIn);
+        free (DataWavIn); //release memory
+        return 0;
+}
+
 
 
 //----------------------------------- Load Sound File----------------
