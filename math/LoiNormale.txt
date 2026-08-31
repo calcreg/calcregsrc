@@ -1,0 +1,27 @@
+
+n=100
+p=0.8
+q=1-p
+F(n)=fact(n)/fact(n-k)/fact(k)
+
+defM0,1,n
+h=0
+max=0
+loop:
+k=h //pour le factoriel
+h=h+1
+a=F(n)*p^k*q^(n-k)
+M0(1,h)=a
+max<a=>bsr fndm
+h<n=>goto loop
+
+gfxdim -1,n+1,-0.1,max,1
+x=1
+Trf(x)=M0(1,h)
+end
+
+
+
+fndmax:
+max=M0(1,h)
+rts
