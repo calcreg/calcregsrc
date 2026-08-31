@@ -213,8 +213,8 @@ float SoundFrequency,SoundAmplitude,SoundDuration,SamplesPerSecond;
 
 #define OpListSize 9 // add the size if add new instructions or special codes in OperatorList
 static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListSize
-static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_";
-//									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26
+static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_trp_";
+//									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26    27
 static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_box3d_getserial_wait_bsr_rts_putserial_playsound_clscmd_defM_playsndM_fillM_recsndM_loadsndM_";
 //																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23
 //char blabli[]= { {'hello'},0x1,{'hi'},0x0};
@@ -305,6 +305,7 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //loadsndM n°mtx,"myfile.wav" put no space in the line before the guillemet
 //recsndM0,44100  Record sound at 44100 SamplesPerSec quality=16bits into Matrix 0 of size M0.nxp
 //printx,"blabli x=" put no spaces in the line before the guillemet
+//M1=trp(M0)  defines the matrix M1 as the transposed of M0, no need to use defM1 to create M1 matrix
 
 //MathFunctions
 extern int MathError; //send back a code if error in the Math functions. MathError=1 out of range exponential
@@ -1088,10 +1089,17 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 					if (CodeOfOneLine[OffsetLine+1].code == 8 && 
 						CodeOfOneLine[OffsetLine+2].code == 15){
 						int NumM2= (int) CodeOfOneLine[OffsetLine+2].value;
-						if (MAccu[NumM].n != MAccu[NumM].n ||
-								MAccu[NumM].p != MAccu[NumM].p){
+						if (MAccu[NumM].ptr !=0){if (MAccu[NumM2].n != MAccu[NumM].n ||
+								MAccu[NumM2].p != MAccu[NumM].p){
 									PrintCmd("Matrices incompatible sizes!\n");
 									Error = 6;goto EndMain;}
+						}else{ 
+								//allouer une nouvelle MatriceM pour ainsi la definir  
+								//create matrix
+								MAccu[NumM].n=MAccu[NumM2].n;MAccu[NumM].p=MAccu[NumM2].p;
+								MAccu[NumM].ptr = (float*)malloc(MAccu[NumM].n*MAccu[NumM].p*sizeof(float) );
+								if (MAccu[NumM].ptr == 0) {Error = 1; PrintCmd("Error Allocation for Matrix!\n");goto EndMain;}
+								}
 						int j;
 						for (j=0;j<MAccu[NumM].n*MAccu[NumM].p;j++)
 							MAccu[NumM].ptr[j]=MAccu[NumM2].ptr[j]; 

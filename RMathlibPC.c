@@ -345,18 +345,51 @@ int MatrixMultiplication(Matrix *MAccu,floactet *CodeListLine,int i, int imaxLin
 			return 9; //Matrix error
 		FoundFreeMatrix2:
 			NewM=m;
-			if (MAccu[NumM1].p != MAccu[NumM2].n) {
-				PrintCmd("Incompatible matrix size Mtx1.p must equal Mtx2.n\n");
-				return 9;
-				}
+
+			if (MAccu[NumM1].p == MAccu[NumM2].n) {//conventional M1xM2
 			//M1*M2 just start below
-			for (j=0;j<MAccu[NumM1].n;j++){
-				for (k=0;k<MAccu[NumM2].p;k++){
-					float Sum=0;
-					for (l=0;l<MAccu[NumM1].p;l++)Sum=Sum+MAccu[NumM1].ptr[j*MAccu[NumM1].p+l]*MAccu[NumM2].ptr[l*MAccu[NumM2].p+k];
-					MAccu[NewM].ptr[j*MAccu[NewM].p+k]=Sum;					
+			MAccu[NewM].ptr = (float *) malloc (MAccu[NumM1].n*MAccu[NumM2].p*sizeof(float) );
+			if (MAccu[NewM].ptr == 0 ) {PrintCmd ("Error couldn't allocate memory for temporary matrix\n"); return 9;}
+			MAccu[NewM].n=MAccu[NumM1].n;
+			MAccu[NewM].p=MAccu[NumM2].p;
+
+				for (j=0;j<MAccu[NumM1].n;j++){
+					for (k=0;k<MAccu[NumM2].p;k++){
+						float Sum=0;
+						for (l=0;l<MAccu[NumM1].p;l++)Sum=Sum+MAccu[NumM1].ptr[j*MAccu[NumM1].p+l]*MAccu[NumM2].ptr[l*MAccu[NumM2].p+k];
+						MAccu[NewM].ptr[j*MAccu[NewM].p+k]=Sum;
+					}
 				}
+			}else{if (MAccu[NumM1].n == 1 && MAccu[NumM2].n==1 &&
+							MAccu[NumM1].p == MAccu[NumM2].p){
+							//We make a scalar style product M1*M2
+								MAccu[NewM].ptr = (float *) malloc (MAccu[NumM1].n*MAccu[NumM1].p*sizeof(float) );
+								if (MAccu[NewM].ptr == 0 ) {PrintCmd ("Error couldn't allocate memory for temporary matrix\n"); return 9;}
+								MAccu[NewM].n=MAccu[NumM1].n;
+								MAccu[NewM].p=MAccu[NumM1].p;
+
+							for (j=0;j<MAccu[NumM1].n*MAccu[NumM1].p;j++){
+								MAccu[NewM].ptr[j]=MAccu[NumM1].ptr[j]*MAccu[NumM2].ptr[j];
+							}
+				}else{PrintCmd("Incompatible matrix size Mtx1.p must equal Mtx2.n\n");
+						return 9;
+						}
 			}
+
+		//done result is in NewM
+		//Now we put the matrix result in the CodeListLine
+		CodeListLine[i].code=15; //mtx
+		CodeListLine[i].value=NewM; // n°mtx
+		i++;
+		//sprintf(s,"Matrix Size nxp=%dx%d\n",MAccu[NewM].n,MAccu[NewM].p);
+		//PrintCmd (s);	
+		while (i+2<=imaxLine){
+			CodeListLine[i].code=CodeListLine[i+2].code;
+			CodeListLine[i].value=CodeListLine[i+2].value;
+			i++;
+			}
+		return 0; //no errors
+
 	}
 	//it shouldn't arrive here so if it is the case, generate error
 	return 9;
@@ -369,7 +402,7 @@ int MatrixDivision(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine){
 	
 int MathFunctionMatrices (Matrix *MAccu, floactet *CodeListLine,int i){
 		extern int NbrMaxMatrix; 
-		int m,NewM;
+		int m,NewM,Mn,Mp;
 		int j,k;
 		//we are in the case function(matrix):   [13][CodeVal],[15][n°]
 		//NumM > NbrMaxMatrix/2 for the temporary matrices for calculation
@@ -497,6 +530,15 @@ int MathFunctionMatrices (Matrix *MAccu, floactet *CodeListLine,int i){
 			case 26:	//key
 				PrintCmd("key(matrix) What for!??\n");
 				MathError=8;
+			break;
+			case 27:	//trp  transposition of the matrix
+				Mn=MAccu[NumM].n;
+				Mp=MAccu[NumM].p;
+				MAccu[NewM].p=Mn; //inversion for transposition
+				MAccu[NewM].n=Mp;
+				if (NumM!=NewM){
+					for (j=0;j<Mn*Mp; j++)MAccu[NewM].ptr[j] = MAccu[NumM].ptr[j];
+				}
 			break;
 		}
 	KeepOn:

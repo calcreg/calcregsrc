@@ -7,7 +7,8 @@
  *  BUSSY-SOCRATE REGAN
  *
  *-----------------------------------------*/
- 
+
+  
      #include <windows.h>
      #include <math.h>
 	 #include <stdio.h>
@@ -254,26 +255,6 @@ int CloseAudioDevice(void){
 
 int GetAudioMicro(Matrix *MAccu,int NumM,float SamplesPerSecond){
 
-/*
-WAVEINCAPS     wic; 
-unsigned long  iNumDevs, j; 
-unsigned char s[50];
-// Get the number of Digital Audio In devices in this computer 
-iNumDevs = waveInGetNumDevs(); 
-
-// Go through all of those devices, displaying their names 
-for (j = 0; j < iNumDevs; j++) 
-{ 
-    // Get info about the next device 
-    if (!waveInGetDevCaps(j, &wic, sizeof(WAVEINCAPS))) 
-    { 
-        // Display its Device ID and name 
-        sprintf(s,"In Device ID #%u: %s\n", j, wic.szPname); 
-		PrintCmd(s);
-	} 
-} 
-
-  */      
         HWAVEIN     hWaveIn;          // Handle to sound card input
 		 
         WAVEFORMATEX WaveFormat;        // The sound format
@@ -386,14 +367,6 @@ if (result)
 			//	MAccu[NumM].ptr[i] = Data[i];
 				}
 		}else PrintCmd("Error allocation for micro matrix memory!\nData unavailable\n");
-		/*
-        //Unprepare our wav header **
-        if (waveInUnprepareHeader(hWaveIn,&WaveHeader,sizeof(WaveHeader)) != MMSYSERR_NOERROR)
-        {
-              Message("Micro Error unpreparing header!");
-              return TRUE;
-        }
-         */     
         // close the wav device **
         if (waveInClose(hWaveIn) != MMSYSERR_NOERROR)
         {
