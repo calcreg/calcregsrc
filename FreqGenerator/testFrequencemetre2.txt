@@ -1,0 +1,91 @@
+//frequencemetre
+t=1 //temps d'acquisition
+defM1,1,10 //pour statistiques sur T la periode du signal
+//loadM0,"onde.wav"
+
+Nsp=96000 //nbr samples per seconds
+defM0,1,(t*Nsp)
+fillM0,0,t
+//recsndM0,Nsp
+//savesndM0,Nsp,"onde.wav"
+
+M0=cos(2*3.1415927*100*M0)
+
+gfxdim -0.1,10000,-1.2,1.2,1
+grid100
+X=1
+Trf(X)=M0(1,X)
+
+
+
+N=mtxpM0
+
+//variables
+alphamax=0
+alpha=0
+Sigma=0
+S=0
+T=0
+f=0
+err=0
+
+gfxdim -0.1,50,-8192,8192,10
+grid100
+
+//debut
+k=1
+alpha=1
+loopfm:
+K=k+1
+L=M0(1,K)
+M0(1,k)>L => goto jmp
+M0(1,k)>0 => goto jmp
+M0(1,K) < 0 => goto jmp
+M1(1,alpha)=k //chargement de la liste des periodes
+alphamax=alpha
+alpha=alpha+1
+alpha >10=>goto ready
+
+jmp:
+k=k+1
+k<N => goto loopfm
+alphamax=alpha
+
+ready:
+alphamax<2=> goto finish
+print alphamax,"alphamax="
+
+
+//calcul moyen
+k=1
+S=0
+Cal:
+K=k+1
+S=M1(1,K)-M1(1,k) + S //peut-être error ici
+k=k+1
+k<alphamax=>goto Cal
+Treal=S/(alphamax-1)*t/Nsp
+T=S/(alphamax-1)
+clscmd
+print Treal,"T="
+
+k=1
+S=0
+EcartType:
+K=k+1
+S=( M(1,K)-M1(1,k) -T )^2
+k=k+1
+k<alphamax => goto EcartType
+Sigma=sqrt(S/(alphamax-1))
+f=1/Treal
+err=Sigma/T^2
+
+finish:
+//resultat
+print f,"freq="
+
+print err,"err="
+
+end
+
+

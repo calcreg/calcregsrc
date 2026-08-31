@@ -1,0 +1,95 @@
+//frequencemetre
+t=1 //temps d'acquisition
+loadsndM0,"onde2.wav"
+
+Nsp=96000 //nbr samples per seconds
+Na=20 //le nbre de cycle de periode à prendre
+N=mtxpM0
+
+defM1,1,Na //pour statistiques sur T la periode du signal
+
+gfxdim -0.1,(N/5),-20000,20000,1
+grid100
+X=1
+Trf(X)=M0(1,X)
+
+
+//variables
+alphamax=0
+alpha=0
+Sigma=0
+S=0
+T=0
+f=0
+err=0
+
+
+//debut
+k=Nsp/8 //il faut que ce soit un entier
+alpha=1
+loopfm:
+K=k+1
+L=M0(1,K)
+M0(1,k)>L => goto jmp
+M0(1,k)>0 => goto jmp
+M0(1,K) < 0 => goto jmp
+M0(1,k) == 0 =>goto jmp
+M1(1,alpha)=k //chargement de la liste des periodes
+alphamax=alpha
+alpha=alpha+1
+alpha >Na=>goto ready
+
+jmp:
+k=k+1
+k<N => goto loopfm
+alphamax=alpha
+
+ready:
+alphamax<2=> goto finish
+clscmd
+print alphamax,"alphamax="
+
+
+//calcul moyen
+k=1
+S=0
+Cal:
+K=k+1
+S=M1(1,K)-M1(1,k) + S //peut-être error ici
+k=k+1
+k<alphamax=>goto Cal
+Treal=(S/(alphamax-1))*t/Nsp
+T=S/(alphamax-1)
+print Treal,"T="
+
+k=1
+S=0
+EcartType:
+K=k+1
+S=( M(1,K)-M1(1,k) -T )^2
+k=k+1
+k<alphamax => goto EcartType
+Sigma=sqrt(S/(alphamax-1))
+f=1/Treal
+err=Sigma/T^2
+//Tracer des Na cycles de periodes
+
+k=M1(1,1)
+K=M1(1,Na)
+gfxdim (k-1),(K+1),-20000,20000,1
+grid100
+X=1
+Trf(X)=M0(1,X)
+
+
+
+finish:
+//resultat
+print err,"err="
+
+print f,"--------> FREQ="
+
+
+end
+
+

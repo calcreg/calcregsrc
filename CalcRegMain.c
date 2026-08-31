@@ -290,6 +290,7 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			AppendMenu(hSubMenu, MF_STRING, PolPltMenuId, "Polar Plot");
 			AppendMenu(hSubMenu, MF_STRING, DerivateMenuId, "Numerical Derivation");
 			AppendMenu(hSubMenu, MF_STRING, IntegMenuId, "Numerical Integration");
+			AppendMenu(hSubMenu, MF_STRING, ThreeDfctMenuId, "3D function plot");
 			AppendMenu(hSubMenu, MF_STRING, ThreeDpltMenuId, "f(x,y) 3D plot");
 			AppendMenu(hSubMenu, MF_STRING, FFTMenuId, "Basic FFT Program");
 			AppendMenu(hSubMenu, MF_STRING, SuitePlotMenuId, "Recurrence Suite Plot");
@@ -359,6 +360,7 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			if (LOWORD(wParam) == DerivateMenuId) doMainMenu(DerivateMenuId);
 			if (LOWORD(wParam) == IntegMenuId) doMainMenu(IntegMenuId);
 			if (LOWORD(wParam) == ThreeDpltMenuId) doMainMenu(ThreeDpltMenuId);
+			if (LOWORD(wParam) == ThreeDfctMenuId) doMainMenu(ThreeDfctMenuId);
 			if (LOWORD(wParam) == FFTMenuId) doMainMenu(FFTMenuId);
 			if (LOWORD(wParam) == SuitePlotMenuId) doMainMenu(SuitePlotMenuId);
 			if (LOWORD(wParam) == OscilloMenuId) doMainMenu(OscilloMenuId);

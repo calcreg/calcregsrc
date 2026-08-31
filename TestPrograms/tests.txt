@@ -1,0 +1,5 @@
+loadsndM0
+playsndM0,96000
+print 0
+
+end

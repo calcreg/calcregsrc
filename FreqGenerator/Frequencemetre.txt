@@ -1,0 +1,70 @@
+//frequencemetre
+t=0.01 //temps d'acquisition
+defM1,1,10 //pour statistiques sur T la periode du signal
+loadM0,"onde.wav"
+
+//Nsp=96000 //nbr samples per seconds
+//defM0,1,(t*Nsp)
+//recsndM0,Nsp
+
+N=mtxpM0
+
+//variables
+alphamax=0
+alpha=0
+Sigma=0
+S=0
+T=0
+f=0
+err=0
+
+gfxdim -0.1,50,-8192,8192,10
+grid100
+
+//debut
+k=1
+loopfm:
+M0(1,k)>M(1,k+1) => goto jmp
+M0(1,k)>0 => goto jmp
+M0(1,k+1) < 0 => goto jmp
+M1(1,alpha)=k //chargement de la liste des periodes
+alpha=alpha+1
+alphamax=alpha
+alpha >10=>goto ready
+
+jmp:
+k=k+1
+k<N => goto loopfm
+alphamax=alpha
+
+ready:
+alphamax<2=> goto finish
+
+//calcul moyen
+k=0
+S=0
+Cal:
+S=M1(1,k+1)-M(1,k) + S //peut-être error ici
+k=k+1
+k<alphamax=>goto Cal
+T=S/(alphamax-1)
+
+k=0
+S=0
+EcartType:
+S=( M(1,k+1)-M1(1,k) -T )^2
+k=k+1
+k<alphamax => goto EcartType
+Sigma=sqrt(S/(alphamax-1))
+f=1/T
+err=Sigma/T^2
+
+finish:
+//resultat
+print f,"freq="
+
+print err,"err="
+
+end
+
+

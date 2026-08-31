@@ -1,0 +1,22 @@
+
+N=100 //N pair
+
+ampl=0.5 //%max amplitude
+
+defM0,1,N
+k=1
+K=N/2
+loop:
+M0(1,k)=4096*ampl
+k=k+1
+N/2>k => goto loop
+loop2:
+M0(1,k)=-4096*ampl
+k=k+1
+k<N => goto loop2
+
+gfxdim -0.1,N,-8192,8192,1
+grid1000
+x=1
+Trf(x)=M0(1,x)
+end

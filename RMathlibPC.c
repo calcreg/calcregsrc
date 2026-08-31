@@ -160,10 +160,11 @@ float IncX=0.05;
 float StepX=1;
 
 //3D plots
-float zp=15,yp=7,xp=6,zp0=15,yp0=7,xp0=6;//should be proportional to the 3D dimension box
+float zp=150,yp=70,xp=60,zp0=15,yp0=7,xp0=6;//should be proportional to the 3D dimension box
 float Xmin3d=-3,Xmax3d=3,Ymin3d=-3,Ymax3d=3,Zmin3d=-3,Zmax3d=3;
 float Inc3D=0.2;
-
+//dispobj
+float zp3dDisplay=1000;
 
 //Drawing Zone Square -------- Be careful it is redefined in CalcRegMain for window-resizing
 float DrawZoneX=320;//125;
@@ -450,7 +451,7 @@ OUTLIST:
 		
 			//Here we have to make the test of over riding and hiding lines
 			if (DrawingMode == 1 || DrawingMode == 3){
-			zp=50;
+			zp=zp3dDisplay;
 			X1=y1-x1*(xp-y1)/zp;
 			Y1=z1-x1*(yp-z1)/zp;
 			X2=y2-x2*(xp-y2)/zp;
@@ -1163,7 +1164,8 @@ int MathFunctionMatrices (Matrix *MAccu, floactet *CodeListLine,int i){
 			break;
 			case 3:	//sqrt
 				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++)
-					MAccu[NewM].ptr[j] = RMath_sqrt(MAccu[NumM].ptr[j]);
+					//MAccu[NewM].ptr[j] = RMath_sqrt(MAccu[NumM].ptr[j]);
+					MAccu[NewM].ptr[j] = (float)sqrt((double)MAccu[NumM].ptr[j]); //We use the double floating point math library
 			break;
 
 			//if (CodeVal==4 ) {AlreadyTaken for the function f(x);}	//function f(x)
@@ -1273,7 +1275,15 @@ int MathFunctionMatrices (Matrix *MAccu, floactet *CodeListLine,int i){
 				val=(float)MAccu[NumM].p;
 				goto PlaceVal;
 			break;
-		}
+			case 31:	//sign
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++){
+					if (MAccu[NumM].ptr[j] > 0) MAccu[NewM].ptr[j]=1;
+					else MAccu[NewM].ptr[j]=-1;
+					}
+			break;
+
+
+			}
 	KeepOn:
 		if (MathError !=0 ) {sprintf(s,"Math Error = %d\n",MathError);PrintCmd(s);return 3;}
 		if (MathError == 0) {//Place Matrix Result
@@ -1362,6 +1372,7 @@ int CalculFunctionComplexe (floactet *CodeListLine,int i){
 			}
 			val_cmplx=0;goto KeepOn;
 			}	//arg(z)
+		if (CodeVal==31 ) {PrintCmd("sign ! undefined with complexe\n");MathError = 1;val=0;val_cmplx=0;goto KeepOn;}	//module(z)
 
 		KeepOn:
 		if (MathError == 0) {CodeListLine[i].code=1; CodeListLine[i].value=val;CodeListLine[i].cmplx=val_cmplx;}

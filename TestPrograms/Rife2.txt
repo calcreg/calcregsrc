@@ -1,0 +1,8 @@
+//Rife Sweep Frequencies
+
+pi=3.1415927
+w=2*pi*5
+T=5*2*pi/w
+gfxdim 0,T,-2,2,0.01
+x=0
+Trf(x)= cos(w*x)

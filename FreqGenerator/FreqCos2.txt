@@ -1,0 +1,65 @@
+
+nT=20000 //nbr periods
+N=10 //N pair for one period
+Nsp=48000
+print N*nT/Nsp
+
+ampl=20 //%max amplitude
+
+x=0
+pi=3.1415927
+f=2000 //Hz
+w=2*pi*f
+t=10 //s
+defM0,1,(Nsp*t) //mtx time
+defM1,1,(Nsp*t) //mtx function
+fillM0,0,t
+
+M1=8192*sqrt(abs(cos(w*M0)))
+gfxdim 1,(Nsp/1000),-10000,10000,1
+x=1
+Trf(x)=M1(1,x)
+//playsndM1,Nsp
+
+end
+
+
+defM0,1,(N*nT)
+k=1
+K=0
+loop:
+M0(1,k)=4096*ampl
+k=k+1
+x=K+N/2
+k<x => goto loop
+
+k=k+1
+M0(1,k)=4096*ampl/2
+k=k+1
+M0(1,k)=0
+k=k+1
+M0(1,k)=-4096*ampl/2
+
+
+loop2:
+M0(1,k)=-4096*ampl
+k=k+1
+x=K+N
+k<x => goto loop2
+K=K+N
+x=nT*N
+K<x=>goto loop
+
+
+gfxdim -0.1,(N*nT),(-8192*ampl),(8192*ampl),1
+grid1000
+x=1
+Trf(x)=M0(1,x)
+
+
+playsndM0,Nsp
+playsndM0,Nsp
+playsndM0,Nsp
+playsndM0,Nsp
+playsndM0,Nsp
+

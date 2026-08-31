@@ -186,6 +186,7 @@ extern int PlaySoundReg(float ,float ,float );
 extern int PlaySoundMatrix(Matrix *, int NumM, float);
 extern int GetAudioMicro(Matrix *, int NumM, float);
 extern int 	LoadSoundFile(Matrix *MAccu, int NumM,char*);
+extern int SaveSoundFile(Matrix *MAccu, int NumM,int SamplesPerSecond, char*);
 extern int 	SaveMFile(Matrix *MAccu, int NumM,char*);
 extern int 	LoadMFile(Matrix *MAccu, int NumM,char*);
 extern char* DoLoadFileReg();
@@ -230,13 +231,50 @@ MSG Msg;
 //Sound
 float SoundFrequency,SoundAmplitude,SoundDuration,SamplesPerSecond;
 
+// program 3D fM4.txt ------------------
+/*
+char prog3d[]={
+//gfxdim -5,70,-5.7,4.5,1
+0x67,0x66,0x78,0x64,0x69,0x6d,0x20,0x2d,0x35,0x2c,0x37,0x30,0x2c,0x2d,0x35,0x2e,0x37,0x2c,0x34,0x2e,0x35,0x2c,0x31,0x0a,
+//action 0
+0x61,0x63,0x74,0x69,0x6f,0x6e,0x20,0x30,0x0a,
+//x=1
+0x78,0x3d,0x31,0x0a,
+//y=1
+0x79,0x3d,0x31,0x0a,
+//N=40
+0x4e,0x3d,0x34,0x30,0x0a,
+//a=N/2
+0x61,0x3d,0x4e,0x2f,0x32,0x0a,
+//b=a
+0x62,0x3d,0x61,0x0a,
+//m=N^2
+0x6d,0x3d,0x4e,0x5e,0x32,0x0a,
+//defM0,N,N
+0x64,0x65,0x66,0x4d,0x30,0x2c,0x4e,0x2c,0x4e,0x0a,
+//fM0(x,y)= 5*exp (0.04*(-(x-a)^2-(y-b)^2))
+0x66,0x4d,0x30,0x28,0x78,0x2c,0x79,0x29,0x3d,0x20,0x35,0x2a,0x65,0x78,0x70,0x20,0x28,0x30,0x2e,0x30,0x34,0x2a,0x28,0x2d,0x28,0x78,0x2d,0x61,0x29,0x5e,0x32,0x2d,0x28,0x79,0x2d,0x62,0x29,0x5e,0x32,0x29,0x29,0x0a,
+////print M0(1,5)
+0x2f,0x2f,0x70,0x72,0x69,0x6e,0x74,0x20,0x4d,0x30,0x28,0x31,0x2c,0x35,0x29,0x0a,
+//defM1,3,m
+0x64,0x65,0x66,0x4d,0x31,0x2c,0x33,0x2c,0x6d,0x0a,
+//defM2,4,m
+0x64,0x65,0x66,0x4d,0x32,0x2c,0x34,0x2c,0x6d,0x0a,
+//fctobjM0,1,2
+0x66,0x63,0x74,0x6f,0x62,0x6a,0x4d,0x30,0x2c,0x31,0x2c,0x32,0x0a,
+//dispobjM1,2,1
+0x64,0x69,0x73,0x70,0x6f,0x62,0x6a,0x4d,0x31,0x2c,0x32,0x2c,0x31,0x0a,0};
+// --------------------------
+*/
+#include "prog3d.h" 
+//char prog3d[]="hello\t how are you\nrallright.";
 
 #define OpListSize 9 // add the size if add new instructions or special codes in OperatorList
 static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListSize
-static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_trp_mtxn_mtxp_fM_";
-//									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26    27     28     29     30 
-static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_action_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_colorgfx_dataM_fctobjM_getindM_modobjM_killbtn_";
-//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28            29           30       31             32         33       34
+static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_trp_mtxn_mtxp_fM_sign_";
+//									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26    27     28     29     30    31
+static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_action_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_colorgfx_dataM_fctobjM_getindM_modobjM_killbtn_savesndM_copyM_";
+//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28            29           30       31             32         33       34			35           36
 //char blabli[]= { {'hello'},0x1,{'hi'},0x0};
 
 //--------------labels
@@ -335,8 +373,13 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //clscmd    clears the cmd window
 //defM 1,5,3    Create matrix M1 with dimension n=5, p=3;
 //fillM 2,1.5,3  fill matrix M2 from value 1.5 to 3
+//mtxn(Mn°mtx) is a math function returning the n size of Mn°mtx
+//mtxp(Mn°mtx) is a math function returning the p size of Mn°mtx
 //loadsndM n°mtx
 //loadsndM n°mtx,"myfile.wav" put no space in the line before the guillemet
+//playsndM n°mtx,SampleRate
+//savesndM n°mtx
+//savesndM n°mtx,"myfile.wav" saving raw format of wave in mono mode only quality 16bits
 //recsndM0,44100  Record sound at 44100 SamplesPerSec quality=16bits into Matrix 0 of size M0.nxp
 //printx,"blabli x=" put no spaces in the line before the guillemet
 //M1=trp(M0)  defines the matrix M1 as the transposed of M0, no need to use defM1 to create M1 matrix
@@ -376,6 +419,13 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //action n    	n=0 clear gfx screen 
 //					n=1 systate gfx control inactive, zoom move gfx, this action also resets the MouseMoved and MouseLeftClick
 //					n=2 systate gfx control activated zoom move gfx,this action also resets the MouseMoved and MouseLeftClick
+
+//copyM n°M1,n°M2,mod   copy M2 at the place defined by mod in M1, the resulting Matrix is M1 with a new size if necessary
+//						The copy is made like: all the p values of M2 are copied to M1p; for all n M2(n,p) to M1(n,newposp)
+//						mod<0 insert M2 in M1 at (-mod) position p
+//						mod=0 : merge matrix M2 at the end of M1 resulting size is M1p+M2p
+//						mod>0 : copy (replace data) at position p=mod
+
 
 //MathFunctions
 extern int MathError; //send back a code if error in the Math functions. MathError=1 out of range exponential
@@ -850,7 +900,12 @@ int doMainMenu (int command)
 		PrintProg("//3D plot of f(x,y)\n//x>0 at start !\ngfxdim -7,5,-4,5,0.2\nbox3d 4,4,4,0.4\nx=4\ny=-4\nTrf(x,y)=3*exp(-(x^2+y^2)/2.5)*cos(0.5*(x^2+y^2))\n");
 		SetUpTextProg(0);
 		break;
-	case FFTMenuId:
+	case ThreeDfctMenuId:
+		DeleteProg();
+		PrintProg(prog3d);
+		SetUpTextProg(0);
+		break;
+case FFTMenuId:
 		DeleteProg();
 		PrintProg("F1(x)=2*x^2+0.5\ngfxdim -0.1,8,-5,5,0.1\ngrid 1\nc=0\npi=3.1415927\na=-pi\nb=pi\nn=10\nk=0\nS=0\nY0=0\nloop:\nx=a+k*(b-a)/n\nS=cos(c*x)*F1(x)+S\nk=k+1\nk<n=>goto loop\nY1= S*2/n\nline c,0,c,Y1,1\nY0=Y1\nc=c+0.1\nk=0\nS=0\nc<8=>goto loop\n");
 		SetUpTextProg(0);
@@ -1639,6 +1694,35 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			}else{PrintCmd("loadsndM!\n");goto EndMain;}
 		}	
 //------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==35) {//savesndM
+			if ( CodeOfOneLine[OffsetLine+1].code==1&& CodeOfOneLine[OffsetLine+2].code==10 &&
+			CodeOfOneLine[OffsetLine+3].code==1){
+			NumM=(int)CodeOfOneLine[OffsetLine+1].value;//n°Matrix MAccu to save
+			int NSampleRate=(int)CodeOfOneLine[OffsetLine+3].value;//Sample Rate
+			if (NumM<0 || NumM > NbrMaxMatrix/2){sprintf(s,"unauthorized number for Matrix\n 0<Mtx n°<%d\n",NbrMaxMatrix/2); PrintCmd(s);goto EndMain;}
+			char sndfilename[50];
+			int TextIndex=0,i=0;
+			if (CodeOfOneLine[OffsetLine+4].code==10 &&
+						CodeOfOneLine[OffsetLine+5].code==1){
+						TextIndex=(int)CodeOfOneLine[OffsetLine+5].value;
+						//Rprintf((float)TextIndex);
+						}
+			if (TextIndex != 0){
+				while (WholeMnemoProg[TextIndex+i]!='"'){
+							sndfilename[i]=WholeMnemoProg[TextIndex+i];i++;}
+				sndfilename[i]=0; //terminate the ascii chain
+				//PrintCmd(sndfilename);
+				if (SaveSoundFile(MAccu, NumM,NSampleRate,sndfilename)==FALSE){
+						Error=8; goto EndMain;}
+			}else{
+				if (SaveSoundFile(MAccu, NumM,NSampleRate,DoSaveFileReg() )==FALSE){
+						Error=8; goto EndMain;}
+			}
+
+			OffsetLine=0;
+			}else{PrintCmd("savesndM!\n");goto EndMain;}
+		}	
+//------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==24) {//loadsndM
 			if ( CodeOfOneLine[OffsetLine+1].code==1){//saveM
 			NumM=(int)CodeOfOneLine[OffsetLine+1].value;//n°Matrix MAccu to play
@@ -1744,6 +1828,42 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			for (k=0;k<MAccu[NumM].n*MAccu[NumM].p;k++)MAccu[NumM].ptr[k]=0;
 			OffsetLine=0;
 			}else{PrintCmd("defM Matrix!\n");goto EndMain;}
+		}	
+		
+//------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==36) {//copyM
+			if (CodeOfOneLine[OffsetLine+1].code==1&& CodeOfOneLine[OffsetLine+2].code==10 &&
+			CodeOfOneLine[OffsetLine+3].code==1&& CodeOfOneLine[OffsetLine+4].code==10 &&
+			CodeOfOneLine[OffsetLine+5].code==1) {
+			NumM=(int)CodeOfOneLine[OffsetLine+1].value;
+			int M2=(int)CodeOfOneLine[OffsetLine+3].value;
+			int mod=(int)CodeOfOneLine[OffsetLine+5].value;
+			if (MAccu[NumM].ptr == 0) {PrintCmd("copyM: Matrix M1 not defined\n");goto EndMain;}
+			if (MAccu[M2].ptr == 0) {PrintCmd("copyM: Matrix M2 not defined\n");goto EndMain;}
+			int M1n=MAccu[NumM].n;
+			int M1p=MAccu[NumM].p;
+			int M2n=MAccu[M2].n;
+			int M2p=MAccu[M2].p;
+			if (M1n!=M2n){PrintCmd("M1n and M2n should be equal!\n");goto EndMain;}
+			//create matrix
+			if (mod<0){PrintCmd("copyM: mod<0 not yet implemented\n");goto EndMain;}
+			if (mod==0){ //merge M2 at the end of M1
+				int n,p;
+				int newsize=M1n*M1p+M2n*M2p;
+				float *NewMptr=(float*)malloc(newsize*sizeof(float) );
+				//copy M1 into NewMptr
+				for (n=0;n<M1n;n++)for (p=0;p<M1p;p++)NewMptr[n*(M1p+M2p)+p]=MAccu[NumM].ptr[n*M1p+p];
+				//merge M2 into NewMptr
+				for (n=0;n<M1n;n++)for (p=0;p<M2p;p++)NewMptr[n*(M1p+M2p)+p+M1p]=MAccu[M2].ptr[n*M2p+p];
+				//free the old M1
+				free(MAccu[NumM].ptr);
+				//set M1 as the NewMptr and changes sizes info
+				MAccu[NumM].ptr=NewMptr;
+				MAccu[NumM].n=M1n; //keep the n size Rq:M1n=M2n
+				MAccu[NumM].p=M1p+M2p;
+				}
+			OffsetLine=0;
+			}else{PrintCmd("copyM Matrix!\n");goto EndMain;}
 		}	
 		
 //------------
@@ -3069,9 +3189,9 @@ ErrorOut:
 	
 static int CalculOneLine(floactet *CodeListLine){
 	int Error,i;
-	//ToDo: for matrix detection on a line we have let an information at the
+	//ToDo: for matrix detection on a line we have to let an information at the
 	//end of the line [0xFF][1] means there is a matrix in this line
-	//the information is deposited in ConvertMnemo
+	//the information is deposited in ConvertMnemo ... not done yet.
 	i=0;
 	while (CodeListLine[i].code!=0xFF){
 		if (CodeListLine[i].code==15) 
@@ -3187,6 +3307,7 @@ static int CalculOneLine(floactet *CodeListLine){
 								//DispatchMessage(&Msg);
 								val=(float)YpenDown;goto KeepOn;}
 								}	//key
+		if (CodeVal==31 ) {if (CodeListLine[i+1].value > 0) val=1;else val=-1;goto KeepOn;}	//sign
 
 	KeepOn:
 		if (MathError !=0 ) {sprintf(s,"Math Error = %d\n",MathError);PrintCmd(s);return 3;}
@@ -3468,6 +3589,7 @@ OutForPower:
 								}
 							}	//key
 
+		if (CodeVal==31 ) {if (CodeListLine[i+1].value > 0) val=1;else val=-1;goto KeepOn;}	//sign
 
 	KeepOn:
 		if (MathError !=0 ) {sprintf(s,"Math Error = %d\n",MathError);PrintCmd(s);return 3;}

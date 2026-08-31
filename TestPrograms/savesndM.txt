@@ -28,6 +28,6 @@ d=5 //5s
 M1=4096+4095*exp(-(d/2-M0)*(d/2-M0))*cos(w*(1+0.01*M0*sin(w/10*(d/2-M0)*(d/2-M0)))*M0)
 //bsr displaytext
 
-savesndM1,Nsp
+savesndM1,Nsp,"file.wav"
 print 0
 end

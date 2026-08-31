@@ -1,0 +1,414 @@
+//Head=tete
+//Legs=jambes
+//Back=dos
+//Belly=ventre
+fold=30 //nbr times play replays sound
+
+grid100
+Nsp=96000 //samples /s
+f0=440  //Hz
+f=f0
+
+a=1 //for variation of +/-a Hz
+dt=1/Nsp
+duration=5 // seconds
+le=duration/dt
+pi=3.1415927
+mode=0//for saving
+
+col2=50 
+col=col2+70
+mid= col+70
+meny=360
+gfxdim 0,20,0,10,1
+wtext1,10,"Welcome to Ultra Sound Generator"
+
+createbtn1,col,meny,60,20,"+1"
+createbtn2,col,(meny+20),60,20,"+10"
+createbtn3,col,(meny+40),60,20,"+100"
+createbtn4,col,(meny+60),60,20,"+1000"
+createbtn5,col,(meny+80),60,20,"+10000"
+//--------------------------------------
+createbtn11,col2,(meny),60,20,"-1"
+createbtn12,col2,(meny+20),60,20,"-10"
+createbtn13,col2,(meny+40),60,20,"-100"
+createbtn14,col2,(meny+60),60,20,"-1000"
+createbtn15,col2,(meny+80),60,20,"-10000"
+//---------------------------------------
+createbtn8,mid,(meny),60,20,"Play"
+createbtn6,mid,(meny+20),120,20,"Relax U-Sounds"
+createbtn7,mid,(meny+40),120,20,"Head U-Sounds"
+createbtn17,mid,(meny+60),120,20,"Legs U-Sounds"
+createbtn16,mid,(meny+80),120,20,"Back U-Sounds"
+createbtn18,mid,(meny+100),120,20,"Belly U-Sounds"
+createbtn19,mid,(meny+120),120,20,"37060 U-List"
+
+createbtn10,10,(meny+120),160,20,"Save file.wav mod"
+createbtn9,60,(meny+140),120,40,"QUIT"
+
+defM0,1,le
+defM1,1,le
+defM2,1,40
+defM3,1,le // this is the matrix to receive the whole file to save in .wav format
+fillM0,0,duration //0 to 2s
+launchSound:
+w=2*pi*f
+//the signal is on 16bits from 0 to 8191
+d=5 //5s
+M1=4096+4095*exp(-(d/2-M0)*(d/2-M0))*cos(w*(1+0.01*M0*sin(w/10*(d/2-M0)*(d/2-M0)))*M0)
+//bsr displaytext
+playsndM1,Nsp
+
+bsr displaytext
+lp:
+clavier=key(0)
+clavier==9 =>goto fin
+clavier==1 =>bsr plusun
+clavier==2 =>bsr plusdix
+clavier==3 =>bsr pluscent
+clavier==4 =>bsr plusmille
+clavier==5 =>bsr plusdixmille
+clavier==10 =>bsr Activemodsave
+clavier==11 =>bsr moinsun
+clavier==12 =>bsr moinsdix
+clavier==13 =>bsr moinscent
+clavier==14 =>bsr moinsmille
+clavier==15 =>bsr moinsdixmille
+f0=f
+clavier == 8=>bsr jouer2
+clavier == 6=> bsr detente
+clavier == 7=> bsr head
+clavier == 17=> bsr legs
+clavier == 16=> bsr back
+clavier == 18=> bsr belly
+clavier == 19=> bsr reulist
+f=f0
+goto lp
+fin:
+print 0
+end
+
+displaytext:
+gfxdim 0,20,0,10,1
+wtext1,5,"Please DO NOT OVER USE this tool"
+wtext1,4,"Certain frequencies can have"
+wtext1,3,"unwanted effects."
+wtext1,2,"This is not to replace any medical"
+wtext1,1,"treatment... Please Read License."
+//
+rts
+
+Activemodsave:
+mode=1
+print mode,"mode activated"
+rts
+
+
+detente:
+bsr displaytext
+M2(1,1)=14953
+M2(1,2)=14960
+M2(1,3)=14952
+M2(1,4)=14964
+M2(1,5)=15220
+M2(1,6)=15290
+M2(1,7)=14900
+M2(1,8)=14900
+M2(1,9)=14885
+M2(1,10)=14450
+M2(1,11)=14850
+M2(1,12)=14449
+M2(1,13)=14100
+M2(1,14)=14959
+M2(1,15)=14966
+M2(1,16)=15330
+M2(1,17)=14966
+M2(1,18)=14966
+M2(1,19)=15650
+M2(1,20)=15660
+M2(1,21)=15540
+M2(1,22)=15570
+M2(1,23)=15507
+M2(1,24)=15509
+M2(1,25)=15530
+
+index=1
+M3=M1
+det:
+f=M2(1,index)
+bsr jouer
+copyM3,1,0 //merge M1 to M3
+index=index+1
+index<26=>goto det
+mode == 1 => goto createfile
+rts
+
+reulist:
+bsr displaytext
+M2(1,1)=37060
+
+index=1
+M3=M1
+det0:
+f=M2(1,1)
+//f=M2(1,index)
+bsr jouer
+copyM3,1,0 //merge M1 to M3
+index=index+1
+index<50=>goto det0
+mode == 1 => goto createfile
+rts
+
+createfile:
+gfxdim 0,10,0,10,1
+savesndM3,Nsp
+rts
+
+
+head:
+bsr displaytext
+M2(1,1)=15070
+M2(1,2)=15050
+M2(1,3)=15090
+M2(1,4)=15590
+M2(1,5)=15595
+M2(1,6)=15640
+M2(1,7)=15660
+M2(1,8)=15650
+M2(1,9)=15420
+M2(1,10)=15450
+M2(1,11)=15250
+M2(1,12)=15210
+M2(1,13)=14100
+M2(1,14)=14200
+M2(1,15)=14700
+M2(1,16)=14953
+M2(1,17)=15545
+M2(1,18)=15540
+M2(1,19)=15516
+
+index=1
+det2:
+f=M2(1,index)
+bsr jouer
+index=index+1
+index<20=>goto det2
+rts
+
+legs:
+bsr displaytext
+M2(1,1)=14959
+M2(1,2)=14966
+M2(1,3)=14968
+M2(1,4)=15190
+M2(1,5)=15210
+M2(1,6)=15200
+M2(1,7)=15220
+M2(1,8)=15290
+M2(1,9)=15320
+M2(1,10)=15440
+M2(1,11)=15230
+M2(1,12)=15290
+M2(1,13)=14980
+M2(1,14)=14990
+M2(1,15)=15020
+M2(1,16)=15110
+M2(1,17)=15130
+M2(1,18)=15140
+M2(1,19)=15160
+M2(1,20)=15585
+M2(1,21)=15610
+M2(1,22)=15620
+M2(1,23)=15630
+M2(1,24)=15645
+M2(1,25)=15640
+M2(1,26)=15524
+M2(1,27)=15529
+M2(1,28)=15530
+M2(1,29)=15660
+M2(1,30)=15160
+M2(1,31)=15220
+M2(1,32)=14900
+
+index=1
+det3:
+f=M2(1,index)
+bsr jouer
+index=index+1
+index<33=>goto det3
+rts
+
+back:
+bsr displaytext
+M2(1,1)=14955
+M2(1,2)=14954
+M2(1,3)=14952
+M2(1,4)=14951
+M2(1,5)=14956
+M2(1,6)=14957
+M2(1,7)=14960
+M2(1,8)=14964
+M2(1,9)=14968
+M2(1,10)=14500
+M2(1,11)=14900
+M2(1,12)=14870
+M2(1,13)=14900
+M2(1,14)=14885
+M2(1,15)=14884
+M2(1,16)=14450
+M2(1,17)=15070
+M2(1,18)=15080
+M2(1,19)=15070
+M2(1,20)=15150
+M2(1,21)=15170
+M2(1,22)=15160
+M2(1,23)=15635
+M2(1,24)=15645
+M2(1,25)=15660
+M2(1,26)=15540
+M2(1,27)=15555
+M2(1,28)=15560
+M2(1,29)=15529
+M2(1,30)=15524
+M2(1,31)=15518
+M2(1,32)=15513
+M2(1,33)=15550
+M2(1,34)=14900
+
+index=1
+det4:
+f=M2(1,index)
+bsr jouer
+index=index+1
+index<35=>goto det4
+rts
+
+belly:
+bsr displaytext
+M2(1,1)=15575
+M2(1,2)=15570
+M2(1,3)=15565
+M2(1,4)=15521
+M2(1,5)=15513
+M2(1,6)=15511
+M2(1,7)=15509
+M2(1,8)=15507
+M2(1,9)=15509
+M2(1,10)=15506
+M2(1,11)=15507
+M2(1,12)=15500
+M2(1,13)=15640
+M2(1,14)=15620
+M2(1,15)=15615
+M2(1,16)=15610
+M2(1,17)=15160
+M2(1,18)=14970
+M2(1,19)=15410
+M2(1,20)=14860
+M2(1,21)=14900
+M2(1,22)=14450
+M2(1,23)=14959
+M2(1,24)=14960
+M2(1,25)=14964
+M2(1,26)=14960
+M2(1,27)=14960
+
+index=1
+det5:
+f=M2(1,index)
+bsr jouer
+index=index+1
+index<28=>goto det5
+rts
+
+plusun:
+f=f+1
+clscmd
+print f
+rts
+plusdix:
+f=f+10
+clscmd
+print f
+rts
+pluscent:
+f=f+100
+clscmd
+print f
+rts
+plusmille:
+f=f+1000
+clscmd
+print f
+rts
+plusdixmille:
+f=f+10000
+clscmd
+print f
+rts
+
+moinsun:
+f=f-1
+clscmd
+print f
+rts
+moinsdix:
+f=f-10
+clscmd
+print f
+rts
+moinscent:
+f=f-100
+clscmd
+print f
+rts
+moinsmille:
+f=f-1000
+clscmd
+print f
+rts
+moinsdixmille:
+f=f-10000
+clscmd
+print f
+rts
+
+
+jouer:
+w=2*pi*f
+//the signal is on 16bits from 0 to 8191
+b=a/w
+M1=4096+4095*cos(w*(1+b*sin(2*pi*M0))*M0)
+mode==1 => goto outjouer
+clscmd
+print f
+gfxdim -0.5,100,-1.2,1.2,1
+grid100
+x=1
+Trf(x)=M1(1,x)/8192
+playsndM1,Nsp
+outjouer:
+rts
+
+
+jouer2:
+w=2*pi*f
+//the signal is on 16bits from 0 to 8191
+b=a/w
+M1=4096+4095*cos(w*M0)
+gfxdim -0.5,100,-1.2,1.2,1
+grid100
+x=1
+Trf(x)=M1(1,x)/8192
+x=0
+loopPn:
+playsndM1,Nsp
+x=x+1
+x<fold=>goto loopPn
+clscmd
+print f
+rts
+
+
+
+end

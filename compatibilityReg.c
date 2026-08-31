@@ -20,12 +20,15 @@ extern HWND hEditP,hEditC;
 	}
 	
 	void Print_In_Prog_Win(char *s){ 
+		/*	SetWindowText(hEditP, s);
+			return; */
 	//for some reason the program is unable to make 
 	//sprintf ("\0d0a...") so we have to transform \n into \0d0a by hand
 		int i,k=0,size,nbrEnter;
 			size=strlen(s);
 			for (i=0;i<size;i++) {if (s[i]==0x0a)nbrEnter++;}
-			char * p = malloc ( (size+nbrEnter+1)*sizeof(char));
+//			char * p = (char*) malloc ( (size+nbrEnter)*sizeof(char));
+			char * p = (char*) malloc ( (size+nbrEnter+1000)*sizeof(char));//+1000 because of bugs
 			p[0]=s[0];
 			for (i =1;i<(size+nbrEnter);i++){
 				if (s[i]==0x0a && s[i-1]!=0x0d) {p[i+k]=0x0d;p[i+k+1]=0x0a;k++;}

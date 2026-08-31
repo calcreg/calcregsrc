@@ -1,0 +1,9 @@
+defM0,2,3
+defM1,2,4
+M1(1,2)=3.5
+M1(2,2)=1.2
+copyM0,1,0
+print mtxp(M0)
+print M0(1,5)
+print M0(2,5)
+end

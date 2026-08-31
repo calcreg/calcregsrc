@@ -1,0 +1,44 @@
+
+nT=50 //nbr periods
+N=1000 //N pair for one period
+Nsp=9600
+print N*nT/Nsp
+
+ampl=20 //%max amplitude
+
+x=0
+
+defM0,1,(N*nT)
+k=1
+K=0
+loop:
+M0(1,k)=4096*ampl
+k=k+1
+x=K+N/2
+k<x => goto loop
+
+k=k+1
+M0(1,k)=0
+
+loop2:
+M0(1,k)=-4096*ampl
+k=k+1
+x=K+N
+k<x => goto loop2
+K=K+N
+x=nT*N
+K<x=>goto loop
+
+
+gfxdim -0.1,(N*nT),(-8192*ampl),(8192*ampl),1
+grid1000
+x=1
+Trf(x)=M0(1,x)
+
+
+playsndM0,Nsp
+playsndM0,Nsp
+playsndM0,Nsp
+playsndM0,Nsp
+playsndM0,Nsp
+

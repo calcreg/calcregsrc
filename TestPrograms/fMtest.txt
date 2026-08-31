@@ -1,7 +1,25 @@
-action 1 //inactive control gfx
-clscmd
-N=2000
-defM0,4,N
+gfxdim -5,70,-5.7,4.5,1
+action 0
+NbrSqPtMax=2*10
+x=1
+y=1
+N=40
+a=N/2
+b=a
+m=N^2
+defM0,N,N
+fM0(x,y)= 5*exp (0.04*(-(x-a)^2-(y-b)^2))
+//print M0(1,5)
+defM1,3,m
+defM2,4,m
+fctobjM0,1,2
+dispobjM1,2,1
+defM0,3,m
+M0=M1
+defM1,4,m
+M1=M2
+N=m
+
 pi=3.1415927
 a=4
 b=4
@@ -9,14 +27,12 @@ CylDim=0.5 //width of cyl. hole
 mod=0
 red=0.9 //reduction factor
 
-NbrSqPtMax=2*10 //for squeleton (10lines)
-
 //menu pos
 menx=50
-meny=30//360
+meny=360
 
-defM1,4,N
-fillsphM0,1,1.5,100
+//defM1,4,N
+//fillsphM0,1,1.5,100
 defM2,4,4 //Rz pi/2 pour aller a droite
 defM3,4,4 //Ry pi/2 pour aller en bas
 defM4,4,4 //Rotation autour de z
@@ -105,7 +121,6 @@ c==12=>saveM0
 c==13=>bsr bigDisplay
 c==14=>bsr ChargerMtx
 c==18=> bsr restart
-c==19=> bsr squeleton
 c==1 => goto exit
 goto loop
 
@@ -321,82 +336,5 @@ M6(3,1)=-M6(3,1)
 bsr display
 rts
 
-
-//------------------------------ Squeleton -------------------------
-
-squeleton:
-bouton=2
-loopbtn:
-killbtn bouton
-bouton=bouton+1
-bouton<20 => goto loopbtn
-//menx and meny are defined at top
-createbtn1,menx,(meny+120),100,20,"QUIT"
-//createbtn2,menx,(meny+20),100,20,"Create 3D object"
-createbtn3,(menx+170),(meny+120),120,20,"Create 3D Object"
-createbtn4,(menx+80),meny,30,20,"Rx-"
-createbtn5,(menx+110),meny,30,20,"Rx+"
-createbtn6,(menx+140),(meny),30,20,"Ry-"
-createbtn7,(menx+170),(meny),30,20,"Ry+"
-createbtn8,(menx+200),(meny),30,20,"Rz-"
-createbtn9,(menx+230),(meny),30,20,"Rz+"
-
-createbtn18,(menx+190),(meny+50),50,20,"UNDO"
-createbtn19,(menx+100),(meny+50),80,20,"Back"
-
-nsqpt=0 //nbr point in squeleton
-action 0 //clean gfx screen
-gfxdim-2,2,-2,2,1
-SqLoop:
-c=key(0)
-mx=key(3) //left click
-mx==1=>bsr SqPlacePt
-c==3 => goto CreateObject
-c==19=> goto BackFrSq
-c==1 => goto exit
-goto SqLoop
-
-
-CreateObject:
-wtext0,0,"In preparation"
-rts
-
-BackFrSq:
-goto StartMenu
-
-SqPlacePt:
-mx=key(3)
-key(0) //to give process
-mx==1 =>goto SqPlacePt //wait stop press left mouse
-pt=nsqpt+1 //start at one not 0
-M16(2,pt)=key(1)
-M16(3,pt)=key(2)
-M16(1,pt)=0
-M17(1,pt)=pt+1 //point the next
-nsqpt=nsqpt+1  //one point more is set in the list
-bsr SqDisplay
-rts
-
-SqDisplay:
-nsqpt<2=>goto OutSqDisp
-pt=1
-LpSqDisp:
-m=pt
-g1=M16(2,m)
-g2=M16(3,m)
-m=m+1
-g3=M16(2,m)
-g4=M16(3,m)
-
-line g1,g2,g3,g4,1
-pt=pt+1
-pt<nsqpt=>goto LpSqDisp
-OutSqDisp:
-rts
-
-
 exit:
-end
-
-
 end

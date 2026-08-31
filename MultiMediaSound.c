@@ -24,6 +24,7 @@ int PlaySoundReg(float , float , float );
 int GetAudioMicro(Matrix *MAccu,int NumM,float SamplesPerSecond);
 int CloseAudioDevice(void);
 int LoadSoundFile(Matrix *MAccu, int NumM, char *);
+int SaveSoundFile(Matrix *MAccu, int NumM,int SamplesPerSecond, char*);
 int SaveMFile(Matrix *MAccu, int NumM,char*);
 int LoadMFile(Matrix *MAccu, int NumM,char*);
 
@@ -458,6 +459,82 @@ BOOL LoadSoundFile(Matrix* MAccu, int NumM,char *pszFileName)
 	}else{PrintCmd("Couldn't load sound file!\n"); bSuccess=FALSE;}
 	return bSuccess;
 }
+
+//------------------------------ Save Matrix ---------------------------
+BOOL SaveSoundFile(Matrix* MAccu, int NumM,int SamplesPerSecond,char *pszFileName)
+{
+
+	HANDLE hFile;
+	BOOL bSuccess = FALSE;
+	typedef struct sndChunk{
+		char nam[4];
+		int filesizem8;
+		char wavenam[4];
+		char fmtnam[4];
+		int wavefmt;
+		short int wFormatTag;
+		short int nChannels;
+		int  nSamplesPerSec;
+		int nAvgBytesPerSec;
+		short int nBlockAlign;
+		short int wBitsPerSample;
+		char dat[4];
+		int length;
+		}sndChunk;
+		
+		int k;
+		
+	if (MAccu[NumM].ptr == 0) {PrintCmd("Matrix not defined\n");return 1;}
+
+	hFile = CreateFile(pszFileName, GENERIC_WRITE, 0, NULL,
+		CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if(hFile != INVALID_HANDLE_VALUE)
+	{
+		DWORD dwFileSize;
+		char s[50];
+		//emplacement pour les donnees concernant le chunk de la matrice a copier
+		sndChunk sndMChnk[1];
+		PrintCmd("Step1\n");
+
+		//prepare chunk 'matrix', 'data' -----------------------------------------		
+		strcpy(sndMChnk[0].nam,"RIFF");
+		sndMChnk[0].filesizem8=2*MAccu[NumM].p + sizeof(sndMChnk)- 8; //mono so mtx are dim1*p
+		strcpy(sndMChnk[0].wavenam,"WAVE");
+		strcpy(sndMChnk[0].fmtnam,"fmt ");
+		sndMChnk[0].wavefmt=16;
+        sndMChnk[0].wFormatTag = WAVE_FORMAT_PCM;     // Uncompressed sound format
+        sndMChnk[0].nChannels = 1;                    // 1=Mono 2=Stereo
+        sndMChnk[0].nSamplesPerSec =(int)SamplesPerSecond; //44100;           // Sample Per Second
+        sndMChnk[0].nAvgBytesPerSec = (int)SamplesPerSecond * 2;    
+        sndMChnk[0].nBlockAlign = 1*2; //nChannels * wBitsPerSample / 8;
+        sndMChnk[0].wBitsPerSample = 16;  // Bits per sample per channel
+		strcpy(sndMChnk[0].dat,"data");
+		sndMChnk[0].length=2*MAccu[NumM].p;
+		DWORD dwWritten;
+		
+		short int *SndData = (short int*) malloc (MAccu[NumM].p*sizeof(short int) ); 
+		if (SndData == 0) {PrintCmd("Cannot allocate memory for saving file"); return 1;}
+		//converting data
+		for (k=0;k<MAccu[NumM].p;k++)SndData[k]=(short int)MAccu[NumM].ptr[k];
+		PrintCmd("Step2\n");
+		//write chunk
+		//char pszText[]="CalcReg Tools : ";
+			// 	WriteFile(hFile, pszText, (DWORD)strlen(pszText), &dwWritten, NULL);
+				if(WriteFile(hFile, sndMChnk, (DWORD)sizeof(sndMChnk), &dwWritten, NULL))
+				{
+		//write data
+					if(WriteFile(hFile, SndData, (DWORD)sndMChnk[0].length, &dwWritten, NULL))
+					{
+						PrintCmd("Step3\n");
+						bSuccess = TRUE; // It worked!
+					}else{PrintCmd("couldn't write mtx data in file.\n"); bSuccess= FALSE;}
+				}else{PrintCmd("couldn't write mtx chunk in file.\n"); bSuccess= FALSE;}
+			free(SndData);
+			CloseHandle(hFile);
+	}else{PrintCmd("Couldn't open Mtx File for save!\n"); bSuccess=FALSE;}
+	return bSuccess;
+}
+
 
 //------------------------------ Save Matrix ---------------------------
 BOOL SaveMFile(Matrix* MAccu, int NumM,char *pszFileName)
