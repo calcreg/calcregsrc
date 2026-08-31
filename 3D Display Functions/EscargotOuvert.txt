@@ -1,0 +1,35 @@
+action0
+gfxdim -40,40,-20,20,1
+
+T=20
+P=60
+m=T*P
+defM0,T,P  //x
+defM1,T,P  //y
+defM2,T,P  //z
+defM4,4,m  //Mobj
+defM5,4,m  //PtLink
+defM6,4,4  //matrice rotation
+
+pi=3.1415927
+ang=pi/10
+dataM6,cos(ang),0,sin(ang),0, 0,1,0,0, sin(-ang),0,cos(ang),0, 0,0,0,1
+//------ Definition objet -------
+R=20
+r=4
+a=2*pi/(P+5)  //Pour torr fermé mettre P-1
+b=2*pi/(T-1)  
+x=1
+F1(x)=x*(phi+1)/P
+F2(x)=r*(x/4)
+teta=1
+phi=1
+fM0(teta,phi)=F1(R)*cos(a*phi)+F2(teta)*cos(teta*b)*cos(phi*a)
+fM1(teta,phi)=F1(R)*sin(a*phi)+F2(teta)*cos(teta*b)*sin(phi*a)
+fM2(teta,phi)=r*sin(teta*b)
+
+vobj3dM4,5,0,1,2
+M4=M6*M4
+action3,20,-10,-20
+dispobjM4,5,3
+end

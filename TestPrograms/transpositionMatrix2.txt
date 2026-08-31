@@ -1,0 +1,11 @@
+
+
+defM0,2,3
+dataM0,1,2,3
+dataM0,4,5,6
+print M0(2,1)
+
+M1=trp(M0)
+print M0(2,1)
+end
+

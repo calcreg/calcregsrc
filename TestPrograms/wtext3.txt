@@ -1,0 +1,5 @@
+
+w=3
+gfxdim 0,10,0,10,1
+wtext 5,5,"salut"
+end

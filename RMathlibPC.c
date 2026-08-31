@@ -137,6 +137,7 @@ void FloatToString(float value, char *buffer, int Rounding);
 //Matrix
 int RMath_FFT(Matrix *MAccu,int NumMfct,int NumMa,int NumMb,int Strt, int Stop);
 
+int ObjectSphCoord(Matrix *MAccu,int NumM,int PtLinkM,int M1,int M2, int M3);
 int FillSphere(Matrix *MAccu,int NumM,int PtLinkM,float Radius,float period);
 int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode);
 void FillQuadrilatere(float X1,float Y1,float X2,float Y2,float X3,float Y3,float X4,float Y4,int ColorGraph);
@@ -236,6 +237,69 @@ float HlowPrecision=0.00001; //Low precision 1E-05;
 //-------------------------------------------------------------------------------------
 //-------------------------   Coding For matrices --------------------------
 
+int ObjectSphCoord(Matrix *MAccu,int NumM,int PtLinkM,int M1,int M2, int M3){
+			float teta=0, pi=3.1415927,phi;
+			int k,j,Nteta,Nphi;
+			int Error=0;
+			int Mp=MAccu[NumM].p;
+			if (MAccu[NumM].n !=3 && MAccu[NumM].n !=4) {PrintCmd("fillsphM: Mtx Size should be Mn=3 or 4\n");Error=1;goto EndMain;} 
+			//fill matrix From spherique to cartesien coordinates
+			if (MAccu[NumM].ptr == 0) {Error = 1; PrintCmd("Can't fill Matrix sphere, not defined!\n");goto EndMain;}
+			if (MAccu[PtLinkM].ptr == 0) {Error = 1; PrintCmd("To fill Matrix sphere, PtLinkMatrix must be defined!\n");goto EndMain;}
+			if (MAccu[PtLinkM].p!=Mp) {PrintCmd("fillsphM: M.p should be same as PtLinkM.p\n");Error=1;goto EndMain;} 
+			if (MAccu[PtLinkM].n!=4) {PrintCmd("fillsphM: PtLinkM.n should be equal to 4\n");Error=1;goto EndMain;} 
+
+			if (MAccu[M1].ptr == 0) {Error = 1; PrintCmd("Vobj3d:M1 undefined!\n");goto EndMain;}
+			if (MAccu[M2].ptr == 0) {Error = 1; PrintCmd("Vobj3d:M2 undefined!\n");goto EndMain;}
+			if (MAccu[M3].ptr == 0) {Error = 1; PrintCmd("Vobj3d:M3 undefined!\n");goto EndMain;}
+			if (MAccu[M1].p!=MAccu[M2].p ||MAccu[M1].p!=MAccu[M2].p){Error=1;PrintCmd("Vobj3d:M1.p, M2.p,M3.p should be equal\n"); goto EndMain;}
+			if (MAccu[M1].n!=MAccu[M2].n ||MAccu[M1].n!=MAccu[M2].n){Error=1;PrintCmd("Vobj3d:M1.p, M2.p,M3.p should be equal\n"); goto EndMain;}
+			Nteta=MAccu[M1].n;
+			Nphi=MAccu[M1].p;
+			if (Mp != Nteta*Nphi) {Error=1; PrintCmd("Vobj3d: Mobj.p is not equal to M1.n*M1.p!\n"); goto EndMain;}
+			//This line below if for eventual translations
+			if (MAccu[NumM].n==4)for (k=0;k<Mp;k++)MAccu[NumM].ptr[3*Mp+k]=1;
+
+			//Remarque:Mp=Nteta*Nphi fixé par l'utilisateur
+			for (j=0;j<Nteta;j++){
+				for (k=0;k<Nphi;k++){
+					MAccu[NumM].ptr[k+j*Nphi]= MAccu[M1].ptr[Nphi*j+k]; //x
+					MAccu[NumM].ptr[Mp+k+j*Nphi]= MAccu[M2].ptr[Nphi*j+k];//y
+					MAccu[NumM].ptr[Mp*2+k+j*Nphi]= MAccu[M3].ptr[Nphi*j+k];//z
+					}
+			}
+	//fillPtLinkM CAREFUL: the index on mtx are from 1 to p, but here in memory the tables start from 0, we thus add 1
+	//            Table of link
+	//				  P1 |
+	//			  P4 --   -- P2  
+	//					   |  P3
+	
+			for (j=0;j<Nteta;j++){//index over y
+				for (k=0;k<Nphi;k++){//index over x
+					if (j>0){
+					MAccu[PtLinkM].ptr[k+j*Nphi]=(j-1)*Nphi+k+1;// j-1,k
+					}else{//condition au limites
+						MAccu[PtLinkM].ptr[k+j*Nphi]=0;// no link point index
+						}	
+					if (k<Nphi-1){
+					MAccu[PtLinkM].ptr[Mp+k+j*Nphi]=j*Nphi+k+1+1;//j,k+1
+					}else{MAccu[PtLinkM].ptr[Mp+k+j*Nphi]=0;//j*period+1;//j,k=0
+						}
+					if (j<Nteta-1){
+					MAccu[PtLinkM].ptr[2*Mp+k+j*Nphi]=(j+1)*Nphi+k+1;//j+1,k
+					}else{MAccu[PtLinkM].ptr[2*Mp+k+j*Nphi]=0;//no link point index
+						}
+					if (k>0){
+					MAccu[PtLinkM].ptr[3*Mp+k+j*Nphi]=j*Nphi+k-1+1;//j,k-1
+					}else{MAccu[PtLinkM].ptr[3*Mp+k+j*Nphi]=0;//j*period+period-1+1;//j,period
+						}
+				}
+			}
+		EndMain:
+	return Error;
+	}
+
+
 int RMath_FFT(Matrix *MAccu,int NumMfct,int NumMa,int NumMb,int Strt, int Stop){
 //d'abord, generation du cosinus et sinus pour la suite 2pik/T,k allant de 1 à N
 int Error,N,K,k,i;
@@ -279,6 +343,7 @@ for (k=0;k<K;k++){ //Here N is NOT always =Stop-Strt
 	MAccu[NumMb].ptr[k]=2*Sumb/(Stop-Strt);
 }
 }
+
 
 
 int FillSphere(Matrix *MAccu,int NumM,int PtLinkM,float Radius,float period){

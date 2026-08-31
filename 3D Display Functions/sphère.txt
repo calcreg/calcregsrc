@@ -1,0 +1,9 @@
+
+gfxdim -10,10,-10,10,1
+N=80
+defM1,3,N
+defM2,4,N //Matrice Link
+
+fillsphM1,2,5,10
+dispobjM1,2,3
+end

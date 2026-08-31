@@ -1,0 +1,54 @@
+pi=3.1415927
+action0 
+gfxdim -10,10,-10,10,1
+N=500
+defM1,4,N
+defM2,4,N //Matrice Link
+defM3,4,4
+defM4,4,4
+defM5,4,4
+teta=pi/5
+bsr defineMatrix
+fillsphM1,2,5,50
+M1=M4*M4*M1
+dispobjM1,2,3
+loop:
+gfxdim 0,10,0,10,1
+wtext9,9.6,"QUIT"
+line 9,9,9,10,0
+line 9,9,10,9,0
+c=key(4)
+c==1=>goto rotation
+c=key(3)
+c==1=> goto appuie
+goto loop
+end
+
+rotation:
+c=key(4)
+c==1=>goto rotation
+a=key(5)-key(1)
+b=key(6)-key(2)
+a=pi*a/100
+b=pi*b/100
+teta=b
+dataM4,cos(teta),0,sin(teta),0, 0,1,0,0, sin(-teta),0,cos(teta),0, 0,0,0,1
+teta=a
+dataM5,cos(teta),sin(-teta),0,0, sin(teta),cos(teta),0,0, 0,0,1,0, 0,0,0,1
+M1=M4*M5*M1
+gfxdim -10,10,-10,10,1
+dispobjM1,2,3
+goto loop
+
+appuie:
+a=key(1)
+b=key(2)
+a<9=>goto loop
+b<9=>goto loop
+end
+
+defineMatrix:
+dataM3,cos(teta),sin(-teta),0,0, sin(teta),cos(teta),0,0, 0,0,1,0, 0,0,0,1
+dataM4,1,0,0,0, 0,cos(teta),sin(teta),0, 0,sin(-teta),cos(teta),0, 0,0,0,1
+dataM5,cos(teta),0,sin(teta),0, 0,1,0,0, sin(-teta),0,cos(teta),0, 0,0,0,1
+rts

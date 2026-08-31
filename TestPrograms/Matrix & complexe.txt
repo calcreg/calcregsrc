@@ -1,0 +1,9 @@
+//Complexe with matrices
+
+action3 // complexe mode
+defM0,2,2
+defM1,2,2
+dataM1,1,1,1,1
+M0=1+2*i*M1
+print M0(1,1)
+end

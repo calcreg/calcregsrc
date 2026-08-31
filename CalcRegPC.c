@@ -164,6 +164,7 @@ extern float RMath_abs(float x);
 //Matrix
 extern int RMath_FFT(Matrix *MAccu,int NumMfct,int NumMa,int NumMb,int Strt, int Stop);
 
+extern int ObjectSphCoord(Matrix *MAccu,int NumM,int PtLinkM,int M1,int M2, int M3);
 extern int FillSphere(Matrix *MAccu,int NumM,int PtLinkM,float Radius,float period);
 extern int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode);
 static int FillMatrixTwoVariable(int NumM,floactet *CodeOfOneLine, floactet *CodeList);
@@ -244,8 +245,8 @@ float SoundFrequency,SoundAmplitude,SoundDuration,SamplesPerSecond;
 static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListSize
 static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_trp_mtxn_mtxp_fM_sign_?_";
 //									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26    27     28     29     30    31  32
-static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_action_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_colorgfx_dataM_fctobjM_getindM_modobjM_killbtn_savesndM_copyM_fftM_cmplx_";
-//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28            29           30       31             32         33       34			35           36         37     38    
+static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_action_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_colorgfx_dataM_fctobjM_getindM_modobjM_killbtn_savesndM_copyM_fftM_cmplx_vobj3dM_";
+//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28            29           30       31             32         33       34			35           36         37     38         39
 //char blabli[]= { {'hello'},0x1,{'hi'},0x0};
 
 //--------------labels
@@ -2001,8 +2002,25 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
  			OffsetLine=0;
 			}else{PrintCmd("modobjM !\n");goto EndMain;}
 		}	
+//-------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==39) {//vobj3dM
+			if (CodeOfOneLine[OffsetLine+1].code==1&& CodeOfOneLine[OffsetLine+2].code==10 &&
+			CodeOfOneLine[OffsetLine+3].code==1&& CodeOfOneLine[OffsetLine+4].code==10 &&
+			CodeOfOneLine[OffsetLine+5].code==1&& CodeOfOneLine[OffsetLine+6].code==10 &&
+			CodeOfOneLine[OffsetLine+7].code==1&& CodeOfOneLine[OffsetLine+8].code==10 &&
+			CodeOfOneLine[OffsetLine+9].code==1) {
+			NumM = (int)CodeOfOneLine[OffsetLine+1].value;
+			int PtLinkM = (int)CodeOfOneLine[OffsetLine+3].value;
+			int M1 = (int)CodeOfOneLine[OffsetLine+5].value;
+			int M2 = (int)CodeOfOneLine[OffsetLine+7].value;
+			int M3 = (int)CodeOfOneLine[OffsetLine+9].value;
+			Error = ObjectSphCoord(MAccu,NumM,PtLinkM,M1,M2,M3);
+			if (Error !=0) goto EndMain;
+ 			OffsetLine=0;
+			}else{PrintCmd("vobj3dM !\n");goto EndMain;}
+		}	
 		
-//------------
+//-----------	
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==31) {//fctobjM
 			if (CodeOfOneLine[OffsetLine+1].code==1&& CodeOfOneLine[OffsetLine+2].code==10 &&
 				CodeOfOneLine[OffsetLine+3].code==1&& CodeOfOneLine[OffsetLine+4].code==10 &&

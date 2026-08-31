@@ -1,0 +1,17 @@
+pi=3.1415927
+gfxdim -10,10,-10,10,1
+N=80
+defM1,4,N
+defM2,4,N //Matrice Link
+defM3,4,4
+defM4,4,4
+defM5,4,4
+teta=pi/5
+dataM3,cos(teta),sin(-teta),0,0, sin(teta),cos(teta),0,0, 0,0,1,0, 0,0,0,1
+dataM4,cos(teta),0,sin(teta),0, 0,1,0,0, sin(-teta),0,cos(teta),0, 0,0,0,1
+dataM5,cos(teta),sin(-teta),0,0, sin(teta),cos(teta),0,0, 0,0,1,0, 0,0,0,1
+
+fillsphM1,2,5,10
+M1=M4*M1
+dispobjM1,2,3
+end
