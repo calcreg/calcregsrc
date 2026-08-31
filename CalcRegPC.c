@@ -171,7 +171,7 @@ extern int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMod
 static int FillMatrixTwoVariable(int NumM,floactet *CodeOfOneLine, floactet *CodeList);
 extern int FunctToObjMatrix(Matrix *MAccu,int Mfct,int Mobj,int PtLinkM);
 extern int GetClosestPoint(Matrix *MAccu,int NumM,int VectP,int ResM3,int mask);
-extern int ModifObject(Matrix* MAccu,int NumM,int PtLinkM,int IndexP,int Vect,int mod);
+extern int ModifObject(Matrix* MAccu,int NumM,int PtLinkM,float IndexP,int Vect,int mod);
 
 extern int MatrixPower(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine);
 extern int MatrixSubAddition(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSignP,int imaxLine);
@@ -184,6 +184,10 @@ extern int MatrixSubAdditionComplexe(Matrix *MAccu,floactet *CodeListLine,int i,
 extern int MatrixMultiplicationComplexe(Matrix *MAccu,floactet *CodeListLine,int i, int imaxLine);
 extern int MatrixDivisionComplexe(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine);
 extern int MathFunctionMatricesComplexe(Matrix *MAccu, floactet *CodeListLine,int i);
+
+//Bitmaps Savings and images
+extern int SaveBmp(HWND hwnd, char *pszflname);
+
 
 
 // in Functions
@@ -247,8 +251,8 @@ float SoundFrequency,SoundAmplitude,SoundDuration,SamplesPerSecond;
 static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListSize
 static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_trp_mtxn_mtxp_fM_sign_?_";
 //									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26    27     28     29     30    31  32
-static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_action_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_colorgfx_dataM_fctobjM_getindM_modobjM_killbtn_savesndM_copyM_fftM_cmplx_vobj3dM_";
-//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28            29           30       31             32         33       34			35           36         37     38         39
+static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_action_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_colorgfx_dataM_fctobjM_getindM_modobjM_killbtn_savesndM_copyM_fftM_cmplx_vobj3dM_savebmp_";
+//																0       1      2       3   4    5    6    7      8       9        10        11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28            29           30       31             32         33     		  34			35           36         37     38         39       		40
 //char blabli[]= { {'hello'},0x1,{'hi'},0x0};
 
 //--------------labels
@@ -1748,7 +1752,7 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			}else{PrintCmd("savesndM!\n");goto EndMain;}
 		}	
 //------------
-		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==24) {//loadsndM
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==24) {
 			if ( CodeOfOneLine[OffsetLine+1].code==1){//saveM
 			NumM=(int)CodeOfOneLine[OffsetLine+1].value;//n°Matrix MAccu to play
 			if (NumM<0 || NumM > NbrMaxMatrix/2){sprintf(s,"unauthorized number for Matrix\n 0<Mtx n°<%d\n",NbrMaxMatrix/2); PrintCmd(s);goto EndMain;}
@@ -1771,6 +1775,30 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 
 			OffsetLine=0;
 			}else{PrintCmd("saveM!\n");goto EndMain;}
+		}	
+//------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==40) {
+			if ( CodeOfOneLine[OffsetLine+1].code==1){//savebmp
+			int bmp =(int)CodeOfOneLine[OffsetLine+1].value;//n°bitmap unused yet
+			char bmpfilename[50];
+			int TextIndex=0,i=0;
+			if (CodeOfOneLine[OffsetLine+2].code==10 &&
+						CodeOfOneLine[OffsetLine+3].code==1){
+						TextIndex=(int)CodeOfOneLine[OffsetLine+3].value;
+						}
+			if (TextIndex != 0){
+				while (WholeMnemoProg[TextIndex+i]!='"'){
+							bmpfilename[i]=WholeMnemoProg[TextIndex+i];i++;}
+				bmpfilename[i]=0; //terminate the ascii chain
+				if (SaveBmp(hmywin,bmpfilename)==FALSE){
+						Error=8; goto EndMain;}
+			}else{
+				if (SaveBmp(hmywin, DoSaveFileReg() )==FALSE){
+						Error=8; goto EndMain;}
+			}
+
+			OffsetLine=0;
+			}else{PrintCmd("savebmp!\n");goto EndMain;}
 		}	
 //------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==25) {//loadM
@@ -2012,7 +2040,7 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			CodeOfOneLine[OffsetLine+9].code==1) {
 			NumM = (int)CodeOfOneLine[OffsetLine+1].value;
 			int PtLinkM = (int)CodeOfOneLine[OffsetLine+3].value;
-			int IndexP = (int)CodeOfOneLine[OffsetLine+5].value;
+			float IndexP =CodeOfOneLine[OffsetLine+5].value;
 			int Vect = (int)CodeOfOneLine[OffsetLine+7].value;
 			int mod = (int)CodeOfOneLine[OffsetLine+9].value;
 			Error = ModifObject(MAccu,NumM,PtLinkM,IndexP,Vect,mod);

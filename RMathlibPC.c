@@ -143,7 +143,11 @@ int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode);
 void FillQuadrilatere(float X1,float Y1,float X2,float Y2,float X3,float Y3,float X4,float Y4,int ColorGraph);
 int FunctToObjMatrix(Matrix *MAccu,int NumM,int M2,int PtLinkM);
 int GetClosestPoint(Matrix *MAccu,int NumM,int VectP,int ResM3,int mask);
-int ModifObject(Matrix* MAccu,int NumM,int PtLinkM,int IndexP,int Vect,int mod);
+int ModifObject(Matrix* MAccu,int NumM,int PtLinkM,float IndexP,int Vect,int mod);
+float DistanceDroites(Matrix *MAccu,float x, float y, float z,int Vect);
+float GetMailleDim(Matrix *MAccu,int NumM,int PtLinkM,float x, float y, float z, int k,float *min,float *max);
+float min_d4(float x1,float x2,float x3,float x4, float L1, float L2, float L3, float L4);
+float max_d4(float x1,float x2,float x3,float x4, float L1, float L2, float L3, float L4);
 
 int MatrixPower(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine);
 int MatrixSubAddition(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSignP,int imaxLine);
@@ -406,6 +410,7 @@ int FillSphere(Matrix *MAccu,int NumM,int PtLinkM,float Radius,float period){
 
 	float Clrgfx3Da=9,Clrgfx3Db=5.5;
 	float Lx=-10,Ly=-10,Lz=-10;//Light coordinates
+
 int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode){
 	int Error,i,k,L,foundPlace,pt,pt1,pt2,NoDraw,m,mmax,minPt,maxPt;
 	float xmax,xmin,x,x1,y1,z1,x2,y2,z2,x3,y3,z3,x4,y4,z4,X1,Y1,X2,Y2,X3,Y3,X4,Y4;
@@ -632,11 +637,6 @@ if (DrawingMode != 5){
 			}
 			FillQuadrilatere(X1,Y1,X2,Y2,X3,Y3,X4,Y4,ColorGraph);
 			SelectObject(hDC,hpenOld);DeleteObject(hpen); //to avoid bugs
-			/*	Line(X1,Y1,X2,Y2,0);
-				Line(X1,Y1,X3,Y3,0);
-				Line(X2,Y2,X4,Y4,0);
-				Line(X3,Y3,X4,Y4,0);*/
-		//	goto FREELIST;
 			
 			}//if NoDraw
 
@@ -796,7 +796,7 @@ float Ptz=MAccu[VectP].ptr[2];
 	return 0;
 }
 
-int ModifObject(Matrix* MAccu,int NumM,int PtLinkM,int IndexP,int Vect,int mod){
+int ModifObject(Matrix* MAccu,int NumM,int PtLinkM,float Ind,int Vect,int mod){
 
 //modobj NumM,PtLinkM,IndexP,Vect2,mod
 //NumM is the object matrix PtLink its link matrix
@@ -806,30 +806,36 @@ int ModifObject(Matrix* MAccu,int NumM,int PtLinkM,int IndexP,int Vect,int mod){
 //				0 flatten with plane orthogonal to Vect2 starting at point VectP
 //				1 exponential large change along Vect2 with an exponantial centered in VectP 
 //				2 exponential narrow change along Vect2 with an exponantial centered in VectP 
-//				3
+//				3 exponentiel stiff
+//				4 cut exponentiel large
+//				5 cut exponentiel stiff
+//				6 blade plane cut
+//				7 cylinder hole
+//				8 Modeling from skeletone to sphere best least square
 //P0
 float alfa,d,x,y,z,x0,y0,z0,a1,a2,d1,d2,b1,c1,b2,c2,d11,d22,n1,n2;
-
-int k;
+float dmin,ap,bp,cp,MailleMin,MailleMax,mmin,mmax;
+int k,i;
 	int Mp = MAccu[NumM].p;
 	int Mn = MAccu[NumM].n;
 	int PtLinkMn = MAccu[PtLinkM].n;
 	int PtLinkMp = MAccu[PtLinkM].p;
-
+	int IndexP=(int)Ind; //On récupère l'indexe pointeur du point dans la matrice object
 	if (MAccu[NumM].ptr == 0) {PrintCmd("modobjM: objM not defined!\n");return 1;}
 	if (MAccu[PtLinkM].ptr == 0) {PrintCmd("modobjM: PtLinkMatrix not defined!\n");return 1;}
 	if (MAccu[Vect].ptr == 0) {PrintCmd("modobjM: Vect not defined!\n");return 1;}
 	if (PtLinkMp!=Mp) {PrintCmd("modobjM: objMp should be same as PtLinkM.p\n");return 1;} 
 	if (PtLinkMn!=4) {PrintCmd("modobjM: PtLinkM.n should be equal to 4\n");return 1;} 
-	if (MAccu[Vect].n*MAccu[Vect].p!=3) {PrintCmd("modobjM: Vect n*p should equal 3\n");return 1;} 
+//	if (MAccu[Vect].n*MAccu[Vect].p!=3) {PrintCmd("modobjM: Vect n*p should equal 3\n");return 1;} 
 
 	float a=MAccu[Vect].ptr[0];
 	float b=MAccu[Vect].ptr[1];
 	float c=MAccu[Vect].ptr[2];
-	if (a==0&&b==0&&c==0){PrintCmd("modobjM: Vect is null!\n");return 1;}
+	//if (a==0&&b==0&&c==0){PrintCmd("modobjM: Vect is null!\n");return 1;}
 
 switch (mod){
 	case 0:
+	if (a==0&&b==0&&c==0){PrintCmd("modobjM: Vect is null!\n");return 1;}
 	x0=MAccu[NumM].ptr[0*Mp+IndexP-1]+a; //point xA c'est le point du plan d'aplatissage
 	y0=MAccu[NumM].ptr[1*Mp+IndexP-1]+b; //point yA
 	z0=MAccu[NumM].ptr[2*Mp+IndexP-1]+c; //point  zA
@@ -853,6 +859,7 @@ switch (mod){
 		}
 	break;
 	case 1:
+	if (a==0&&b==0&&c==0){PrintCmd("modobjM: Vect is null!\n");return 1;}
 	x0=MAccu[NumM].ptr[0*Mp+IndexP-1]; //point xA c'est le point sur l'objet
 	y0=MAccu[NumM].ptr[1*Mp+IndexP-1]; //point yA
 	z0=MAccu[NumM].ptr[2*Mp+IndexP-1]; //point  zA
@@ -868,6 +875,7 @@ switch (mod){
 		}
 	break;
 	case 2:
+	if (a==0&&b==0&&c==0){PrintCmd("modobjM: Vect is null!\n");return 1;}
 	x0=MAccu[NumM].ptr[0*Mp+IndexP-1]; //point xA c'est le point sur l'objet
 	y0=MAccu[NumM].ptr[1*Mp+IndexP-1]; //point yA
 	z0=MAccu[NumM].ptr[2*Mp+IndexP-1]; //point  zA
@@ -884,6 +892,7 @@ switch (mod){
 		}
 	break;
 	case 3:
+	if (a==0&&b==0&&c==0){PrintCmd("modobjM: Vect is null!\n");return 1;}
 	x0=MAccu[NumM].ptr[0*Mp+IndexP-1]; //point xA c'est le point sur l'objet
 	y0=MAccu[NumM].ptr[1*Mp+IndexP-1]; //point yA
 	z0=MAccu[NumM].ptr[2*Mp+IndexP-1]; //point  zA
@@ -906,6 +915,7 @@ switch (mod){
 	//			|   |		<----    same as setting an exponential where x remains unchanged
 	//			|   |__
 	//          \___/
+	if (a==0&&b==0&&c==0){PrintCmd("modobjM: Vect is null!\n");return 1;}
 	x0=MAccu[NumM].ptr[0*Mp+IndexP-1]; //point xA c'est le point sur l'objet
 	y0=MAccu[NumM].ptr[1*Mp+IndexP-1]; //point yA
 	z0=MAccu[NumM].ptr[2*Mp+IndexP-1]; //point  zA
@@ -927,6 +937,7 @@ switch (mod){
 	//			|   |		<----    same as setting an exponential where x remains unchanged
 	//			|   |__
 	//          \___/
+	if (a==0&&b==0&&c==0){PrintCmd("modobjM: Vect is null!\n");return 1;}
 	x0=MAccu[NumM].ptr[0*Mp+IndexP-1]; //point xA c'est le point sur l'objet
 	y0=MAccu[NumM].ptr[1*Mp+IndexP-1]; //point yA
 	z0=MAccu[NumM].ptr[2*Mp+IndexP-1]; //point  zA
@@ -950,6 +961,7 @@ switch (mod){
 	//			|   \   P2
 	//			|     \
 	//          \___/
+	if (a==0&&b==0&&c==0){PrintCmd("modobjM: Vect is null!\n");return 1;}
 	x0=MAccu[NumM].ptr[0*Mp+IndexP-1]+a; //point xA c'est le point sur l'objet
 	y0=MAccu[NumM].ptr[1*Mp+IndexP-1]+b; //point yA
 	z0=MAccu[NumM].ptr[2*Mp+IndexP-1]+c; //point  zA
@@ -993,6 +1005,7 @@ switch (mod){
 	break;
 	case 7:
 	//the coordinate of Vect=a is the width of the cylinder hole
+	if (a==0&&b==0&&c==0){PrintCmd("modobjM: Vect is null!\n");return 1;}
 	x0=MAccu[NumM].ptr[0*Mp+IndexP-1]; //point xA c'est le point sur l'objet
 	y0=MAccu[NumM].ptr[1*Mp+IndexP-1]+b; //point yA
 	z0=MAccu[NumM].ptr[2*Mp+IndexP-1]+c; //point  zA
@@ -1008,10 +1021,231 @@ switch (mod){
 				}
 		}
 	break;
+	case 8: //skeleton in Vect  ->modify object NumM
+	//Vect is a matrix 6xp with (xp1). .. (xpn-1)
+	//										  (yp1) ... (ypn-1)
+	//										  (zp1) ... (zpn-1)
+	//										  (xp2) ... ( xpn )
+	//										  (yp2) ... ( ypn )
+	//										  (zp2) ... ( zpn )
+	//each segment of line is in a column of the matrix Vect
+	//IndexPt is used for the step of transformation
+	//MAccu,NumM,PtLinkM,IndexP,Vect,mod
+	//We considere the distance^2 with each line and use the gradient 
+	//to move each point of the object towards the lines ensemble
+	//The approximation of the best least square
+	dmin=0.2; //dimension minimal de proximité avec une droite Di.
+	MailleMin=0.001;MailleMax=0.3;
+	if (MAccu[Vect].n <6){PrintCmd("modobjM:\nVect Matrix should contains lines point\n x1,y1,z1,x2,y2,z2 per columns\ndim n=6 required\n");return 1;}
+	for (k=0;k<Mp;k++){
+		int Nline=MAccu[Vect].p;
+		x=MAccu[NumM].ptr[0*Mp+k];
+		y=MAccu[NumM].ptr[1*Mp+k];
+		z=MAccu[NumM].ptr[2*Mp+k];
+		for (i=0;i<Nline;i++){ //On fait le calcul sur les points de la droite Di
 
+		a=MAccu[Vect].ptr[0*Nline+i]; //Le premier point de la droite Di
+		b=MAccu[Vect].ptr[1*Nline+i];
+		c=MAccu[Vect].ptr[2*Nline+i];
+		if (a!=0 || b!=0 || c!=0){
+			ap=MAccu[Vect].ptr[3*Nline+i]; //Le second point de la droite Di
+			bp=MAccu[Vect].ptr[4*Nline+i];
+			cp=MAccu[Vect].ptr[5*Nline+i];
+
+			//vecteur directeur de Di:
+			float Udix=ap-a;
+			float Udiy=bp-b;
+			float Udiz=cp-c;
+			float normu=sqrt(Udix*Udix+Udiy*Udiy+Udiz*Udiz);
+			float Vdix=Udix/normu; //vecteur unitaire
+			float Vdiy=Udiy/normu;
+			float Vdiz=Udiz/normu;
+
+			//vecteur AM:
+			float Uamx=x-a;
+			float Uamy=y-b;
+			float Uamz=z-c;
+			//vecteur BM:
+			float Ubmx=x-ap;
+			float Ubmy=y-bp;
+			float Ubmz=z-cp;
+			//vecteur MH:
+			float Uamv=Uamx*Vdix+Uamy*Vdiy+Uamz*Vdiz;
+			float Umhx=-Uamx+Uamv*Vdix;
+			float Umhy=-Uamy+Uamv*Vdiy;
+			float Umhz=-Uamz+Uamv*Vdiz;
+			float xh,yh,zh;
+			const float coef=0.6;
+			if( (Udix*Uamx+Udiy*Uamy+Udiz*Uamz)*(Udix*Ubmx+Udiy*Ubmy+Udiz*Ubmz) < 0){
+			float d=sqrt(Umhx*Umhx+Umhy*Umhy+Umhz*Umhz);
+			xh=x+Ind*Umhx*(exp(-d*d/coef)); //on déplace d'un certain facteur.
+			yh=y+Ind*Umhy*(exp(-d*d/coef)); //En projetant orthogonalement
+			zh=z+Ind*Umhz*(exp(-d*d/coef)); // à la droite			
+			}else{ //Ici projection selon une sphere autour de l'extremité
+				float d1=sqrt(Uamx*Uamx+Uamy*Uamy+Uamz*Uamz);
+				float d2=sqrt(Ubmx*Ubmx+Ubmy*Ubmy+Ubmz*Ubmz);
+				if (d1<d2){
+				xh=x-Ind*Uamx*(exp(-d1*d1/coef)); //on déplace d'un certain facteur.
+				yh=y-Ind*Uamy*(exp(-d1*d1/coef)); //En projetant vers le point 
+				zh=z-Ind*Uamz*(exp(-d1*d1/coef)); // extremité du segment
+			}else{
+				xh=x-Ind*Ubmx*(exp(-d2*d2/coef)); //on déplace d'un certain facteur.
+				yh=y-Ind*Ubmy*(exp(-d2*d2/coef)); //En projetant vers le point 
+				zh=z-Ind*Ubmz*(exp(-d2*d2/coef)); // extremité du segment
+				}
+			}
+			// test de verification
+				if (DistanceDroites(MAccu,xh,yh,zh,Vect)>dmin){
+				GetMailleDim(MAccu,NumM,PtLinkM,xh,yh,zh, k,&mmin,&mmax);
+//				sprintf(s,"min=%f,max=%f\n",mmin,mmax);
+//				PrintCmd(s);
+				if (MailleMax>=mmax&& mmin>=MailleMin){
+				//Ici il y a un probleme:
+				//Si le point est dans l'axe de la droite, sa distance est grande, mais
+				//le point sera toujours dirigé à la perpendiculaire et non vers l'extremité 
+				//du segment. Il y a donc 2 cas à distinguer.
+					MAccu[NumM].ptr[0*Mp+k]=xh;
+					MAccu[NumM].ptr[1*Mp+k]=yh;
+					MAccu[NumM].ptr[2*Mp+k]=zh;
+					x=xh;y=yh;z=zh;
+				}
+			  }
+			}	//a==0 b==0 c==0 ?
+		}//Nline
+	}//for 
+	
+	break;
 }
 	return 0;
 }
+
+float DistanceDroites(Matrix *MAccu,float x, float y, float z,int Vect){
+int Nline,i;
+float d,d_result,a,b,c,ap,bp,cp;
+	Nline=MAccu[Vect].p;
+	d_result=0;
+		for (i=0;i<Nline;i++){ //On fait le calcul sur les points de la droite Di
+		a=MAccu[Vect].ptr[0*Nline+i]; //Le premier point de la droite Di
+		b=MAccu[Vect].ptr[1*Nline+i];
+		c=MAccu[Vect].ptr[2*Nline+i];
+		if (a!=0 || b!=0 || c!=0){
+			ap=MAccu[Vect].ptr[3*Nline+i]; //Le second point de la droite Di
+			bp=MAccu[Vect].ptr[4*Nline+i];
+			cp=MAccu[Vect].ptr[5*Nline+i];
+			float Udix=ap-a;
+			float Udiy=bp-b;
+			float Udiz=cp-c;
+			float normu=sqrt(Udix*Udix+Udiy*Udiy+Udiz*Udiz);
+			float Vdix=Udix/normu; //vecteur unitaire
+			float Vdiy=Udiy/normu;
+			float Vdiz=Udiz/normu;
+
+			//vecteur AM:
+			float Uamx=x-a;
+			float Uamy=y-b;
+			float Uamz=z-c;
+			//vecteur BM:
+			float Ubmx=x-ap;
+			float Ubmy=y-bp;
+			float Ubmz=z-cp;
+			//vecteur MH:
+			float Uamv=Uamx*Vdix+Uamy*Vdiy+Uamz*Vdiz;
+			float Umhx=-Uamx+Uamv*Vdix;
+			float Umhy=-Uamy+Uamv*Vdiy;
+			float Umhz=-Uamz+Uamv*Vdiz;
+			
+			//Calcul de la distance à la droite Di
+			if( (Udix*Uamx+Udiy*Uamy+Udiz*Uamz)*(Udix*Ubmx+Udiy*Ubmy+Udiz*Ubmz) < 0){//test produit scalaire=> position de M par rapport au segment de droite Di
+					d=sqrt(Umhx*Umhx+Umhy*Umhy+Umhz*Umhz);
+//					sprintf(s,"d=%f\n",d);
+//					PrintCmd(s);
+			}else{
+				float d1=sqrt(Uamx*Uamx+Uamy*Uamy+Uamz*Uamz);
+				float d2=sqrt(Ubmx*Ubmx+Ubmy*Ubmy+Ubmz*Ubmz);
+				if (d1<d2)d=d1; else d=d2; //prendre le minimum de la distance MA1, MA2 avec A1,A2 les extrémités du segment de la droite Di
+//					sprintf(s,"d12=%f\n",d);
+//					PrintCmd(s);
+			}
+			if (d_result==0)d_result=d;
+			if (d_result>d)d_result=d;
+
+	}//a==0 b==0 c==0 ?
+	}//Nline
+//					sprintf(s,"d_result=%f\n\n",d_result);
+//					PrintCmd(s);
+	return d_result;
+}
+
+
+float GetMailleDim(Matrix *MAccu,int NumM,int PtLinkM,float x, float y, float z, int k,float *min,float *max){
+	//if coord is negative we serach for minimum
+	int Neg,Mp=MAccu[NumM].p;
+	float x1,x2,x3,x4;
+	float y1,y2,y3,y4;
+	float z1,z2,z3,z4, L1,L2,L3,L4;
+	
+	Neg=0;
+	L1=1;L2=1;L3=1;L4=1;
+	if (MAccu[PtLinkM].ptr[0*Mp+k]==0)L1=0;
+	if (MAccu[PtLinkM].ptr[1*Mp+k]==0)L2=0;
+	if (MAccu[PtLinkM].ptr[2*Mp+k]==0)L3=0;
+	if (MAccu[PtLinkM].ptr[3*Mp+k]==0)L4=0;
+	//sprintf(s,"L1=%f,L2=%f,L3=%f,L4=%f\n",L1,L2,L3,L4);
+	//PrintCmd(s);
+	if (L1!=0) x1=MAccu[NumM].ptr[0*Mp+(int)MAccu[PtLinkM].ptr[0*Mp+k]-1];
+	if (L2!=0) x2=MAccu[NumM].ptr[0*Mp+(int)MAccu[PtLinkM].ptr[1*Mp+k]-1];
+	if (L3!=0) x3=MAccu[NumM].ptr[0*Mp+(int)MAccu[PtLinkM].ptr[2*Mp+k]-1];
+	if (L4!=0) x4=MAccu[NumM].ptr[0*Mp+(int)MAccu[PtLinkM].ptr[3*Mp+k]-1];
+	if (L1!=0) y1=MAccu[NumM].ptr[1*Mp+(int)MAccu[PtLinkM].ptr[0*Mp+k]-1];
+	if (L2!=0) y2=MAccu[NumM].ptr[1*Mp+(int)MAccu[PtLinkM].ptr[1*Mp+k]-1];
+	if (L3!=0) y3=MAccu[NumM].ptr[1*Mp+(int)MAccu[PtLinkM].ptr[2*Mp+k]-1];
+	if (L4!=0) y4=MAccu[NumM].ptr[1*Mp+(int)MAccu[PtLinkM].ptr[3*Mp+k]-1];
+	if (L1!=0) z1=MAccu[NumM].ptr[2*Mp+(int)MAccu[PtLinkM].ptr[0*Mp+k]-1];
+	if (L2!=0) z2=MAccu[NumM].ptr[2*Mp+(int)MAccu[PtLinkM].ptr[1*Mp+k]-1];
+	if (L3!=0) z3=MAccu[NumM].ptr[2*Mp+(int)MAccu[PtLinkM].ptr[2*Mp+k]-1];
+	if (L4!=0) z4=MAccu[NumM].ptr[2*Mp+(int)MAccu[PtLinkM].ptr[3*Mp+k]-1];
+	float d1=sqrt((x-L1*x1)*(x-L1*x1)+(y-L1*y1)*(y-L1*y1)+(z-L1*z1)*(z-L1*z1));
+	float d2=sqrt((x-L2*x2)*(x-L2*x2)+(y-L2*y2)*(y-L2*y2)+(z-L2*z2)*(z-L2*z2));
+	float d3=sqrt((x-L3*x3)*(x-L3*x3)+(y-L3*y3)*(y-L3*y3)+(z-L3*z3)*(z-L3*z3));
+	float d4=sqrt((x-L4*x4)*(x-L4*x4)+(y-L4*y4)*(y-L4*y4)+(z-L4*z4)*(z-L4*z4));
+	*min=min_d4(d1,d2,d3,d4,L1,L2,L3,L4);
+	*max=max_d4(d1,d2,d3,d4,L1,L2,L3,L4);
+}
+
+
+float min_d4(float d1,float d2,float d3,float d4, float L1, float L2, float L3, float L4){
+	float d=0;
+	if (L1!=0 ) d=d1;
+	else {if (L2!=0)d=d2;
+			else{ if (L3!=0)d=d3;else d=d4;}
+			}
+	if (L1!=0&& d1<d)d=d1;
+	if (L2!=0 && d2<d)d=d2;
+	if (L3!=0 && d3<d)d=d3;
+	if (L4!=0 && d4<d)d=d4;
+	//if (d==0)PrintCmd("Error, d=0\n");
+	//sprintf(s,"d=%f\n",d);
+	//PrintCmd(s);
+	return d;
+	
+}
+float max_d4(float d1,float d2,float d3,float d4, float L1, float L2, float L3, float L4){
+	float d=0;
+	if (L1!=0 ) d=d1;
+	else {if (L2!=0)d=d2;
+			else{ if (L3!=0)d=d3;else d=d4;}
+			}
+	if (L1!=0&& d1>d)d=d1;
+	if (L2!=0 && d2>d)d=d2;
+	if (L3!=0 && d3>d)d=d3;
+	if (L4!=0 && d4>d)d=d4;
+	//if (d==0)PrintCmd("Error, d=0\n");
+	//sprintf(s,"d=%f\n",d);
+	//PrintCmd(s);
+	return d;	
+}
+
+
 
 int SearchPtLink(Matrix *MAccu,int PtLinkM,int pnt, int Indi, int Indj){
 	//return the point index for the position Indi,Indj around the point of index pnt in the mesh related points
