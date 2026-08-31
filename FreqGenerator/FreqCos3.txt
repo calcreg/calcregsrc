@@ -15,11 +15,12 @@ defM0,1,(Nsp*t) //mtx time
 defM1,1,(Nsp*t) //mtx function
 fillM0,0,t
 
-M1=8192*sqrt(abs(cos(w*M0)))*sign(cos(w*M0))
+M1=8192*sqrt(sqrt(abs(cos(w*M0))))*sign(cos(w*M0))
 gfxdim 1,(Nsp/1000),-10000,10000,1
 x=1
 Trf(x)=M1(1,x)
-//playsndM1,Nsp
+playsndM1,Nsp
+playsndM1,Nsp
 
 end
 
