@@ -453,7 +453,8 @@ extern  char StartInfo[];
 extern char Philosophy[];
 extern char NewFunctionalties[];
 
-
+	extern HWND ProgBtn[];
+	extern int MaxNbrButtons; //max button defined in calcregmain.c
 	extern HWND	btn_0,btn_1,btn_2,btn_3,btn_4,btn_5,btn_6,btn_7,btn_8,btn_9;
 	extern HWND	btn_10,btn_11,btn_12,btn_13,btn_14,btn_15,btn_16,btn_17,btn_18,btn_19;
 	extern HWND hEditP,hmywin;
@@ -567,6 +568,9 @@ DWORD WINAPI Thread_Execute( LPVOID lpParam ){
 		LastValCalculated.value=0; //init
 		LastValCalculated.cmplx=0;//init
 		Button = 0; //init the button for key();
+		//init all buttons previously opened of the program
+		for (i=0;i<MaxNbrButtons;i++)if(ProgBtn[i]!=0){ProgBtn[i]=0;DestroyWindow(ProgBtn[i]);}
+
 		//init matrix stuff
 		for (i=0;i<NbrMaxMatrix;i++)MAccu[i].ptr=0; // no matrix available yet
 	#ifdef CalcRegSoftware
@@ -1485,70 +1489,13 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==32) {//killbtn
 			if (CodeOfOneLine[OffsetLine+1].code==1) {
 			int btnNbr=(int)CodeOfOneLine[OffsetLine+1].value;
-			if (btnNbr < 20 ) {
-				switch(btnNbr){
-					case 0:
-						if (btn_0 !=0)DestroyWindow(btn_0);
-					break;
-					case 1:
-						if (btn_1 !=0)DestroyWindow(btn_1);
-					break;
-					case 2:
-						if (btn_2 !=0)DestroyWindow(btn_2);
-					break;
-					case 3:
-						if (btn_3 !=0)DestroyWindow(btn_3);
-					break;
-					case 4:
-						if (btn_4 !=0)DestroyWindow(btn_4);
-					break;
-					case 5:
-						if (btn_5 !=0)DestroyWindow(btn_5);
-					break;
-					case 6:
-						if (btn_6 !=0)DestroyWindow(btn_6);
-					break;
-					case 7:
-						if (btn_7 !=0)DestroyWindow(btn_7);
-					break;
-					case 8:
-						if (btn_8 !=0)DestroyWindow(btn_8);
-					break;
-					case 9:
-						if (btn_9 !=0)DestroyWindow(btn_9);
-					break;
-					case 10:
-						if (btn_10 !=0)DestroyWindow(btn_10);
-					break;
-					case 11:
-						if (btn_11 !=0)DestroyWindow(btn_11);
-					break;
-					case 12:
-						if (btn_12 !=0)DestroyWindow(btn_12);
-					break;
-					case 13:
-						if (btn_13 !=0)DestroyWindow(btn_13);
-					break;
-					case 14:
-						if (btn_14 !=0)DestroyWindow(btn_14);
-					break;
-					case 15:
-						if (btn_15 !=0)DestroyWindow(btn_15);
-					break;
-					case 16:
-						if (btn_16 !=0)DestroyWindow(btn_16);
-					break;
-					case 17:
-						if (btn_17 !=0)DestroyWindow(btn_17);
-					break;
-					case 18:
-						if (btn_18 !=0)DestroyWindow(btn_18);
-					break;
-					case 19:
-						if (btn_19 !=0)DestroyWindow(btn_19);
-					break;
-				}
-			}else PrintCmd("button not killed, nbr btn >20");
+			if(btnNbr < MaxNbrButtons ) {
+				if (ProgBtn[btnNbr]!=0){
+						DestroyWindow(ProgBtn[btnNbr]);
+						ProgBtn[btnNbr]=0;
+						ShowWindow(hmywin,SW_SHOW);
+						UpdateWindow(hmywin);}
+			}else PrintCmd("button not killed, btnNbr >MaxNbrButtons");
 			OffsetLine=0;
 			}else{PrintCmd("killbtn!\n");goto EndMain;}
 		}	
@@ -1574,95 +1521,16 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			int y1=(int)CodeOfOneLine[OffsetLine+5].value;
 			int xw=(int)CodeOfOneLine[OffsetLine+7].value;
 			int yh=(int)CodeOfOneLine[OffsetLine+9].value;
-			if (btnNbr < 20 ) {
-				switch(btnNbr){
-					case 0:
-						if (btn_0 !=0)DestroyWindow(btn_0);
-					break;
-					case 1:
-						if (btn_1 !=0)DestroyWindow(btn_1);
-					break;
-					case 2:
-						if (btn_2 !=0)DestroyWindow(btn_2);
-					break;
-					case 3:
-						if (btn_3 !=0)DestroyWindow(btn_3);
-					break;
-					case 4:
-						if (btn_4 !=0)DestroyWindow(btn_4);
-					break;
-					case 5:
-						if (btn_5 !=0)DestroyWindow(btn_5);
-					break;
-					case 6:
-						if (btn_6 !=0)DestroyWindow(btn_6);
-					break;
-					case 7:
-						if (btn_7 !=0)DestroyWindow(btn_7);
-					break;
-					case 8:
-						if (btn_8 !=0)DestroyWindow(btn_8);
-					break;
-					case 9:
-						if (btn_9 !=0)DestroyWindow(btn_9);
-					break;
-					case 10:
-						if (btn_10 !=0)DestroyWindow(btn_10);
-					break;
-					case 11:
-						if (btn_11 !=0)DestroyWindow(btn_11);
-					break;
-					case 12:
-						if (btn_12 !=0)DestroyWindow(btn_12);
-					break;
-					case 13:
-						if (btn_13 !=0)DestroyWindow(btn_13);
-					break;
-					case 14:
-						if (btn_14 !=0)DestroyWindow(btn_14);
-					break;
-					case 15:
-						if (btn_15 !=0)DestroyWindow(btn_15);
-					break;
-					case 16:
-						if (btn_16 !=0)DestroyWindow(btn_16);
-					break;
-					case 17:
-						if (btn_17 !=0)DestroyWindow(btn_17);
-					break;
-					case 18:
-						if (btn_18 !=0)DestroyWindow(btn_18);
-					break;
-					case 19:
-						if (btn_19 !=0)DestroyWindow(btn_19);
-					break;
-				}
-				//for the drawing of buttons
-				//hDC = GetDC(hmywin);
+			if(btnNbr < MaxNbrButtons ) {
+				if (ProgBtn[btnNbr]!=0){
+						DestroyWindow(ProgBtn[btnNbr]);
+						ProgBtn[btnNbr]=0;
+						ShowWindow(hmywin,SW_SHOW);
+						UpdateWindow(hmywin);}
 				GetClientRect(hmywin,&wndrect);
-				if (btnNbr==0) btn_0 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
-				if (btnNbr==1) btn_1 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
-				if (btnNbr==2) btn_2 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
-				if (btnNbr==3) btn_3 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
-				if (btnNbr==4) btn_4 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
-				if (btnNbr==5) btn_5 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
-				if (btnNbr==6) btn_6 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
-				if (btnNbr==7) btn_7 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
-				if (btnNbr==8) btn_8 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
-				if (btnNbr==9) btn_9 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);			
-				if (btnNbr==10) btn_10 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
-				if (btnNbr==11) btn_11 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
-				if (btnNbr==12) btn_12 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
-				if (btnNbr==13) btn_13 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
-				if (btnNbr==14) btn_14 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
-				if (btnNbr==15) btn_15 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
-				if (btnNbr==16) btn_16 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
-				if (btnNbr==17) btn_17 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
-				if (btnNbr==18) btn_18 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);	
-				if (btnNbr==19) btn_19 = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);			
+				ProgBtn[btnNbr] = CreateWindow("BUTTON",btnname,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+x1,wndrect.top+y1,xw,yh,hmywin,0,hinst,NULL);
 				ShowWindow(hmywin,SW_SHOW);
 				UpdateWindow(hmywin);
-
 			}else PrintCmd("Button not created :\nbutton already exist or button Nbr >20 !\nPrevious button overwritten.\n");
 		}else PrintCmd("text index nul!\n");	
 			OffsetLine=0;
@@ -1978,9 +1846,6 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			NumM = (int)CodeOfOneLine[OffsetLine+1].value;
 			if (NumM > NbrMaxMatrix/2 ) {Error=1;PrintCmd("Matrix Nbr too high \n");goto EndMain;}
 			if (MAccu[NumM].ptr ==0) {Error=1;PrintCmd("Matrix not defined\n");goto EndMain;}
-/*	char msg_s[50];
-			sprintf(msg_s,"CounterLineCode=%d\nPrevMtx=%d\nPrevDataMLine=%d,Prevk=%d\n",CounterLineCode,PrevMtx,PrevDataMLine,Prevk);
-			PrintCmd(msg_s);*/
 			if(PrevMtx!=NumM||CounterLineCode!=PrevDataMLine+1)
 				Prevk=0; //initialise Prevk for filling Different matrix
 			k=0;while(CodeOfOneLine[OffsetLine+2*k+2].code==10&&
@@ -1989,7 +1854,6 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 						if (k+Prevk>=MAccu[NumM].n*MAccu[NumM].p){Error=1;PrintCmd("Exceeding Mtx size in dataM filling\n");goto EndMain;}
 						k++;
 					}//while
-					PrintCmd("---\n");
 			PrevDataMLine=CounterLineCode; Prevk=Prevk+k;PrevMtx=NumM;
  			OffsetLine=0;
 			}else{PrintCmd("dataM fill Matrix!\n");goto EndMain;}

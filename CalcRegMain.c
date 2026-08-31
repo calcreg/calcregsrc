@@ -72,8 +72,10 @@ extern int RedrawingGfx,GfxMove,GfxZoom;
 extern int StopProgram, BreakActivated,NbrMaxBtn;
 
 extern int Button,systate;	
+#define MaxBtn 50
+int MaxNbrButtons=MaxBtn; //the buttons to be opened by the program
 
-
+HWND ProgBtn[50];
 
 
 void CloseProc(HWND hwnd)
@@ -409,26 +411,8 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 						MainFormHandleEvent(btnstart);
 					}
 		#endif
-			if(btn_1==(HWND)lParam) MainFormHandleEvent(btn0);
-			if(btn_1==(HWND)lParam) MainFormHandleEvent(btn1);
-			if(btn_2==(HWND)lParam) MainFormHandleEvent(btn2);
-			if(btn_3==(HWND)lParam) MainFormHandleEvent(btn3);
-			if(btn_4==(HWND)lParam) MainFormHandleEvent(btn4);
-			if(btn_5==(HWND)lParam) MainFormHandleEvent(btn5);
-			if(btn_6==(HWND)lParam) MainFormHandleEvent(btn6);
-			if(btn_7==(HWND)lParam) MainFormHandleEvent(btn7);
-			if(btn_8==(HWND)lParam) MainFormHandleEvent(btn8);
-			if(btn_9==(HWND)lParam) MainFormHandleEvent(btn9);
-			if(btn_10==(HWND)lParam) MainFormHandleEvent(btn10);
-			if(btn_11==(HWND)lParam) MainFormHandleEvent(btn11);
-			if(btn_12==(HWND)lParam) MainFormHandleEvent(btn12);
-			if(btn_13==(HWND)lParam) MainFormHandleEvent(btn13);
-			if(btn_14==(HWND)lParam) MainFormHandleEvent(btn14);
-			if(btn_15==(HWND)lParam) MainFormHandleEvent(btn15);
-			if(btn_16==(HWND)lParam) MainFormHandleEvent(btn16);
-			if(btn_17==(HWND)lParam) MainFormHandleEvent(btn17);
-			if(btn_18==(HWND)lParam) MainFormHandleEvent(btn18);
-			if(btn_19==(HWND)lParam) MainFormHandleEvent(btn19);
+		//Handling prog Buttons
+			for (i=0;i<MaxNbrButtons;i++)if (ProgBtn[i]!=0) if( ProgBtn[i]==(HWND)lParam) Button=i;
 			break;
 
 		case WM_LBUTTONDOWN:
@@ -553,7 +537,9 @@ MSG			msg;
 	colpen   = 0x000000;
 	colbrush = 0xffffff;
 	Paint(hwnd);
-	
+	//Init ProgBtn memory
+	int i;
+	for (i=0;i<MaxNbrButtons;i++)ProgBtn[i]=0;
 // --- start modif to get the picture unchanged when windows disappears
 	//RECT lpRect; //valrect to get a mouse value between -10 and 10
 	//GetClientRect(hwnd,&lpRect);
