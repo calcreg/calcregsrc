@@ -163,6 +163,7 @@ extern float RMath_ach(float x);
 extern float RMath_abs(float x);
 
 //Matrix
+extern int OrderMatrix(Matrix *MAccu,int Ma,int Mb,int Mode);
 extern int RMath_FFT(Matrix *MAccu,int NumMfct,int NumMa,int NumMb,int Strt, int Stop);
 extern int RMath_FFTInv(Matrix *MAccu,int NumMfct,int NumMa,int NumMb,int Mt);
 
@@ -252,8 +253,8 @@ float SoundFrequency,SoundAmplitude,SoundDuration,SamplesPerSecond;
 static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListSize
 static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_trp_mtxn_mtxp_fM_sign_?_";
 //									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26    27     28     29     30    31  32
-static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_action_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_colorgfx_dataM_fctobjM_getindM_modobjM_killbtn_savesndM_copyM_fftM_fftinvM_vobj3dM_savebmp_";
-//																0       1      2       3   4    5    6    7      8       9        10        11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28            29           30       31             32         33     		  34			35           36         37     38         39       		40
+static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_action_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_colorgfx_dataM_fctobjM_getindM_modobjM_killbtn_savesndM_copyM_fftM_fftinvM_vobj3dM_savebmp_orderM_";
+//																0       1      2       3   4    5    6    7      8       9        10        11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28            29           30       31             32         33     		  34			35           36         37     38         39       		40				41
 //char blabli[]= { {'hello'},0x1,{'hi'},0x0};
 
 //--------------labels
@@ -436,6 +437,8 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //fftM0,1,2,a,b   same as standard fft but taking window [a,b]
 //						if a=b=0 same as fftM0,1,2
 //fftinvMa,b,c,d	Ma is the fct to create, Mb and Mc are ak and bk,Md is the matrix of the variable t, Ma.p=Md.p Ma.n=Mb.n=Mc.n=Md.n=1
+//orderMa,b,mode 	check values in Ma and place the index of Ma so that Ma(1,Mb(1,x)) is in the 'mode' order with respect to x.
+//								mode=0, increasing order. mode=1 decreasing order
 
 //MathFunctions
 extern int MathError; //send back a code if error in the Math functions. MathError=1 out of range exponential
@@ -648,6 +651,7 @@ DWORD WINAPI Thread_Execute( LPVOID lpParam ){
 	CalcMain(CodeList);
 //------------ end --------
 
+
 	//reset debug to zero
 	debug=0;
 	
@@ -820,12 +824,22 @@ static void ChangeNamesToAccu(char *text){
 			txt=text+nptr; //Do the job after that one just done (to fix pb for fake variables founds)
 		Loop2:
 			ntxt=strstr(txt,str); //search the token str in the txt string returns 0 when no more occurrence
+/*			sprintf(s,"found accu %s in %s\n",str,txt);
+			PrintCmd(s);
+			PrintCmd("coucou\n");*/
 			//
 			left=ntxt; //avoid the ascii chains "blabla..."
-			if(ntxt!=0)while (*left !=0x0a && left >text){left--;if (*left=='"'){txt++;goto Loop2;}}//Avoid changing the symboles taken in ascii chains
+/*Il faut mettre si la variable se trouve à l'intérieu de la chaine, on ne change rien.*/
+//c			if(ntxt!=0)while (*left !=0x0a && left >text){left--;if (*left=='"'){txt++;goto Loop2;}}//Avoid changing the symboles taken in ascii chains
+			if(ntxt!=0)while (*left !=0x0a && left >text){
+				left--;
+				if (*left=='"')while (*left !=0x0a && *left !=0x00){left++;
+												if (*left=='"'){txt++;goto Loop2;}}
+				}//Avoid changing the symboles taken in ascii chains
+
 			//
 			if ( ntxt !=0 ) {//sprintf(s,"char=%c%c",txt,txt+1);PrintCmd(s);
-				if( 'a' <=*(ntxt+strlen(str) ) && *(ntxt+strlen(str) )<='z') {txt=ntxt+strlen(str);goto Loop2;}				
+				if( 'a' <=*(ntxt+strlen(str) ) && *(ntxt+strlen(str) )<='z') {txt=ntxt+strlen(str);goto Loop2;}
 				if( 'A' <=*(ntxt+strlen(str) ) && *(ntxt+strlen(str) )<='Z') {txt=ntxt+strlen(str);goto Loop2;}				
 				//if(  *(ntxt+strlen(str)-1 )==')') {txt=ntxt+strlen(str);goto Loop2;}				
 				if (ntxt > txt ) if( 'a' <=*(ntxt-1) && *(ntxt-1)<='z') {/*PrintCmd("not");*/txt=ntxt+strlen(str);goto Loop2;}
@@ -1835,8 +1849,14 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 						CodeOfOneLine[OffsetLine+5].code==1){
 			int TextIndex=0,i=0,tsize;
 			char * textdsp;
-				 TextIndex=(int)CodeOfOneLine[OffsetLine+5].value;
-			if (TextIndex != 0){
+			//les 2 lignes qui suivent sont pour le probleme d'espace
+			//dans la récupération de texte, on devrait rechercher autour
+			//de l'index l'endroit du ", mais ces deux lignes suffisent
+			//si on met un seul espace ou pas d'espace.
+				TextIndex=(int)CodeOfOneLine[OffsetLine+5].value;
+				if (WholeMnemoProg[TextIndex]=='"')TextIndex=TextIndex+1;
+
+				if (TextIndex != 0){
 				i=0; int nbrdsp=0;
 				while (WholeMnemoProg[TextIndex+i]!='"'){
 					if (WholeMnemoProg[TextIndex+i]=='%'&&
@@ -1864,21 +1884,27 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 				strcpy(textdsp,finalText);
 				p=strlen(textdsp);
 			}
-				strcpy(finalText,textdsp);					
-//				sprintf(finalText,textdsp,(int)CodeOfOneLine[OffsetLine+5+2*1].value);
-				//c
-							RECT prc;
-							prc.left=(int)((CodeOfOneLine[OffsetLine+1].value-DimXmin)*DrawZoneW/(DimXmax-DimXmin)+DrawZoneX);
-							prc.top=(int)(-(CodeOfOneLine[OffsetLine+3].value-DimYmin)*DrawZoneH/(DimYmax-DimYmin)+DrawZoneY+DrawZoneH);
+			while (WholeMnemoProg[TextIndex+i]!='"' &&
+					WholeMnemoProg[TextIndex+i]!=0x0a &&
+				WholeMnemoProg[TextIndex+i]!=0){//Finir de récupérer la syntaxe
+				textdsp[p]=WholeMnemoProg[TextIndex+i];i++;p++;
+				}
+			textdsp[p]=0; //terminate the ascii chain
+			strcpy(finalText,textdsp);
+//			sprintf(finalText,textdsp,(int)CodeOfOneLine[OffsetLine+5+2*1].value);
+			//c
+			RECT prc;
+			prc.left=(int)((CodeOfOneLine[OffsetLine+1].value-DimXmin)*DrawZoneW/(DimXmax-DimXmin)+DrawZoneX);
+			prc.top=(int)(-(CodeOfOneLine[OffsetLine+3].value-DimYmin)*DrawZoneH/(DimYmax-DimYmin)+DrawZoneY+DrawZoneH);
 
-							//prc.top = DrawZoneY+(int)CodeOfOneLine[OffsetLine+3].value;
-							//prc.left=DrawZoneX+(int)CodeOfOneLine[OffsetLine+1].value;
-							prc.bottom = prc.top+15;
-							if (prc.left+tsize*10<DrawZoneX+DrawZoneW)prc.right = prc.left+tsize*10;//DrawZoneX+DrawZoneW;
-							else prc.right=DrawZoneX+DrawZoneW;
-					//c		DrawText(hDC, textdsp, -1, &prc, DT_SINGLELINE |DT_VCENTER);
-							DrawText(hDC, finalText, -1, &prc, DT_SINGLELINE |DT_VCENTER);
-							//PrintCmd(textdsp);
+			//prc.top = DrawZoneY+(int)CodeOfOneLine[OffsetLine+3].value;
+			//prc.left=DrawZoneX+(int)CodeOfOneLine[OffsetLine+1].value;
+			prc.bottom = prc.top+15;
+			if (prc.left+tsize*10<DrawZoneX+DrawZoneW)prc.right = prc.left+tsize*10;//DrawZoneX+DrawZoneW;
+			else prc.right=DrawZoneX+DrawZoneW;
+			//c		DrawText(hDC, textdsp, -1, &prc, DT_SINGLELINE |DT_VCENTER);
+			DrawText(hDC, finalText, -1, &prc, DT_SINGLELINE |DT_VCENTER);
+			//PrintCmd(textdsp);
 			free(finalText);			
 			free(textdsp);
 			}
@@ -2199,6 +2225,42 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			if (Error !=0) goto EndMain;
  			OffsetLine=0;
 			}else{PrintCmd("DispobjM!\n");goto EndMain;}
+		}	
+//------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==41) {//orderM
+			if (CodeOfOneLine[OffsetLine+1].code==1&& CodeOfOneLine[OffsetLine+2].code==10 &&
+				CodeOfOneLine[OffsetLine+3].code==1&& CodeOfOneLine[OffsetLine+4].code==10 &&
+			CodeOfOneLine[OffsetLine+5].code==1) {
+			int Ma = (int)CodeOfOneLine[OffsetLine+1].value;
+			int Mb = (int)CodeOfOneLine[OffsetLine+3].value;
+			int Mode = (int)CodeOfOneLine[OffsetLine+5].value;
+			Error = OrderMatrix(MAccu,Ma,Mb,Mode);
+			switch(Error){
+			case 1:
+				PrintCmd("Ma not defined\n");
+			break;
+			case 2:
+				PrintCmd("Ma.n should be 1\n");
+			break;
+			case 3:
+				PrintCmd("Mb not defined\n");
+			break;
+			case 4:
+				PrintCmd("Mode should be 0 or 1\n");
+			break;
+			case 5:
+				PrintCmd("Mode should be 0 or 1\n");
+			break;
+			case 6:
+				PrintCmd("Couldn't allocate for changing order\n");
+			break;
+			case 7:
+				PrintCmd("it should be Ma.p=Mb.p\n");
+			break;			
+			}
+			if (Error !=0) goto EndMain;
+ 			OffsetLine=0;
+			}else{PrintCmd("orderM!\n");goto EndMain;}
 		}	
 		
 //------------
@@ -2639,7 +2701,7 @@ int StrtStr,EndStr,p,a,BackFromAccu=0;
 					}
 				i++;
 			}
-			PrintCmd("Finish your text by guillemet \n");
+			PrintCmd("Finish your text by guillemet\n");
 			ErrorCode=1;
 			goto EndConvert;
 		} //set Text position "blabla"
@@ -2816,7 +2878,7 @@ int StrtStr,EndStr,p,a,BackFromAccu=0;
 					CodeList[CodeListOffset].cmplx = 0; 
 					if (Nbr>NbrMaxMatrix) {PrintCmd("Matrix Number too big! 50 Max\n");ErrorCode=4; goto EndConvert;} 
 					CodeListOffset++;
-					if (debug > 0) {sprintf(s,"Accu A%d \n",(int) Nbr);PrintCmd(s);}
+					if (debug > 0) {sprintf(s,"MAccu A%d \n",(int) Nbr);PrintCmd(s);}
 					Nbr=0;// Reinitialise  Nbr for next value
 					goto EndNbrMAccu;// i points on the operator
 				}

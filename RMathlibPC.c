@@ -135,6 +135,8 @@ void Line(float x1, float y1, float x2, float y2, float Color); //line x1,y1,x2,
 void FloatToString(float value, char *buffer, int Rounding);
 
 //Matrix
+int OrderMatrix(Matrix *MAccu,int Ma,int Mb,int Mode);
+
 int RMath_FFT(Matrix *MAccu,int NumMfct,int NumMa,int NumMb,int Strt, int Stop);
 int RMath_FFTInv(Matrix *MAccu,int NumMfct,int NumMa,int NumMb,int Mt);
 
@@ -369,7 +371,67 @@ float t=0; //variable de la fonction pfct la TF inverse de la FFT(Ffct)
 	return Error;
 }
 
-	
+// -- order matrix --
+int OrderMatrix(Matrix *MAccu,int Ma,int Mb,int Mode){
+int Error=0;
+//Mode=0:	decreasing order
+//Mode=1:	increasing order
+
+//Error=1 <=> Ma not defined
+//Error=2 <=> Ma.n should be 1
+//Error=3 <=> Mb not defined
+//Error=4 <=> Mb.n should be 1
+//Error=5 <=> Mode should be 0 or 1
+//Error=6 <=>Couldn't allocate for changing order
+//Error=7 <=> it should be Ma.p=Mb.p
+	if (MAccu[Ma].ptr==0){Error=1;return Error;}
+	if (MAccu[Ma].n!=1){Error=2;return Error;}
+	if (MAccu[Mb].ptr==0){Error=3;return Error;}
+	if (MAccu[Mb].n!=1){Error=4;return Error;}
+	if (Mode !=0 && Mode !=1) {Error=5;return Error;}
+	if (MAccu[Mb].p!=MAccu[Ma].p){Error=7;return Error;}
+
+	//initialisation
+	float Max=MAccu[Ma].ptr[0];
+	float Min=Max;
+	int kmax,kmin,k,savek,N;
+	N=MAccu[Ma].p;kmax=0;kmin=0;
+	for (k=0;k<N;k++){
+		if (MAccu[Ma].ptr[k]>Max){Max=MAccu[Ma].ptr[k];kmax=k;}
+		if (MAccu[Ma].ptr[k]<Min){Min=MAccu[Ma].ptr[k];kmin=k;}
+		}
+	//Ici on a le Max et le Min avec le kmax et kmin respectifs	
+	//Nous travaillons le mode décroissant et ensuite selon le mode on le réorganise
+	int ib=1;MAccu[Mb].ptr[0]=(float)kmax;
+	int alreadyfound,a;
+	while(ib<N){
+		savek=kmin;//initialisation
+		for (k=0;k<N;k++){
+			if(MAccu[Ma].ptr[k]<=MAccu[Ma].ptr[(int)MAccu[Mb].ptr[ib-1]]){
+				alreadyfound=0;
+				for (a=0;a<ib;a++)if(k==(int)MAccu[Mb].ptr[a])alreadyfound=1; 
+				if(alreadyfound==0){
+					if(MAccu[Ma].ptr[k]>=MAccu[Ma].ptr[savek])savek=k;
+				}
+			}
+		}
+		MAccu[Mb].ptr[ib]=(float)savek;	ib++;
+	}
+	//tel quel c'est dans l'ordre décroissant mode=0;
+	if (Mode==1){
+		float *NewMb=(float*)malloc(MAccu[Mb].n*MAccu[Mb].p*sizeof(float) );
+		if(NewMb==0){Error=6;PrintCmd("orderM:\nCouldn't allocate for changing order\n");
+								return Error;}
+		for(k=0;k<N;k++)NewMb[k]=MAccu[Mb].ptr[k];
+		//reverse data
+		for(k=0;k<N;k++)MAccu[Mb].ptr[k]=NewMb[N-k-1]+1;
+		free(NewMb);
+	}
+	if (Mode==0){
+		for(k=0;k<N;k++)MAccu[Mb].ptr[k]=MAccu[Mb].ptr[k]+1;
+	}
+	return Error;
+}	
 	
 //--------------------------- Transformée de Fourrier ------------------
 
