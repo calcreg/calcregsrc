@@ -87,6 +87,7 @@ void LoadProg();
 int CompareVarNames(char* txt, int i1, int i2);
 void RemoveComments(char *txt);
 int PreProcesser(char *);
+int CountLoopsForWhile(char *txt);
 
 void Rprintf(float x);//write and enter
 void REPrintf(float x);//write nbr but don't enter
@@ -95,6 +96,7 @@ void decode(char *txt, int size);
 
 
 int CalculFunctionComplexe(floactet *CodeListLine,int i);
+int MakeTestCondition(floactet *CodeListLine,int i,int *TestCondition);
 
 //Math functions
 void CreateMathExpTable();
@@ -126,7 +128,7 @@ static float Rabs(float x);
 
 void LowPerformance();
 
-void DispGradVal(float val,float X,float Y);
+void DispGradVal(float val,float X,float Y, int mode); //mode 0 position text on X axes, and 0 position on Y axes
 void TracerAxis(int centerx,int centery,int width, int height);//color 0black 1red 2green 3blue
 void Tracer3DAxis();
 float Dx(float x, float y, float z);
@@ -135,6 +137,7 @@ void Line(float x1, float y1, float x2, float y2, float Color); //line x1,y1,x2,
 void FloatToString(float value, char *buffer, int Rounding);
 
 //Matrix
+int MandelbrotM(Matrix *MAccu,int Mx,int My,int Mc,int nlimit);
 int OrderMatrix(Matrix *MAccu,int Ma,int Mb,int Mode);
 
 int RMath_FFT(Matrix *MAccu,int NumMfct,int NumMa,int NumMb,int Strt, int Stop);
@@ -175,6 +178,7 @@ float DimYmin=-5;
 float DimYmax=5;
 float IncX=0.05;
 float StepX=1;
+float GridMode=0; //mode 0 means by default, mode=1 means square grid appear all over 
 
 //3D plots
 float zp=150,yp=70,xp=60,zp0=15,yp0=7,xp0=6;//should be proportional to the 3D dimension box
@@ -201,6 +205,10 @@ extern int GfxBigDisplay;
 extern int Button;
 extern int XpenDown,YpenDown,MouseLeftClick,PenMoved,XpenUp,YpenUp;
 MSG Msg;
+
+//Multimedia
+extern int SoundPlaying;
+extern int AudioRecording;
 
 
 //math
@@ -240,6 +248,33 @@ float HlowPrecision=0.00001; //Low precision 1E-05;
 	char s[50];
 
 
+	
+	
+//Extra de CalculOfOneLine ------------------
+int MakeTestCondition(floactet *CodeListLine,int i,int *TestCondition){
+//------ Testcondition  <,==,>,<=,>= 
+// Codes Instruction [11][42],[11][5],[11][43],[11][3],[11][6]
+	if (CodeListLine[i].code !=1 && CodeListLine[i+2].code !=1)return 5; //The error to return in that case
+	switch((int)CodeListLine[i+1].value){
+	case 5: //"=="
+		if ( CodeListLine[i].value == CodeListLine[i+2].value) *TestCondition=1;
+	break;
+	case 42://Test "<"
+		if ( CodeListLine[i].value < CodeListLine[i+2].value) *TestCondition=1;
+	break;
+	case 43://Test ">"
+		if ( CodeListLine[i].value > CodeListLine[i+2].value) *TestCondition=1;
+	break;
+	case 3://Test "<="
+		if ( CodeListLine[i].value <= CodeListLine[i+2].value) *TestCondition=1;
+	break;
+	case 6://Test ">="
+		if ( CodeListLine[i].value >= CodeListLine[i+2].value) *TestCondition=1;
+	break;
+	}
+	return 0;
+} 
+	
 //------------------------------------------------------------------------------------- 
 //-------------------------------------------------------------------------------------
 //-------------------------   Coding For matrices --------------------------
@@ -482,6 +517,52 @@ for (k=0;k<K;k++){ //Here N is NOT always =Stop-Strt
 }
 }
 
+// -- order matrix --
+int MandelbrotM(Matrix *MAccu,int Mx,int My,int Mc,int nlimit){
+int Error=0,i,j;
+//Error=1 <=> Mx not defined
+//Error=2 <=> Mx.n should be 1
+//Error=3 <=> My not defined
+//Error=4 <=> My.n should be 1
+//Error=5 <=> Mc undefined
+//Error=6 <=> Mc.n  should be Mx.p and and Mc.p should be My.p
+	if (MAccu[Mx].ptr==0){Error=1;return Error;}
+	if (MAccu[Mx].n!=1){Error=2;return Error;}
+	if (MAccu[My].ptr==0){Error=3;return Error;}
+	if (MAccu[My].n!=1){Error=4;return Error;}
+	if (MAccu[Mc].ptr==0){Error=5;return Error;}
+	if (MAccu[Mc].n!=MAccu[Mx].p ||MAccu[Mc].p!=MAccu[My].p ) {Error=6;return Error;}
+	int Nx= (int)MAccu[Mx].p;
+	int Ny= (int)MAccu[My].p;
+	// Calcul des couleurs de la fractale mandelbrot
+	float a; //partie réelle de z
+	float b; // partie imaginaire de z
+	float mod,an,bn,cx,cy; //c=cx+i*cy
+	int n;
+	for (j=0;j<Ny;j++){
+//			if (j*100/Ny==10*(j*10/Ny)){
+//			sprintf(s,"%dpercent\n",(j*100/Ny));PrintCmd(s);}
+//sprintf(s,"j=%d\n",j);PrintCmd(s);
+			for (i=0;i<Nx;i++){
+		a=0;b=0; mod=0;
+		cx=MAccu[Mx].ptr[i];cy=MAccu[My].ptr[j];
+		n=0;
+		while (mod<4 && n<nlimit){
+			//Zn+1=Zn^2+c
+			an=a*a-b*b+cx;
+			bn=2*a*b+cy;
+			a=an;b=bn;
+			n++;
+			mod=a*a+b*b; //module au carré
+			//sprintf(s,"n=%d\n",n);PrintCmd(s);
+	
+		}
+		if (n<nlimit)
+		MAccu[Mc].ptr[i*MAccu[Mc].p+j]=n; //on stock le nombre d'itérations pour la couleur
+		else MAccu[Mc].ptr[i*MAccu[Mc].p+j]=0;
+		}}
+	return Error;
+}	
 
 
 int FillSphere(Matrix *MAccu,int NumM,int PtLinkM,float Radius,float period){
@@ -2541,10 +2622,7 @@ int CalculFunctionComplexe (floactet *CodeListLine,int i){
  		if (CodeVal==26 ) {
 								switch((int)CodeListLine[i+1].value){
 								case 0:
-								GetMessage(&Msg, hmywin, 0, 0);
-								TranslateMessage(&Msg);
-								DispatchMessage(&Msg);
-								
+								HandleInfo(); //si RecupeMessage=1 alors le message est en attente dans le thread, donc on n'y va pas.
 								val=(float)Button;val_cmplx=0;Button=0;
 								break;
 								
@@ -2576,10 +2654,17 @@ int CalculFunctionComplexe (floactet *CodeListLine,int i){
 								val_cmplx=0;
 								//val=(float)YpenUp;
 								break;
+								case 7:
+								val = (float)SoundPlaying;	val_cmplx=0;
+								break;
+								case 8:
+								val = (float)AudioRecording;	val_cmplx=0;
+								break;
 								}
 							}	//key
 
 		if (CodeVal==31 ) {if (CodeListLine[i+1].value > 0) val=1;else val=-1;val_cmplx=0;goto KeepOn;}	//sign
+		if (CodeVal==33 ) {val=(int)CodeListLine[i+1].value;val_cmplx=(int)CodeListLine[i+1].cmplx;goto KeepOn;}	//int, la valeur entière
 		if (CodeVal==32 ) {
 			char *cmdtext;
 			val_cmplx=0;
@@ -2766,8 +2851,13 @@ int CompareVarNames(char* txt, int i1, int i2){ //returns 0 if same
 		while ( txt[i1] == Octet(" ")  && i1 < size ) i1++; //remove the spaces 
 		while ( txt[i2] == Octet(" ")  && i2 < size ) i2++; 
 		if ( (i1 < size) && (i2 < size) ){
+
+			if (txt[i2] == '='){
+			if (txt[i1]== '='  )return 0;
+			if (txt[i1]== '>'  )return 0;
+			if (txt[i1]== '<'  )return 0;
+			}
 			if ( txt[i1] != txt[i2] ) {return 1;} // not same
-			if (txt[i1]== Octet("=") && txt[i2]== Octet("=") )return 0;
 		}
 	i1++; i2++;		
 	}
@@ -2786,17 +2876,69 @@ int PreProcesser(char *mnemotext){
 	return PreproSignal;
 }
 
+int CountLoopsForWhile(char *prog){
+//this counts number of for or while, and counts next, should be equal.
+//The further trials where to locate exactely the maximum needed size for the LoopStack
+	int nbrloops,nlp,nbrnext;
+	char *p,*p1,*p2,*q,*prognext;
+	q=prog;prognext=prog;
+	nlp=0;nbrloops=0;nbrnext=0;
+LoopCLFW:
+	p1=strstr(prog,"for");
+	p2=strstr(prog,"while");
+	if (p1!=0 || p2 !=0){nbrloops++;
+		if (p1==0)p=p2;
+		if (p2==0)p=p1;
+		if (p1!=0 &&p2!=0 && p1<p2)p=p1;
+		if (p1!=0 &&p2!=0 && p1>p2)p=p2;
+	}else goto LoopCLFW2; //return nbrloops;
+	prog=p+1;
+	goto LoopCLFW;
+LoopCLFW2:
+//return nbrloops;
+	p1=strstr(prognext,"next");
+	if (p1!=0){nbrnext++;
+	}else {if(nbrloops!=nbrnext)return -1;else return nbrloops;}
+	prognext=p1+1;
+	goto LoopCLFW2;
+/*
+	p1=strstr(prog,"for");
+	p2=strstr(prog,"while");
+	if (p1!=0 || p2 !=0){
+//		if (p1<p2)p=p1;else p=p2; //on prend le plus proche des deux
+		if (p1==0)p=p2;
+		if (p2==0)p=p1;
+		if (p1!=0 &&p2!=0 && p1<p2)p=p1;
+		if (p1!=0 &&p2!=0 && p1>p2)p=p2;
+		q=strstr(q,"next");
+		if(q==0) return -1; //génération d'erreur
+		if (p<q) {nlp++;prog=p+1;if(nlp>nbrloops)nbrloops=nlp;PrintCmd("+");}
+			else {nlp--;prog=p+1; q=q+1;q=strstr(q,"next");PrintCmd("-");}
+		}else{PrintCmd("for fini\n");
+				while ( (q=strstr(q,"next")!=0)){nlp--;q=q+1;}
+				if (nlp!=0)PrintCmd("Error 'next' missing\n");
+				return nbrloops;}
+	//if(nlp<-1 || nlp>3)return -1;
+	if(nlp<0) return -1; //génération d'erreur
+	goto LoopCLFW;
+	return nbrloops;*/
+}
+
 
 void RemoveComments(char *txt){
 	int i,k;
 	static char *p,str[]="//",s[10];
+	static char *ptxt;
+	ptxt=txt;
 	RCstart:
-	p=(char*)strstr(txt,str);//StrStr(txt,str):chgPOs2Win32
+	p=(char*)strstr(ptxt,str);//StrStr(txt,str):chgPOs2Win32
 	if (p!=0){
 		i=0;
 		while (p[i] !=0 && p[i]!=0x0A) i++;
-		for (k=0;k<strlen(p+i);k++) p[k]=p[i+k];//chgPOs2Win32
-		p[k]=0;
+		//for (k=0;k<strlen(p+i);k++) p[k]=p[i+k];//chgPOs2Win32
+		//p[k]=0;
+		strcpy(p,p+i);
+ptxt=p; //on se place là où l'on s'est arrêté. Sinon on recommence à partir de zero
 	}else{return;}
 	goto RCstart;
 	}
@@ -3527,60 +3669,71 @@ void TracerAxis(int centerx,int centery,int width, int height){
 //	centery=0;
 //	height=(-DimYmin+DimYmax);
 //	width=(-DimXmin+DimXmax);
+
+if (GridMode != 0 ){//display full grid, not just graduations
+int clrgd=18;
+	if (StepX !=0){
+		for (k=0;k<(DimXmax-DimXmin)/StepX;k++){
+			Line(-k*StepX,0,-k*StepX,DimYmax,clrgd);Line(-k*StepX,0,-k*StepX,DimYmin,clrgd);
+			Line(k*StepX,0,k*StepX,DimYmax,clrgd);Line(k*StepX,0,k*StepX,DimYmin,clrgd);
+			}
+		}
+	if (StepX !=0){
+		for (k=0;k<(DimYmax-DimYmin)/StepX;k++){
+			Line(0,-k*StepX,DimXmax,-k*StepX,clrgd);Line(0,-k*StepX,DimXmin,-k*StepX,clrgd);
+			Line(0,k*StepX,DimXmax,k*StepX,clrgd);Line(0,k*StepX,DimXmin,k*StepX,clrgd);
+			}
+		}
+}
+
 	Line(DimXmin,0,DimXmax,0,color);
 	Line(0,DimYmin,0,DimYmax,color);
 	if (StepX !=0){
 		for (k=0;k<(DimXmax-DimXmin)/StepX;k++){
-			if (k!=0&&-k*StepX>DimXmin)DispGradVal(-k*StepX,-k*StepX-10*(DimXmax-DimXmin)/DrawZoneW,-5*(DimYmax-DimYmin)/DrawZoneH);
-			if (k!=0&&k*StepX<DimXmax)DispGradVal(k*StepX,k*StepX-10*(DimXmax-DimXmin)/DrawZoneW,-5*(DimYmax-DimYmin)/DrawZoneH);
+			if (k!=0&&-k*StepX>DimXmin)DispGradVal(-k*StepX,-k*StepX-10*(DimXmax-DimXmin)/DrawZoneW,-5*(DimYmax-DimYmin)/DrawZoneH,0);
+			if (k!=0&&k*StepX<DimXmax)DispGradVal(k*StepX,k*StepX-10*(DimXmax-DimXmin)/DrawZoneW,-5*(DimYmax-DimYmin)/DrawZoneH,0);
 			Line(-k*StepX,0,-k*StepX,5*(DimYmax-DimYmin)/DrawZoneH,color);
 			Line(k*StepX,0,k*StepX,5*(DimYmax-DimYmin)/DrawZoneH,color);
 			}
 		}
 	if (StepX !=0){
 		for (k=0;k<(DimYmax-DimYmin)/StepX;k++){
-			if (k!=0&&-k*StepX>DimYmin)DispGradVal(-k*StepX,-35*(DimXmax-DimXmin)/DrawZoneW,-k*StepX+3*(DimYmax-DimYmin)/DrawZoneH);
-			if (k!=0&&k*StepX<DimYmax)DispGradVal(k*StepX,-35*(DimXmax-DimXmin)/DrawZoneW,k*StepX+3*(DimYmax-DimYmin)/DrawZoneH);
+			if (k!=0&&-k*StepX>DimYmin)DispGradVal(-k*StepX,-35*(DimXmax-DimXmin)/DrawZoneW,-k*StepX+3*(DimYmax-DimYmin)/DrawZoneH,1);
+			if (k!=0&&k*StepX<DimYmax)DispGradVal(k*StepX,-35*(DimXmax-DimXmin)/DrawZoneW,k*StepX+3*(DimYmax-DimYmin)/DrawZoneH,1);
 			Line(0,-k*StepX,5*(DimXmax-DimXmin)/DrawZoneW,-k*StepX,color);
 			Line(0,k*StepX,5*(DimXmax-DimXmin)/DrawZoneW,k*StepX,color);
 			}
 		}
 	}
 
-void DispGradVal(float val,float X,float Y){
+void DispGradVal(float val,float X,float Y, int mode){ //mode == 0 on X, 1 positioning text on Y axes
 	RECT prc;
 	char textdsp[10];
 	sprintf(textdsp,"%.2f",val);
 	int tsize=strlen(textdsp);
+	if (X<DimXmin || Y < DimYmin || Y>DimXmax || Y >DimYmax)return;
 	prc.left=(int)((X-DimXmin)*DrawZoneW/(DimXmax-DimXmin)+DrawZoneX);
 	prc.top=(int)(-(Y-DimYmin)*DrawZoneH/(DimYmax-DimYmin)+DrawZoneY+DrawZoneH);
 	prc.bottom = prc.top+15;
 	if (prc.left+tsize*10<DrawZoneX+DrawZoneW)prc.right = prc.left+tsize*10;
 	else prc.right=DrawZoneX+DrawZoneW;
-	DrawText(hDC, textdsp, -1, &prc, DT_SINGLELINE |DT_VCENTER);
+	if (StepX !=0){
+	if (mode == 0){
+	if (val<0) {tsize--;}
+	int p =(int)( ((float)tsize*10+10)/(DrawZoneW/(DimXmax-DimXmin)*StepX))  ;
+	float k;
+	if ( p!=0) k= ((float) ((int)(val/StepX))/ (float)p) ; else k=1.5;
+	//sprintf(s,"val=%.2f, p=%d, k=%f\n",val,p,k);
+	//PrintCmd(s);
+	if (k == (float)(int)k)  DrawText(hDC, textdsp, -1, &prc, DT_SINGLELINE |DT_VCENTER);
+	}else  DrawText(hDC, textdsp, -1, &prc, DT_SINGLELINE |DT_VCENTER);
+	}
 }
 	
 void Line(float x1, float y1, float x2, float y2,float color){
 	COLORREF	colpen  ;
-	HPEN	hpen;
-	if (lastcolor != color ){
-	colpen   = 0x000000;
-	hpen	= CreatePen(PS_SOLID,1,colpen);
-	SelectObject(hDC,hpen);
-	if (color == 1)SelectionStylo(0x0A0AFF);//red
-	if (color == 2)SelectionStylo(0x0AFF0A);//green
-	if (color == 3)SelectionStylo(0xFF0A0A);//blue
-	if (color == 4)SelectionStylo(0x0A0AFF);//yellow
-	if (color == 5)SelectionStylo(0xFF0FFF);//
-	if (color == 6)SelectionStylo(0x0FFFFF);//
-	if (color >6) SelectionStylo(0x0111111*(color-6));
-	if (color>22) SelectionStylo(0x0001111*(color-22));
-	if (color>38) SelectionStylo(0x0111100*(color-38));
-	if (color>54) SelectionStylo(0x0110011*(color-54));
-	if (color>70) SelectionStylo(0x000000);
-	lastcolor = color;
-	}
-	
+	HPEN	hpen,hpenOld;
+
 	//resizing according to gfxdim values
 	if (x1<DimXmin ) {goto out;}
 	if (x1 >DimXmax ){goto out;}
@@ -3590,6 +3743,28 @@ void Line(float x1, float y1, float x2, float y2,float color){
 	if (x2 >DimXmax ){goto out;}
 	if (y2<DimYmin ) {goto out;}
 	if (y2 >DimYmax) {goto out;} // no drawing 
+
+	//	if (lastcolor != color ){
+	colpen   = 0x000000;
+	lastcolor = color;
+	StartHandleColor:
+	if (color == 1)colpen=(0x0A0AFF);//red
+	if (color == 2)colpen=(0x0AFF0A);//green
+	if (color == 3)colpen=(0xFF0A0A);//blue
+	if (color == 4)colpen=(0x0A0AFF);//yellow
+	if (color == 5)colpen=(0xFF0FFF);//
+	if (color == 6)colpen=(0x0FFFFF);//
+	if (color>6) colpen=(0x0111111*(color-6));
+	if (color>22) colpen=(0x0001111*(color-22));
+	if (color>38) colpen=(0x0111100*(color-38));
+	if (color>54) colpen=(0x0110011*(color-54));
+	if (color>70) colpen=(0x0000011*(color-70));
+	if (color>86) colpen=(0x0001100*(color-86));
+	if (color>92) colpen=(0x0110000*(color-92));
+	if (color>108) {color=color-108; goto StartHandleColor;}
+//	}
+	hpen	= CreatePen(PS_SOLID,1,colpen);
+	hpenOld=SelectObject(hDC,hpen);
     
 	x1=(x1-DimXmin)/(DimXmax-DimXmin)*160;
 	y1=(y1-DimYmin)/(DimYmax-DimYmin)*160;
@@ -3600,8 +3775,10 @@ void Line(float x1, float y1, float x2, float y2,float color){
 									-y1*DrawZoneH/160+DrawZoneY+DrawZoneH,
 										x2*DrawZoneW/160+DrawZoneX,
 										-y2*DrawZoneH/160+DrawZoneY+DrawZoneH);
-	
 
+	SelectObject(hDC,hpenOld);	//Pour pas de bugs on delete l'objet
+	DeleteObject(hpen);
+	
 	out:
 		return;
 	}

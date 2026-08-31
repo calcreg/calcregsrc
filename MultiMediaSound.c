@@ -702,7 +702,114 @@ BOOL LoadMFile(Matrix* MAccu, int NumM,char *pszFileName)
 				if(ReadFile(hFile, pszFileText, dwFileSize, &dwRead, NULL))
 				{
 					pszFileText[dwFileSize] = 0; // Add null terminator
+					
+					//Here we test if it is an ascii matrix
+					//Format of an ascii matrix
+					//Remark: %id means ignore the integer data, %is ignore the string data
+					if (strstr(pszFileText,"MATRIX ASCII")==pszFileText) {
+						PrintCmd("ASCII MATRIX recognised\n");
+						LPSTR mtx_format=strstr(pszFileText,"FORMAT"); //on pointe le format derrière "FORMAT"
+						if (mtx_format==0) {
+							PrintCmd("Error 'FORMAT' chunk not found\n");
+							CloseHandle(hFile);
+							return FALSE; //error
+						}
+						if (strstr(pszFileText,"DATA:")==0) {
+							PrintCmd("Error 'DATA:' chunk not found\n");
+							CloseHandle(hFile);
+							return FALSE; //error
+						}
+						//count the lines and the columns
+				char* dataptr=strstr(pszFileText,"DATA:");
+				char* fileptr=dataptr+7; //le return fait 2 caractères
+				char *count_fmt=mtx_format+6;
+				int ascii_mtx_nlines=0;
+				int ascii_mtx_pcolumns=0;
+				int ignores=0;
+				char *p;
+				unsigned char retn[]={0x0d,0x0a,0};
+				int i=0;char s[100]; 
+				char text[100];
+				char fmtext[10];
+				char nbrtext[10];
+						//Il faut déplacer le pointeur en meme temps que de chercher fileptr=strstr(fileptr,retn)+1;
+//						while (strstr(fileptr,retn)!=0){fileptr=strstr(fileptr,retn)+2;ascii_mtx_nlines++;}
+						while ((p=strstr(fileptr,retn))!=0){if(*fileptr=='/'||(*fileptr==0x0d&&*(fileptr+1)==0x0a)){PrintCmd("-1 com\n");fileptr=p+2;}else{fileptr=p+2;ascii_mtx_nlines++;}}
+						while (strstr(count_fmt,"%")!=0&& count_fmt<dataptr){count_fmt=strstr(count_fmt,"%")+1;	if(count_fmt[0]!='i') ascii_mtx_pcolumns++;
+																									else ignores++;}
+						int *format=(int*)malloc((ascii_mtx_pcolumns+ignores)*sizeof(int)); // 0=ignore,1=ok
+						count_fmt=mtx_format+6;
+						while (strstr(count_fmt,"%")!=0&& count_fmt<dataptr){count_fmt=strstr(count_fmt,"%")+1;	
+																			if(count_fmt[0]=='i') format[i]=0;
+																			else {format[i]=(int)(count_fmt-1-mtx_format);
+																			//sprintf(s,"def format[%d]=%d\n",i,format[i]);
+																			//PrintCmd(s);
+																			}
+																			i++;}
+						
+					//On met des zeros à la place des espaces pour utiliser facilement le scanf en pointant sur %
+					count_fmt=mtx_format+6;
+					while (count_fmt<dataptr && (p=strstr(count_fmt,"%"))!=0){*(p-1)='X';count_fmt++;}
+			//sprintf(text,"M%d(%d,%d)\n%d ignores\n",NumM,ascii_mtx_nlines,ascii_mtx_pcolumns,ignores);
+			//PrintCmd(text);
 
+			int Mn=ascii_mtx_nlines;
+			int Mp=ascii_mtx_pcolumns;
+			int datasize=Mn*Mp;
+			char * dataend=pszFileText+dwFileSize;
+			//matrix handling now
+			if (MAccu[NumM].ptr !=0) free(MAccu[NumM].ptr);
+			MAccu[NumM].ptr = (float*)malloc(datasize*sizeof(float) ); //datasize/2 because int short and not char
+			if (MAccu[NumM].ptr == 0) {PrintCmd("Couldn't allocate memory for loading Matrix file.\n");	free(format);CloseHandle(hFile);return FALSE;}
+			MAccu[NumM].n=Mn;MAccu[NumM].p=Mp;
+			//filling the matrix
+			char *myptr= dataptr+7; //points at start of data (Le return contient deux octets)
+			int mtxptr=0;//index  in the matrix
+			int i_fmt;
+			float nbr;
+			while(myptr<dataend){
+				char*RtnPos=strstr(myptr,retn); //localiser le return à la fin de la ligne
+				//sprintf(s,"[%s]\n",myptr);
+				//PrintCmd(s);
+				//if (*myptr=='/'){myptr=RtnPos+1;goto LinefmtDone;}
+				if (*myptr=='/'){PrintCmd("comment dectected \n");myptr=RtnPos+1;goto LinefmtDone;}
+				if (RtnPos==0){goto asciiMtxFillDone;} //no more returns in the ascii file
+				i_fmt=0;
+				while (myptr<RtnPos && i_fmt <ascii_mtx_pcolumns+ignores){
+					while (*myptr==' ' || *myptr=='\t')myptr++; //on cherche le motif (nbr ou string) sur une ligne
+					if (format[i_fmt]==0){i_fmt++;while (*myptr!=' ' && *myptr!='\t'&&myptr<RtnPos)myptr++;//PrintCmd("fmt=0\n");
+					}
+					else {
+						if (mtxptr>=Mn*Mp){PrintCmd("matrix overflow\nsoftware problem\n");CloseHandle(hFile);return TRUE;}
+				if (i_fmt>=ascii_mtx_pcolumns+ignores)PrintCmd("overflow i_fmt\n");
+				//if (format[i_fmt]>100) {PrintCmd("absurde value of format!\nOuting...\n"); goto asciiMtxFillDone;}
+				if (i_fmt>=ascii_mtx_pcolumns+ignores){PrintCmd("overflow i_fmt\nOut line\n");goto LinefmtDone;}
+					p=mtx_format+format[i_fmt];
+					for (i=0;i<5;i++) {if (p[i]=='X')goto fmload_done;else fmtext[i]=p[i];}
+				fmload_done:
+					fmtext[i]=0;
+					
+					//PrintCmd("format=");
+					//PrintCmd(fmtext);
+					//PrintCmd("\n");
+					i=0;
+					while (*myptr!=' ' && *myptr!='\t'&&myptr<RtnPos&& i<10){nbrtext[i++]=*myptr;myptr++;}
+					nbrtext[i]=0;
+								//float nbr=0; sscanf(nbrtext,fmtext,&nbr);MAccu[NumM].ptr[mtxptr]=nbr;
+				nbr=0; sscanf(nbrtext,"%f",&nbr);MAccu[NumM].ptr[mtxptr]=nbr;
+				//sprintf(s,"nbrtext= [%s], nbr = %d\n",nbrtext,(int)nbr);PrintCmd(s);
+								mtxptr++;i_fmt++;while (*myptr!=' ' && *myptr!='\t'&&myptr<RtnPos)myptr++;}
+					}
+					LinefmtDone:
+					myptr++;
+					}
+				asciiMtxFillDone:
+					free(format);
+					CloseHandle(hFile);
+					GlobalFree(pszFileText);
+					return TRUE; //success
+						}
+					//Here the matrix meant to be a  "matrix" of binary data with mtxchunk structure
 					mtxChunk *chnk;
 					chnk=pszFileText;
 					int Mn=chnk[0].n;

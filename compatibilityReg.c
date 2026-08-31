@@ -92,7 +92,7 @@ void WinEraseRectangleReg(int DX,int DY,int DW,int DH){
 				rP.bottom = DY+DH;
 		FillRect(hDC,&rP,CreateSolidBrush(0xFFFFFF));
 	}
-	void SelectionStylo(COLORREF colpen){
+void SelectionStylo(COLORREF colpen){ //attention c'est une erreur de faire comme ça car on ne peut pas deleteObject sur hpen et récupérer hpenOld
 				HPEN hpen	= CreatePen(PS_SOLID,1,colpen);
 				SelectObject(hDC,hpen);
 	}
