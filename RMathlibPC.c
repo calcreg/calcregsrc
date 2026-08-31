@@ -87,6 +87,7 @@ void LoadProg();
 int CompareVarNames(char* txt, int i1, int i2);
 void RemoveComments(char *txt);
 int PreProcesser(char *);
+int CountLoopsForWhile(char *txt);
 
 void Rprintf(float x);//write and enter
 void REPrintf(float x);//write nbr but don't enter
@@ -2872,6 +2873,54 @@ int PreProcesser(char *mnemotext){
 	if (strstr(mnemotext,"//#NOCOMPLEXE")!=0) PreproSignal=2;
 	
 	return PreproSignal;
+}
+
+int CountLoopsForWhile(char *prog){
+//this counts number of for or while, and counts next, should be equal.
+//The further trials where to locate exactely the maximum needed size for the LoopStack
+	int nbrloops,nlp,nbrnext;
+	char *p,*p1,*p2,*q,*prognext;
+	q=prog;prognext=prog;
+	nlp=0;nbrloops=0;nbrnext=0;
+LoopCLFW:
+	p1=strstr(prog,"for");
+	p2=strstr(prog,"while");
+	if (p1!=0 || p2 !=0){nbrloops++;
+		if (p1==0)p=p2;
+		if (p2==0)p=p1;
+		if (p1!=0 &&p2!=0 && p1<p2)p=p1;
+		if (p1!=0 &&p2!=0 && p1>p2)p=p2;
+	}else goto LoopCLFW2; //return nbrloops;
+	prog=p+1;
+	goto LoopCLFW;
+LoopCLFW2:
+//return nbrloops;
+	p1=strstr(prognext,"next");
+	if (p1!=0){nbrnext++;
+	}else {if(nbrloops!=nbrnext)return -1;else return nbrloops;}
+	prognext=p1+1;
+	goto LoopCLFW2;
+/*
+	p1=strstr(prog,"for");
+	p2=strstr(prog,"while");
+	if (p1!=0 || p2 !=0){
+//		if (p1<p2)p=p1;else p=p2; //on prend le plus proche des deux
+		if (p1==0)p=p2;
+		if (p2==0)p=p1;
+		if (p1!=0 &&p2!=0 && p1<p2)p=p1;
+		if (p1!=0 &&p2!=0 && p1>p2)p=p2;
+		q=strstr(q,"next");
+		if(q==0) return -1; //génération d'erreur
+		if (p<q) {nlp++;prog=p+1;if(nlp>nbrloops)nbrloops=nlp;PrintCmd("+");}
+			else {nlp--;prog=p+1; q=q+1;q=strstr(q,"next");PrintCmd("-");}
+		}else{PrintCmd("for fini\n");
+				while ( (q=strstr(q,"next")!=0)){nlp--;q=q+1;}
+				if (nlp!=0)PrintCmd("Error 'next' missing\n");
+				return nbrloops;}
+	//if(nlp<-1 || nlp>3)return -1;
+	if(nlp<0) return -1; //génération d'erreur
+	goto LoopCLFW;
+	return nbrloops;*/
 }
 
 
