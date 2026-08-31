@@ -17,6 +17,7 @@ typedef struct Matrix{
 	int n;	//n line
 	int p;	//p column
 	float * ptr; //pointer on the matrix
+	float * Cptr; //pointer on the complexe part
 	}Matrix;
 
 int PlaySoundMatrix(Matrix *, int NumM, float SamplesPerSecond,int mode, int NumM2);

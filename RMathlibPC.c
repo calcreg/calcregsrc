@@ -30,6 +30,7 @@ typedef struct Matrix{
 	int n;	//n line
 	int p;	//p column
 	float * ptr; //pointer on the matrix
+	float * Cptr; //pointer on the complexe part
 	}Matrix;
 
 
@@ -126,6 +127,7 @@ static float Rabs(float x);
 
 void LowPerformance();
 
+void DispGradVal(float val,float X,float Y);
 void TracerAxis(int centerx,int centery,int width, int height);//color 0black 1red 2green 3blue
 void Tracer3DAxis();
 float Dx(float x, float y, float z);
@@ -148,6 +150,12 @@ int MatrixSubAddition(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSi
 int MatrixMultiplication(Matrix *MAccu,floactet *CodeListLine,int i, int imaxLine);
 int MatrixDivision(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine);
 int MathFunctionMatrices (Matrix *MAccu, floactet *CodeListLine,int i);
+
+int MatrixPowerComplexe(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine);
+int MatrixSubAdditionComplexe(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSignP,int imaxLine);
+int MatrixMultiplicationComplexe(Matrix *MAccu,floactet *CodeListLine,int i, int imaxLine);
+int MatrixDivisionComplexe(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine);
+int MathFunctionMatricesComplexe(Matrix *MAccu, floactet *CodeListLine,int i);
 
 
 
@@ -963,10 +971,15 @@ int MatrixPower(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine){
 	PrintCmd("Function Power of matrix is not yet implemented\n");
 	return Error;
 }
+int MatrixPowerComplexe(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine){
+	int Error=1;
+	PrintCmd("Function Power of matrix is not yet implemented\n");
+	return Error;
+}
 int MatrixSubAddition(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSignP,int imaxLine){
 	//Sum or substract 2 following matrix separated by + - sign.
 	//We end up by saving the resulting matrix in the CodeListLine
-	//Remember to reactivate the changing VarNames to Accu because
+	//It is Remembered of reactivating the changing VarNames to Accu because
 	//of the problem M1= is interpreted as an accumulateur definition
 	//and correct that. simply by checking if it is M n° 0<n°<9
 	int Error=0,m,j,NumM,l,ResM;
@@ -1033,6 +1046,106 @@ int MatrixSubAddition(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSi
 				if (CodeListLine[i+1].code==3) {//ResM-numM
 					NumM=CodeListLine[i+2].value;
 					for (j=0;j<MAccu[ResM].n*MAccu[ResM].p;j++)MAccu[ResM].ptr[j]=MAccu[ResM].ptr[j]-MAccu[NumM].ptr[j];
+					}
+			i=i+2;
+			}
+		}//end while
+		
+		//Put Final calculation results
+		FinalStep:
+			CodeListLine[iptrEqualSignP].code=15; //Put ResM result after the equal sign
+			CodeListLine[iptrEqualSignP].value=ResM;
+			//Apparently it is not needed to finish the line by 0xFF
+			//as the first data will be considered for the result
+	return Error;
+}
+int MatrixSubAdditionComplexe(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSignP,int imaxLine){
+	//Sum or substract 2 following matrix separated by + - sign.
+	//We end up by saving the resulting matrix in the CodeListLine
+	//It is Remembered of reactivating the changing VarNames to Accu because
+	//of the problem M1= is interpreted as an accumulateur definition
+	//and correct that. simply by checking if it is M n° 0<n°<9
+	int Error=0,m,j,NumM,l,ResM;
+	float val=0,val_cmplx;
+	extern int NbrMaxMatrix;
+	//We create the resulting matrix anyway
+	//As result demanded is a matrix
+		for (m=NbrMaxMatrix/2; m<NbrMaxMatrix; m++)if (MAccu[m].ptr == 0) goto FoundFreeMatrix;
+		PrintCmd("Not enough available matrices for solving!\n");
+		return 9; //Matrix error
+		FoundFreeMatrix:
+		ResM=m;//this will receive the final matrix calculation
+		//init ResM : We search in the CodeListLine One matrix to get the size
+		//Matrices should appear only in addition as the multiplication 
+		//and division should be already done 
+		for (j=i;j<imaxLine;j++){
+			if (CodeListLine[j].code == 0xFF) {return 0;}// No matrix because it could have been M[1,1] =>scalar PrintCmd("no matrix???\n");return 9;}
+			if (CodeListLine[j].code == 1&&CodeListLine[j+1].code == 0xFF) {return 0;}// This is used to let the function mtxn(Mn°) work properly as they return a scalar and not a matrix 
+			if (CodeListLine[j].code == 15) {
+				MAccu[ResM].n=MAccu[(int)CodeListLine[j].value].n;
+				MAccu[ResM].p=MAccu[(int)CodeListLine[j].value].p;
+				MAccu[ResM].ptr = (float *) malloc (MAccu[ResM].n*MAccu[ResM].p*sizeof(float) );
+				if (MAccu[ResM].ptr == 0 ) {PrintCmd ("Error couldn't allocate memory for temporary matrix\n"); return 9;}
+				MAccu[ResM].Cptr = (float *) malloc (MAccu[ResM].n*MAccu[ResM].p*sizeof(float) );//the complexe part
+				if (MAccu[ResM].Cptr == 0 ) {PrintCmd ("Error couldn't allocate memory for temporary matrix\n"); return 9;}
+				goto ResMtxReady;
+				}
+		}
+		ResMtxReady: //at this point ResM exists and contains the right size
+		
+		if (CodeListLine[i].code == 1){//load first data as plain matrix
+			val = CodeListLine[i].value;
+			val_cmplx = CodeListLine[i].cmplx;
+			for (j=0;j<MAccu[ResM].n*MAccu[ResM].p;j++){MAccu[ResM].ptr[j]=val;MAccu[ResM].Cptr[j]=val_cmplx;}
+			}
+		if (CodeListLine[i].code == 15){
+			NumM = CodeListLine[i].value;
+			//copy NumM to ResM
+			for (j=0;j<MAccu[ResM].n*MAccu[ResM].p;j++){MAccu[ResM].ptr[j]=MAccu[NumM].ptr[j]; MAccu[ResM].Cptr[j]=MAccu[NumM].Cptr[j];}
+		}
+		//at this point ResM contains the first data
+		if (CodeListLine[i+1].code==0xFF) {
+			//This case is important because we get the scalar from upper 
+			//treatment into matrix ResM 
+			goto FinalStep; //no more calculation is necessary , returning no Error
+		}
+		while(i<imaxLine){
+			if (CodeListLine[i+1].code == 0xFF) {goto FinalStep;}//finished
+
+			if (CodeListLine[i+2].code==1) {
+				if (CodeListLine[i+1].code==2) {//ResM+scalar
+					val=CodeListLine[i+2].value;
+					val_cmplx=CodeListLine[i+2].cmplx;
+					for (j=0;j<MAccu[ResM].n*MAccu[ResM].p;j++){
+						MAccu[ResM].ptr[j]=MAccu[ResM].ptr[j]+val; 
+						MAccu[ResM].Cptr[j]=MAccu[ResM].Cptr[j]+val_cmplx;
+						}
+					}
+				if (CodeListLine[i+1].code==3) {//ResM-scalar
+					val=CodeListLine[i+2].value;
+					val_cmplx=CodeListLine[i+2].cmplx;
+					for (j=0;j<MAccu[ResM].n*MAccu[ResM].p;j++){
+						MAccu[ResM].ptr[j]=MAccu[ResM].ptr[j]-val; 
+						MAccu[ResM].Cptr[j]=MAccu[ResM].Cptr[j]-val_cmplx;
+						}	
+					}
+			i=i+2;
+			}
+
+			if (CodeListLine[i+2].code == 15){
+				if (CodeListLine[i+1].code==2) {//ResM+numM
+					NumM=CodeListLine[i+2].value;
+					for (j=0;j<MAccu[ResM].n*MAccu[ResM].p;j++){
+						MAccu[ResM].ptr[j]=MAccu[ResM].ptr[j]+MAccu[NumM].ptr[j];
+						MAccu[ResM].Cptr[j]=MAccu[ResM].Cptr[j]+MAccu[NumM].Cptr[j];
+					}
+					}
+				if (CodeListLine[i+1].code==3) {//ResM-numM
+					NumM=CodeListLine[i+2].value;
+					for (j=0;j<MAccu[ResM].n*MAccu[ResM].p;j++){
+						MAccu[ResM].ptr[j]=MAccu[ResM].ptr[j]-MAccu[NumM].ptr[j];
+						MAccu[ResM].Cptr[j]=MAccu[ResM].Cptr[j]-MAccu[NumM].Cptr[j];
+						}
 					}
 			i=i+2;
 			}
@@ -1167,9 +1280,320 @@ int MatrixMultiplication(Matrix *MAccu,floactet *CodeListLine,int i, int imaxLin
 	//it shouldn't arrive here so if it is the case, generate error
 	return 9;
 }
+
+int MatrixMultiplicationComplexe(Matrix *MAccu,floactet *CodeListLine,int i, int imaxLine){
+	extern int NbrMaxMatrix; 
+	int m,k,NewM,NumM,j,l;
+	float a1,b1,a2,b2,scalar,scalar_cmplx;
+	//3 cas possibles  (there is at least one matrix in n°1 or n°2
+	//  CASE1      n°1  is scalar       |     n°2 is matrix
+	//  CASE2                 matrix      |               scalar
+	//  CASE3                 matrix      |               matrix
+	if (CodeListLine[i].code == 1 && CodeListLine[i+2].code == 15 ||
+			CodeListLine[i].code == 15 && CodeListLine[i+2].code == 1){
+		//CASE1 or CASE2
+		if (CodeListLine[i].code == 1 && CodeListLine[i+2].code == 15){
+			NumM=(int)CodeListLine[i+2].value; //mtx n°
+			scalar = CodeListLine[i].value; scalar_cmplx = CodeListLine[i].cmplx; }
+		if (CodeListLine[i].code == 15 && CodeListLine[i+2].code == 1){
+			NumM=(int)CodeListLine[i].value; //mtx n°
+			scalar = CodeListLine[i+2].value; scalar_cmplx = CodeListLine[i+2].cmplx;}
+			
+			if (MAccu[NumM].ptr == 0 ) {PrintCmd("Scalar*Matrix :\nMtx isn't defined!\n"); return 9;}
+			if (MAccu[NumM].Cptr == 0 ) {PrintCmd("Scalar*Matrix :\nMtx.cmplx isn't defined!\n");return 9;}
+
+			if (NumM < NbrMaxMatrix/2) {//Get new temp mtx or same NumM
+			//create a new matrix, because NumM is defined by user until NbrMaxMatrix/2
+			for (m=NbrMaxMatrix/2; m<NbrMaxMatrix; m++)if (MAccu[m].ptr == 0) goto FoundFreeMatrix;
+			PrintCmd("Not enough available matrices for solving!\n");
+			return 9; //Matrix error
+			FoundFreeMatrix:
+			NewM=m;
+			MAccu[NewM].ptr = (float *) malloc (MAccu[NumM].n*MAccu[NumM].p*sizeof(float) );
+			if (MAccu[NewM].ptr == 0 ) {PrintCmd ("Error couldn't allocate memory for temporary matrix\n"); return 9;}
+			MAccu[NewM].Cptr = (float *) malloc (MAccu[NumM].n*MAccu[NumM].p*sizeof(float) );
+			if (MAccu[NewM].Cptr == 0 ) {PrintCmd ("Error couldn't allocate memory for temporary matrix\n"); return 9;}
+			MAccu[NewM].n=MAccu[NumM].n;
+			MAccu[NewM].p=MAccu[NumM].p;
+		}else{NewM=NumM;}//We choose same mtx because it is not a user defined but due to calculation
+		//Here is the multiplication:
+		for (j=0; j<MAccu[NumM].n*MAccu[NumM].p; j++){
+			//cmplx of : MAccu[NewM].ptr[j] = MAccu[NumM].ptr[j] * scalar;
+			a1=MAccu[NumM].ptr[j]; 
+			b1=MAccu[NumM].Cptr[j];
+			MAccu[NewM].ptr[j] = a1*scalar-b1*scalar_cmplx;
+			MAccu[NewM].Cptr[j] = scalar*b1+a1*scalar_cmplx;
+			//Rprintf(MAccu[NewM].Cptr[j]);
+			}
+			//done result is in NewM
+		//Now we put the matrix result in the CodeListLine
+		CodeListLine[i].code=15; //mtx
+		CodeListLine[i].value=NewM; // n°mtx
+		i++;
+		/*sprintf(s,"M%d.nxp=%dx%d\n",NewM,MAccu[NewM].n,MAccu[NewM].p);
+		PrintCmd (s);*/
+		while (i+2<=imaxLine){CodeListLine[i]=CodeListLine[i+2];i++;}
+		return 0; //no errors
+	}
+	//CASE3
+	if (CodeListLine[i].code == 15 && CodeListLine[i+2].code == 15){
+		int NumM1 = (int)CodeListLine[i].value;
+		int NumM2 = (int)CodeListLine[i+2].value;
+
+		if (MAccu[NumM1].ptr == 0 ||MAccu[NumM2].ptr == 0 ) {PrintCmd("Matrix Product:\nOne Mtx isn't defined!\n"); return 9;}
+		if (MAccu[NumM1].Cptr == 0||MAccu[NumM2].Cptr == 0 ) {PrintCmd("Matrix Product:\nOne Mtx.cmplx isn't defined!\n");return 9;}
+		//we need a new matrix
+		//create a new matrix
+		for (m=NbrMaxMatrix/2; m<NbrMaxMatrix; m++)if (MAccu[m].ptr == 0) goto FoundFreeMatrix2;
+			PrintCmd("Not enough available matrices for solving!\n");
+			return 9; //Matrix error
+		FoundFreeMatrix2:
+			NewM=m;
+
+			if (MAccu[NumM1].p == MAccu[NumM2].n) {//conventional M1xM2
+			//M1*M2 just start below
+			MAccu[NewM].ptr = (float *) malloc (MAccu[NumM1].n*MAccu[NumM2].p*sizeof(float) );
+			if (MAccu[NewM].ptr == 0 ) {PrintCmd ("Error couldn't allocate memory for temporary matrix\n"); return 9;}
+			MAccu[NewM].Cptr = (float *) malloc (MAccu[NumM1].n*MAccu[NumM2].p*sizeof(float) );
+			if (MAccu[NewM].Cptr == 0 ) {PrintCmd ("Error couldn't allocate memory for temporary matrix\n"); return 9;}
+			MAccu[NewM].n=MAccu[NumM1].n;
+			MAccu[NewM].p=MAccu[NumM2].p;
+			int M1n=MAccu[NumM1].n;
+			int M1p=MAccu[NumM1].p;
+			int M2n=MAccu[NumM2].n;
+			int M2p=MAccu[NumM2].p;
+			float *mat1=MAccu[NumM1].ptr;
+			float *mat2=MAccu[NumM2].ptr;
+			float *Cmat1=MAccu[NumM1].Cptr;
+			float *Cmat2=MAccu[NumM2].Cptr;
+			float Sum=0,Sum_cmplx=0;
+				for (j=0;j<MAccu[NumM1].n;j++){
+					for (k=0;k<MAccu[NumM2].p;k++){
+						Sum=0;
+						//for (l=0;l<MAccu[NumM1].p;l++)Sum=Sum+MAccu[NumM1].ptr[j*MAccu[NumM1].p+l]*MAccu[NumM2].ptr[l*MAccu[NumM2].p+k];
+						for (l=0;l<MAccu[NumM1].p;l++){
+							a1=mat1[j*M1p+l]; b1=Cmat1[j*M1p+l];
+							a2=mat2[j*M1p+l]; b2=Cmat2[j*M1p+l];
+							Sum=Sum + a1*a2-b1*b2;
+							Sum_cmplx =Sum_cmplx + a2*b1+a1*b2;
+						}
+						MAccu[NewM].ptr[j*MAccu[NewM].p+k]=Sum;
+						MAccu[NewM].Cptr[j*MAccu[NewM].p+k]=Sum_cmplx;
+					}
+				}
+			}else{if (MAccu[NumM1].n == 1 && MAccu[NumM2].n==1 &&
+							MAccu[NumM1].p == MAccu[NumM2].p){
+							//We make a scalar style product M1*M2
+								MAccu[NewM].ptr = (float *) malloc (MAccu[NumM1].n*MAccu[NumM1].p*sizeof(float) );
+								if (MAccu[NewM].ptr == 0 ) {PrintCmd ("Error couldn't allocate memory for temporary matrix\n"); return 9;}
+								MAccu[NewM].Cptr = (float *) malloc (MAccu[NumM1].n*MAccu[NumM1].p*sizeof(float) );
+								if (MAccu[NewM].Cptr == 0 ) {PrintCmd ("Error couldn't allocate memory for temporary matrix\n"); return 9;}
+								MAccu[NewM].n=MAccu[NumM1].n;
+								MAccu[NewM].p=MAccu[NumM1].p;
+
+							for (j=0;j<MAccu[NumM1].n*MAccu[NumM1].p;j++){
+								//MAccu[NewM].ptr[j]=MAccu[NumM1].ptr[j]*MAccu[NumM2].ptr[j];
+								a1=MAccu[NumM1].ptr[j]; b1=MAccu[NumM1].Cptr[j];
+								a2=MAccu[NumM2].ptr[j]; b2=MAccu[NumM2].Cptr[j];
+								MAccu[NewM].ptr[j]=a1*a2-b1*b2;
+								MAccu[NewM].Cptr[j]=a1*b2+b1*a2;							
+							}
+				}else{PrintCmd("Incompatible matrix size Mtx1.p must equal Mtx2.n\nOr all mtx.p=1");
+						return 9;
+						}
+			}
+
+		//done result is in NewM
+		//Now we put the matrix result in the CodeListLine
+		if(MAccu[NewM].n==1 &&MAccu[NewM].p==1){
+		//it is in fact a scalar sizeM =[1,1]... therefore we put a scalar
+		CodeListLine[i].code=1; //mtx
+		CodeListLine[i].value=MAccu[NewM].ptr[0]; // n°mtx
+		CodeListLine[i].cmplx=MAccu[NewM].Cptr[0]; // n°mtx
+		}else{
+		CodeListLine[i].code=15; //mtx
+		CodeListLine[i].value=NewM; // n°mtx
+		}
+		i++;
+		//sprintf(s,"Matrix Size nxp=%dx%d\n",MAccu[NewM].n,MAccu[NewM].p);
+		//PrintCmd (s);	
+		while (i+2<=imaxLine){CodeListLine[i]=CodeListLine[i+2];i++;}
+		return 0; //no errors
+
+	}
+	//it shouldn't arrive here so if it is the case, generate error
+	return 9;
+}
+
 int MatrixDivision(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine){
-	int Error=0;
+	int Error=1;
+	PrintCmd ("Only complexe mtx Division is implemented!\n");
 	return Error;
+}
+
+int MatrixDivisionComplexe(Matrix *MAccu,floactet *CodeListLine,int i, int imaxLine){
+	extern int NbrMaxMatrix; 
+	int m,k,NewM,NumM,j,l,Case;
+	float a1,b1,a2,b2,scalar,scalar_cmplx;
+	//3 cas possibles  (there is at least one matrix in n°1 or n°2
+	//  CASE1      n°1  is scalar       |     n°2 is matrix
+	//  CASE2                 matrix      |               scalar
+	//  CASE3                 matrix      |               matrix
+	if (CodeListLine[i].code == 1 && CodeListLine[i+2].code == 15 ||
+			CodeListLine[i].code == 15 && CodeListLine[i+2].code == 1){
+		//CASE1 or CASE2
+		if (CodeListLine[i].code == 1) Case=1;else Case=2; 
+		if (CodeListLine[i].code == 1 && CodeListLine[i+2].code == 15){
+			NumM=(int)CodeListLine[i+2].value; //mtx n°
+			scalar = CodeListLine[i].value; scalar_cmplx = CodeListLine[i].cmplx; }
+		if (CodeListLine[i].code == 15 && CodeListLine[i+2].code == 1){
+			NumM=(int)CodeListLine[i].value; //mtx n°
+			scalar = CodeListLine[i+2].value; scalar_cmplx = CodeListLine[i+2].cmplx;}
+			
+			if (MAccu[NumM].ptr == 0 ) {PrintCmd("Scalar*Matrix :\nMtx isn't defined!\n"); return 9;}
+			if (MAccu[NumM].Cptr == 0 ) {PrintCmd("Scalar*Matrix :\nMtx.cmplx isn't defined!\n");return 9;}
+
+			if (NumM < NbrMaxMatrix/2) {//Get new temp mtx or same NumM
+			//create a new matrix, because NumM is defined by user until NbrMaxMatrix/2
+			for (m=NbrMaxMatrix/2; m<NbrMaxMatrix; m++)if (MAccu[m].ptr == 0) goto FoundFreeMatrix;
+			PrintCmd("Not enough available matrices for solving!\n");
+			return 9; //Matrix error
+			FoundFreeMatrix:
+			NewM=m;
+			MAccu[NewM].ptr = (float *) malloc (MAccu[NumM].n*MAccu[NumM].p*sizeof(float) );
+			if (MAccu[NewM].ptr == 0 ) {PrintCmd ("Error couldn't allocate memory for temporary matrix\n"); return 9;}
+			MAccu[NewM].Cptr = (float *) malloc (MAccu[NumM].n*MAccu[NumM].p*sizeof(float) );
+			if (MAccu[NewM].Cptr == 0 ) {PrintCmd ("Error couldn't allocate memory for temporary matrix\n"); return 9;}
+			MAccu[NewM].n=MAccu[NumM].n;
+			MAccu[NewM].p=MAccu[NumM].p;
+		}else{NewM=NumM;}//We choose same mtx because it is not a user defined but due to calculation
+		//Here is the division:
+		if (Case==1){ //scalar/M
+			a1=scalar; 
+			b1=scalar_cmplx;
+		for (j=0; j<MAccu[NumM].n*MAccu[NumM].p; j++){
+			//scalar 1/matrix 2	
+			a2=MAccu[NumM].ptr[j]; 
+			b2=MAccu[NumM].Cptr[j];
+			MAccu[NewM].ptr[j] = (a1*a2+b1*b2)/(a2*a2+b2*b2);
+			MAccu[NewM].Cptr[j] = (a2*b1-a1*b2)/(a2*a2+b2*b2);			
+			//Rprintf(MAccu[NewM].Cptr[j]);
+			}
+			}else{
+			//scalar/M
+			a2=scalar; 
+			b2=scalar_cmplx;
+			for (j=0; j<MAccu[NumM].n*MAccu[NumM].p; j++){
+				//scalar 1/matrix 2	
+				a1=MAccu[NumM].ptr[j]; 
+				b1=MAccu[NumM].Cptr[j];
+				MAccu[NewM].ptr[j] = (a1*a2+b1*b2)/(a2*a2+b2*b2);
+				MAccu[NewM].Cptr[j] = (a2*b1-a1*b2)/(a2*a2+b2*b2);
+				}
+			}
+			//done result is in NewM
+		//Now we put the matrix result in the CodeListLine
+		CodeListLine[i].code=15; //mtx
+		CodeListLine[i].value=NewM; // n°mtx
+		i++;
+		/*sprintf(s,"M%d.nxp=%dx%d\n",NewM,MAccu[NewM].n,MAccu[NewM].p);
+		PrintCmd (s);*/
+		while (i+2<=imaxLine){CodeListLine[i]=CodeListLine[i+2];i++;}
+		return 0; //no errors
+	}
+	//CASE3
+	if (CodeListLine[i].code == 15 && CodeListLine[i+2].code == 15){
+		int NumM1 = (int)CodeListLine[i].value;
+		int NumM2 = (int)CodeListLine[i+2].value;
+
+		if (MAccu[NumM1].ptr == 0 ||MAccu[NumM2].ptr == 0 ) {PrintCmd("Matrix Product:\nOne Mtx isn't defined!\n"); return 9;}
+		if (MAccu[NumM1].Cptr == 0||MAccu[NumM2].Cptr == 0 ) {PrintCmd("Matrix Product:\nOne Mtx.cmplx isn't defined!\n");return 9;}
+		//we need a new matrix
+		//create a new matrix
+		for (m=NbrMaxMatrix/2; m<NbrMaxMatrix; m++)if (MAccu[m].ptr == 0) goto FoundFreeMatrix2;
+			PrintCmd("Not enough available matrices for solving!\n");
+			return 9; //Matrix error
+		FoundFreeMatrix2:
+			NewM=m;
+
+			if (MAccu[NumM1].p == MAccu[NumM2].n) {//conventional M1xM2
+			//M1/M2 in terms of Maths Matrix product is forbidden
+			//It would mean that M2 is reversible  1/M2=M2^(-1)
+			PrintCmd("M1/M2 as math meaning\nwith reversible matrix M2\n is not yet implemented\n");
+			return 9;//Matrix error
+			/*
+			MAccu[NewM].ptr = (float *) malloc (MAccu[NumM1].n*MAccu[NumM2].p*sizeof(float) );
+			if (MAccu[NewM].ptr == 0 ) {PrintCmd ("Error couldn't allocate memory for temporary matrix\n"); return 9;}
+			MAccu[NewM].Cptr = (float *) malloc (MAccu[NumM1].n*MAccu[NumM2].p*sizeof(float) );
+			if (MAccu[NewM].Cptr == 0 ) {PrintCmd ("Error couldn't allocate memory for temporary matrix\n"); return 9;}
+			MAccu[NewM].n=MAccu[NumM1].n;
+			MAccu[NewM].p=MAccu[NumM2].p;
+			int M1n=MAccu[NumM1].n;
+			int M1p=MAccu[NumM1].p;
+			int M2n=MAccu[NumM2].n;
+			int M2p=MAccu[NumM2].p;
+			float *mat1=MAccu[NumM1].ptr;
+			float *mat2=MAccu[NumM2].ptr;
+			float *Cmat1=MAccu[NumM1].Cptr;
+			float *Cmat2=MAccu[NumM2].Cptr;
+			// -- We should Reverse M2 and multiply Not Done Yet ---
+			float Sum=0,Sum_cmplx=0;
+				for (j=0;j<MAccu[NumM1].n;j++){
+					for (k=0;k<MAccu[NumM2].p;k++){
+						Sum=0;
+						//for (l=0;l<MAccu[NumM1].p;l++)Sum=Sum+MAccu[NumM1].ptr[j*MAccu[NumM1].p+l]*MAccu[NumM2].ptr[l*MAccu[NumM2].p+k];
+						for (l=0;l<MAccu[NumM1].p;l++){
+							a1=mat1[j*M1p+l]; b1=Cmat1[j*M1p+l];
+							a2=mat2[j*M1p+l]; b2=Cmat2[j*M1p+l];
+							Sum=Sum + a1*a2-b1*b2;
+							Sum_cmplx =Sum_cmplx + a2*b1+a1*b2;
+						}
+						MAccu[NewM].ptr[j*MAccu[NewM].p+k]=Sum;
+						MAccu[NewM].Cptr[j*MAccu[NewM].p+k]=Sum_cmplx;
+					}
+				}*/
+			}else{if (MAccu[NumM1].n == 1 && MAccu[NumM2].n==1 &&
+							MAccu[NumM1].p == MAccu[NumM2].p){
+							//We make a scalar style product M1/M2
+								MAccu[NewM].ptr = (float *) malloc (MAccu[NumM1].n*MAccu[NumM1].p*sizeof(float) );
+								if (MAccu[NewM].ptr == 0 ) {PrintCmd ("Error couldn't allocate memory for temporary matrix\n"); return 9;}
+								MAccu[NewM].Cptr = (float *) malloc (MAccu[NumM1].n*MAccu[NumM1].p*sizeof(float) );
+								if (MAccu[NewM].Cptr == 0 ) {PrintCmd ("Error couldn't allocate memory for temporary matrix\n"); return 9;}
+								MAccu[NewM].n=MAccu[NumM1].n;
+								MAccu[NewM].p=MAccu[NumM1].p;
+
+							for (j=0;j<MAccu[NumM1].n*MAccu[NumM1].p;j++){
+								//MAccu[NewM].ptr[j]=MAccu[NumM1].ptr[j]*MAccu[NumM2].ptr[j];
+								a1=MAccu[NumM1].ptr[j]; b1=MAccu[NumM1].Cptr[j];
+								a2=MAccu[NumM2].ptr[j]; b2=MAccu[NumM2].Cptr[j];
+								MAccu[NewM].ptr[j]=(a1*a2+b1*b2)/(a2*a2+b2*b2);
+								MAccu[NewM].Cptr[j]=(a2*b1-a1*b2)/(a2*a2+b2*b2);
+							}
+				}else{PrintCmd("Incompatible matrix size Mtx1.p must equal Mtx2.n\nOr all mtx.p=1");
+						return 9;
+						}
+			}
+
+		//done result is in NewM
+		//Now we put the matrix result in the CodeListLine
+		if(MAccu[NewM].n==1 &&MAccu[NewM].p==1){
+		//it is in fact a scalar sizeM =[1,1]... therefore we put a scalar
+		CodeListLine[i].code=1; //mtx
+		CodeListLine[i].value=MAccu[NewM].ptr[0]; // n°mtx
+		CodeListLine[i].cmplx=MAccu[NewM].Cptr[0]; // n°mtx
+		}else{
+		CodeListLine[i].code=15; //mtx
+		CodeListLine[i].value=NewM; // n°mtx
+		}
+		i++;
+		//sprintf(s,"Matrix Size nxp=%dx%d\n",MAccu[NewM].n,MAccu[NewM].p);
+		//PrintCmd (s);	
+		while (i+2<=imaxLine){CodeListLine[i]=CodeListLine[i+2];i++;}
+		return 0; //no errors
+
+	}
+	//it shouldn't arrive here so if it is the case, generate error
+	return 9;
 }
 
 	
@@ -1306,7 +1730,7 @@ int MathFunctionMatrices (Matrix *MAccu, floactet *CodeListLine,int i){
 				PrintCmd("key(matrix) What for!??\n");
 				MathError=8;
 			break;
-			case 27:	//trp  transposition of the matrix
+			case 27:	//trp  transposition of the matrix |||A revoir !!!!||||
 				Mn=MAccu[NumM].n;
 				Mp=MAccu[NumM].p;
 				MAccu[NewM].p=Mn; //inversion for transposition
@@ -1330,6 +1754,242 @@ int MathFunctionMatrices (Matrix *MAccu, floactet *CodeListLine,int i){
 					}
 			break;
 
+
+			}
+	KeepOn:
+		if (MathError !=0 ) {sprintf(s,"Math Error = %d\n",MathError);PrintCmd(s);return 3;}
+		if (MathError == 0) {//Place Matrix Result
+				CodeListLine[i].code=15; 
+				CodeListLine[i].value=NewM;
+				}
+		k=i+1;
+		while (CodeListLine[k].code !=0xFF && CodeListLine[k].code !=0) {
+			CodeListLine[k]=CodeListLine[k+1];
+			k++;
+			}
+OutForPower:
+	return;
+	
+	PlaceVal:
+		if (MathError !=0 ) {sprintf(s,"Math Error = %d\n",MathError);PrintCmd(s);return 3;}
+		if (MathError == 0) {//Place scalar Result
+				CodeListLine[i].code=1; 
+				CodeListLine[i].value=val;
+				}
+		k=i+1;
+		while (CodeListLine[k].code !=0xFF && CodeListLine[k].code !=0) {
+			CodeListLine[k]=CodeListLine[k+1];
+			k++;
+			}
+	return;
+		
+}
+
+
+int MathFunctionMatricesComplexe(Matrix *MAccu, floactet *CodeListLine,int i){
+		extern int NbrMaxMatrix; 
+		int m,NewM,Mn,Mp;
+		int j,k;
+		float val,val_cmplx,a,b;
+		PrintCmd("MathMatrixFunctions in complexe only for Real part\n");
+		//we are in the case function(matrix):   [13][CodeVal],[15][n°]
+		//NumM > NbrMaxMatrix/2 for the temporary matrices for calculation
+		//These are free at the end of the line calculation.
+		//If NumM >NbrMaxMatrix/2 We don't need to create a new matrix
+		//If NumM <NbrMaxMatrix/2 We need to create a new matrix
+		int NumM = (int) CodeListLine[i+1].value;
+		if (NumM < NbrMaxMatrix/2) {
+			//create a new matrix
+			for (m=NbrMaxMatrix/2; m<NbrMaxMatrix; m++)if (MAccu[m].ptr == 0) goto FoundFreeMatrix;
+			PrintCmd("Not enough available matrices for solving!\n");
+			return 9; //Matrix error
+			FoundFreeMatrix:
+			NewM=m;
+			MAccu[NewM].ptr = (float *) malloc (MAccu[NumM].n*MAccu[NumM].p*sizeof(float) );
+			if (MAccu[NewM].ptr == 0 ) {PrintCmd ("Error couldn't allocate memory for temporary matrix\n"); return 9;}
+			MAccu[NewM].Cptr = (float *) malloc (MAccu[NumM].n*MAccu[NumM].p*sizeof(float) );
+			if (MAccu[NewM].Cptr == 0 ) {PrintCmd ("Error couldn't allocate memory for temporary matrix.cmplx\n"); return 9;}
+			MAccu[NewM].n=MAccu[NumM].n;
+			MAccu[NewM].p=MAccu[NumM].p;
+		}else{NewM=NumM;} //we use temporary matrix as target and source
+		//In the following we use NewM and NumM considering the possibility 
+		// that numM could be temporary or program defined 
+		//if NumM is temporary then NewM = NumM
+		//if NumM is defined in the MnemoProgram then NewM != NumM
+		
+		switch ((int)CodeListLine[i].value){ 
+			case 1:	//exp
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++)
+					MAccu[NewM].ptr[j] = RMath_exp(MAccu[NumM].ptr[j]);
+			break; 
+			case 2:	//ln
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++){
+					MAccu[NewM].ptr[j] = RMath_ln(MAccu[NumM].ptr[j]);
+					MAccu[NewM].Cptr[j] = 0;
+					}
+			break;
+			case 3:	//sqrt
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++){
+					//MAccu[NewM].ptr[j] = RMath_sqrt(MAccu[NumM].ptr[j]);
+					MAccu[NewM].ptr[j] = (float)sqrt((double)MAccu[NumM].ptr[j]); //We use the double floating point math library
+					MAccu[NewM].Cptr[j] = 0;
+					}
+					break;
+
+			//if (CodeVal==4 ) {AlreadyTaken for the function f(x);}	//function f(x)
+
+			case 5:	//sin
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++){
+					MAccu[NewM].ptr[j] = RMath_sin(MAccu[NumM].ptr[j]);
+					MAccu[NewM].Cptr[j] = 0;
+					}
+			break;
+			case 6:	//cos
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++){
+					//MAccu[NewM].ptr[j] = RMath_cos(MAccu[NumM].ptr[j]);
+					MAccu[NewM].ptr[j] = RMath_cos(MAccu[NumM].ptr[j]);
+					MAccu[NewM].Cptr[j] = 0;
+					}
+			break;
+			case 7:	//tan
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++){
+					MAccu[NewM].ptr[j] = RMath_tan(MAccu[NumM].ptr[j]);
+					MAccu[NewM].Cptr[j] = 0;
+					}
+			break;
+			case 8:	//fact
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++){
+					MAccu[NewM].ptr[j] = fact((int)MAccu[NumM].ptr[j]);
+					MAccu[NewM].Cptr[j] = 0;
+					}
+			break;
+			case 9:	//Power
+				goto OutForPower;
+			break;
+			case 10:	//ch
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++){
+					MAccu[NewM].ptr[j] = RMath_ch(MAccu[NumM].ptr[j]);
+					MAccu[NewM].Cptr[j] = 0;					
+					}
+			break;
+			case 11:	//sh
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++){
+					MAccu[NewM].ptr[j] = RMath_sh(MAccu[NumM].ptr[j]);
+					MAccu[NewM].Cptr[j] = 0;
+					}
+			break;
+			case 12:	//th
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++){
+					MAccu[NewM].ptr[j] = RMath_th(MAccu[NumM].ptr[j]);
+					MAccu[NewM].Cptr[j] = 0;
+					}
+			break;
+			case 13:	//Re   CmplxOK
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++){
+					MAccu[NewM].ptr[j] = MAccu[NumM].ptr[j];
+					MAccu[NewM].Cptr[j] =0;
+					}
+			break;
+			case 14:	//Im		CmplxOk
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++){
+					MAccu[NewM].ptr[j] =MAccu[NumM].Cptr[j];
+					MAccu[NewM].Cptr[j] = 0;
+					}
+			break;
+
+			//if (CodeVal==15 ) {//Already taken for integrals}
+
+			case 16:	//Oscilloscope Does it have meaning?
+				if (SerialReady ==0) MathError = 7;
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++)
+					MAccu[NewM].ptr[j] = Oscilloscope(MAccu[NumM].ptr[j]);
+			break;
+			case 17:	//acos
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++){
+					MAccu[NewM].ptr[j] = RMath_acos(MAccu[NumM].ptr[j]);
+					MAccu[NewM].Cptr[j] = 0;
+					}
+			break;
+			case 18:	//asin
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++){
+					MAccu[NewM].ptr[j] = RMath_asin(MAccu[NumM].ptr[j]);
+					MAccu[NewM].Cptr[j] = 0;
+					}
+			break;
+			case 19:	//ath
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++){
+					MAccu[NewM].ptr[j] = RMath_ath(MAccu[NumM].ptr[j]);
+					MAccu[NewM].Cptr[j] = 0;
+					}
+			break;
+			case 20:	//atan
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++){
+					MAccu[NewM].ptr[j] = RMath_atan(MAccu[NumM].ptr[j]);
+					MAccu[NewM].Cptr[j] = 0;
+					}
+			break;
+			case 21:	//ash
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++){
+					MAccu[NewM].ptr[j] = RMath_ash(MAccu[NumM].ptr[j]);
+					MAccu[NewM].Cptr[j] = 0;
+					}
+			break;
+			case 22:	//ach
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++){
+					MAccu[NewM].ptr[j] = RMath_ach(MAccu[NumM].ptr[j]);
+					MAccu[NewM].Cptr[j] = 0;
+					}
+			break;
+			case 23:	//abs
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++){
+					MAccu[NewM].ptr[j] = RMath_abs(MAccu[NumM].ptr[j]);
+					MAccu[NewM].Cptr[j] = 0;
+					}
+			break;
+			case 24:	//module(z)
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++){
+					a=MAccu[NumM].ptr[j];b=MAccu[NumM].Cptr[j];
+					MAccu[NewM].ptr[j] = (float)sqrt((double)(a*a+b*b));
+					MAccu[NewM].Cptr[j] = 0;
+					}
+			break;
+			case 25:	//arg(z)
+				PrintCmd("arg(Mtx) not yet implemented!\n");
+				MathError=8;
+			break;
+			case 26:	//key
+				PrintCmd("key(matrix) What for!??\n");
+				MathError=8;
+			break;
+			case 27:	//trp  transposition of the matrix
+				Mn=MAccu[NumM].n;
+				Mp=MAccu[NumM].p;
+				MAccu[NewM].p=Mn; //inversion for transposition
+				MAccu[NewM].n=Mp;
+				if (NumM!=NewM){
+					for (j=0;j<Mn*Mp; j++){//Ceci est faux, à revoir!!!
+					MAccu[NewM].ptr[j] = MAccu[NumM].ptr[j];
+					MAccu[NewM].Cptr[j] = MAccu[NumM].Cptr[j];
+					}
+				}
+			break;
+			case 28:	//mtxn
+				val=(float)MAccu[NumM].n;
+				val_cmplx=0;
+				goto PlaceVal;
+			break;
+			case 29:	//mtxp
+				val=(float)MAccu[NumM].p;
+				val_cmplx=0;
+				goto PlaceVal;
+			break;
+			case 31:	//sign
+				for (j=0;j<MAccu[NumM].n*MAccu[NumM].p; j++){
+					MAccu[NewM].Cptr[j]=0;
+					if (MAccu[NumM].ptr[j] > 0) MAccu[NewM].ptr[j]=1;
+					else MAccu[NewM].ptr[j]=-1;
+					}
+			break;
 
 			}
 	KeepOn:
@@ -2338,7 +2998,6 @@ void TracerAxis(int centerx,int centery,int width, int height){
 	int k;
 	float color=0;
 	GridSet=1;
-	//HideKeyPad(); //hide the keypad
 	SelectionStylo(0x000000);//noir
 
 	WinDrawLine(centerx-width/2,centery-height/2, centerx+width/2, centery-height/2);	
@@ -2350,24 +3009,39 @@ void TracerAxis(int centerx,int centery,int width, int height){
 	centery=0;
 	height=(-DimYmin+DimYmax);
 	width=(-DimXmin+DimXmax);
-	//Line(0,0,DimXmin,0,color);
 	Line(DimXmin,0,DimXmax,0,color);
-	//Line(0,0,0,DimYmin,color);
 	Line(0,DimYmin,0,DimYmax,color);
 	if (StepX !=0){
 		for (k=0;k<(DimXmax-DimXmin)/StepX;k++){
-		Line(-k*StepX,0,-k*StepX,5*(DimYmax-DimYmin)/DrawZoneH,color);
-		Line(k*StepX,0,k*StepX,5*(DimYmax-DimYmin)/DrawZoneH,color);
-		}
+			if (k!=0&&-k*StepX>DimXmin)DispGradVal(-k*StepX,-k*StepX-10*(DimXmax-DimXmin)/DrawZoneW,-5*(DimYmax-DimYmin)/DrawZoneH);
+			if (k!=0&&k*StepX<DimXmax)DispGradVal(k*StepX,k*StepX-10*(DimXmax-DimXmin)/DrawZoneW,-5*(DimYmax-DimYmin)/DrawZoneH);
+			Line(-k*StepX,0,-k*StepX,5*(DimYmax-DimYmin)/DrawZoneH,color);
+			Line(k*StepX,0,k*StepX,5*(DimYmax-DimYmin)/DrawZoneH,color);
+			}
 		}
 	if (StepX !=0){
 		for (k=0;k<(DimYmax-DimYmin)/StepX;k++){
-		Line(0,-k*StepX,5*(DimXmax-DimXmin)/DrawZoneW,-k*StepX,color);
-		Line(0,k*StepX,5*(DimXmax-DimXmin)/DrawZoneW,k*StepX,color);
-		}
+			if (k!=0&&-k*StepX>DimYmin)DispGradVal(-k*StepX,-35*(DimXmax-DimXmin)/DrawZoneW,-k*StepX+3*(DimYmax-DimYmin)/DrawZoneH);
+			if (k!=0&&k*StepX<DimYmax)DispGradVal(k*StepX,-35*(DimXmax-DimXmin)/DrawZoneW,k*StepX+3*(DimYmax-DimYmin)/DrawZoneH);
+			Line(0,-k*StepX,5*(DimXmax-DimXmin)/DrawZoneW,-k*StepX,color);
+			Line(0,k*StepX,5*(DimXmax-DimXmin)/DrawZoneW,k*StepX,color);
+			}
 		}
 	}
 
+void DispGradVal(float val,float X,float Y){
+	RECT prc;
+	char textdsp[10];
+	sprintf(textdsp,"%.2f",val);
+	int tsize=strlen(textdsp);
+	prc.left=(int)((X-DimXmin)*DrawZoneW/(DimXmax-DimXmin)+DrawZoneX);
+	prc.top=(int)(-(Y-DimYmin)*DrawZoneH/(DimYmax-DimYmin)+DrawZoneY+DrawZoneH);
+	prc.bottom = prc.top+15;
+	if (prc.left+tsize*10<DrawZoneX+DrawZoneW)prc.right = prc.left+tsize*10;
+	else prc.right=DrawZoneX+DrawZoneW;
+	DrawText(hDC, textdsp, -1, &prc, DT_SINGLELINE |DT_VCENTER);
+}
+	
 void Line(float x1, float y1, float x2, float y2,float color){
 	COLORREF	colpen  ;
 	HPEN	hpen;
