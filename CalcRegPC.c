@@ -1956,7 +1956,20 @@ KeepOn:
 			if (prc.left+tsize*10<DrawZoneX+DrawZoneW)prc.right = prc.left+tsize*10;//DrawZoneX+DrawZoneW;
 			else prc.right=DrawZoneX+DrawZoneW;
 			//c		DrawText(hDC, textdsp, -1, &prc, DT_SINGLELINE |DT_VCENTER);
+	COLORREF colpen   = 0x000000;
+	StartHandleColor:
+	if (ColorGraph == 1)colpen=(0x0A0AFF);//red
+	if (ColorGraph == 2)colpen=(0x0AFF0A);//green
+	if (ColorGraph == 3)colpen=(0xFF0A0A);//blue
+	if (ColorGraph == 4)colpen=(0x0A0AFF);//yellow
+	if (ColorGraph == 5)colpen=(0xFF0FFF);//
+	if (ColorGraph == 6)colpen=(0x0FFFFF);//
+	if (ColorGraph>6) colpen=(0x0111111*(ColorGraph-6));
+	if (ColorGraph>22) {ColorGraph=ColorGraph-22; goto StartHandleColor;}
+
+			COLORREF oldColpen=SetTextColor(hDC,colpen);
 			DrawText(hDC, finalText, -1, &prc, DT_SINGLELINE |DT_VCENTER);
+			SetTextColor(hDC,oldColpen);
 			//PrintCmd(textdsp);
 			free(finalText);			
 			free(textdsp);
