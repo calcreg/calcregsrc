@@ -163,6 +163,8 @@ extern float RMath_ach(float x);
 extern float RMath_abs(float x);
 
 //Matrix
+extern int	FillSphere(Matrix *MAccu,int NumM,float Radius,float period);
+
 extern int MatrixPower(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine);
 extern int MatrixSubAddition(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSignP,int imaxLine);
 extern int MatrixMultiplication(Matrix *MAccu,floactet *CodeListLine,int i, int imaxLine);
@@ -226,8 +228,8 @@ float SoundFrequency,SoundAmplitude,SoundDuration,SamplesPerSecond;
 static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListSize
 static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_trp_mtxn_mtxp_";
 //									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26    27     28     29
-static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_";
-//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26
+static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_";
+//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27
 //char blabli[]= { {'hello'},0x1,{'hi'},0x0};
 
 //--------------labels
@@ -327,6 +329,7 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //saveM0   save the matrix 0 selection of name is done through the win32API
 //saveM1,"mtx.m" The the matrix 1 in file mtx.m
 //createbtn n°btn,x,y,width,height,"btnname"  use key(0) == n°btn  to reach btn data for those you created n°btn>=10 is safer not ot interact with the small keyboard already existing
+//fillsphM n°mtx,Radius,nbr data for phi=2pi    This fills the matrix as a sphere, the dimension should be Mn=3 and Mp a multiple of a
 
 //MathFunctions
 extern int MathError; //send back a code if error in the Math functions. MathError=1 out of range exponential
@@ -1539,6 +1542,20 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			for (i=0;i<sizeM;i++) MAccu[NumM].ptr[i]= strtM+i*(endM-strtM)/(sizeM-1);
 			OffsetLine=0;
 			}else{PrintCmd("Fill Matrix!\n");goto EndMain;}
+		}	
+		
+//------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==27) {//fillsphM
+			if (CodeOfOneLine[OffsetLine+1].code==1&& CodeOfOneLine[OffsetLine+2].code==10 &&
+			CodeOfOneLine[OffsetLine+3].code==1&& CodeOfOneLine[OffsetLine+4].code==10 &&
+			CodeOfOneLine[OffsetLine+5].code==1) {
+			NumM = (int)CodeOfOneLine[OffsetLine+1].value;
+			float Radius = CodeOfOneLine[OffsetLine+3].value;
+			float period = CodeOfOneLine[OffsetLine+5].value;
+			Error = FillSphere(MAccu,NumM,Radius,period);
+			if (Error !=0) goto EndMain;
+ 			OffsetLine=0;
+			}else{PrintCmd("Fill Matrix sphere!\n");goto EndMain;}
 		}	
 		
 //------------

@@ -1,0 +1,27 @@
+gfxdim-3,3,-4,5,0.5
+grid 1
+zp=10
+yp=7
+xp=7
+x=-3
+y=-3
+dx=0.2
+dy=0.2
+F1(x)=exp(0-(x^2+y^2)/2)*cos(2*(x^2+y^2))
+start:
+z=F1(x)
+X0=y-x*(xp-y)/zp
+Y0=z-x*(yp-z)/zp
+y=y+dy
+loop:
+z=F1(x)
+X1=y-x*(xp-y)/zp
+Y1=z-x*(yp-z)/zp
+line X0,Y0,X1,Y1,1
+X0=X1
+Y0=Y1
+y=y+dy
+y<3=>goto loop
+y=-3
+x=x+dx
+x<3=>goto start

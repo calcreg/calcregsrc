@@ -121,6 +121,7 @@ void Line(float x1, float y1, float x2, float y2, float Color); //line x1,y1,x2,
 void FloatToString(float value, char *buffer, int Rounding);
 
 //Matrix
+int FillSphere(Matrix *MAccu,int NumM,float Radius,float period);
 
 int MatrixPower(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine);
 int MatrixSubAddition(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSignP,int imaxLine);
@@ -199,7 +200,34 @@ float HlowPrecision=0.00001; //Low precision 1E-05;
 //------------------------------------------------------------------------------------- 
 //-------------------------------------------------------------------------------------
 //-------------------------   Coding For matrices --------------------------
+	int FillSphere(Matrix *MAccu,int NumM,float Radius,float period){
+			float teta=0, pi=3.1415927,phi;
+			int k,j,NbrLatitude;
+			int Error=0;
+			int Mp=MAccu[NumM].p;
+			if (MAccu[NumM].n !=3) {PrintCmd("fillsphM: Mtx Size should be Mn=3\n");Error=1;goto EndMain;} 
+			if (period==0 || MAccu[NumM].p / period != (float) (int)(MAccu[NumM].p / period) ) {PrintCmd("fillsphM n°,radius,period_phi:\nInvalid period or Mp should be a multiple of the period_phi \n");Error=1;goto EndMain;}
+			//fill matrix with sphere
+			if (MAccu[NumM].ptr == 0) {Error = 1; PrintCmd("Can't fill Matrix sphere, not defined!\n");goto EndMain;}
+			NbrLatitude=Mp/(int)period;
+			for (j=0;j<NbrLatitude;j++){
+				for (k=0;k<(int)period;k++){
+					phi= (float)k*2*pi/period;
+					teta=(float)j*pi/NbrLatitude;
+					//PrintCmd("phi=");Rprintf(phi);
+					MAccu[NumM].ptr[k+j*(int)period]= Radius*RMath_sin(teta)*RMath_cos(phi); //x
+					MAccu[NumM].ptr[Mp+k+j*(int)period]= Radius*RMath_sin(teta)*RMath_sin(phi);//y
+					MAccu[NumM].ptr[Mp*2+k+j*(int)period]= Radius*RMath_cos(teta);//z
+					}
+			//PrintCmd("teta=");Rprintf(teta);
+			}
+		EndMain:
+	return Error;
+	}
 
+
+
+//------------------- Matrix Operations Analysis ------------------------------------
 int MatrixPower(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine){
 	int Error=0;
 	return Error;

@@ -77,7 +77,7 @@ clavier==13 =>bsr moinscent
 clavier==14 =>bsr moinsmille
 clavier==15 =>bsr moinsdixmille
 f0=f
-clavier == 8=>bsr jouer
+clavier == 8=>bsr jouer2
 clavier == 6=> bsr detente
 clavier == 7=> bsr head
 clavier == 17=> bsr legs
@@ -354,9 +354,25 @@ w=2*pi*f
 //the signal is on 16bits from 0 to 8191
 b=a/w
 M1=4096+4095*cos(w*(1+b*sin(2*pi*M0))*M0)
+clscmd
+print f
 grid100
 x=1
 Trf(x)=M1(1,x)/8192
+playsndM1,Nsp
+rts
+
+
+jouer2:
+w=2*pi*f
+//the signal is on 16bits from 0 to 8191
+b=a/w
+M1=4096+4095*cos(w*M0)
+grid100
+x=1
+Trf(x)=M1(1,x)/8192
+playsndM1,Nsp
+playsndM1,Nsp
 playsndM1,Nsp
 clscmd
 print f

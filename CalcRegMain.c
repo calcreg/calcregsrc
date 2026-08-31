@@ -71,33 +71,6 @@ extern int Button;
 
 
 
-BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
-{
-	switch(Message)
-	{
-		case WM_INITDIALOG:
-
-		return TRUE;
-		case WM_COMMAND:
-			switch(LOWORD(wParam))
-			{
-				case IDOK:
-					EndDialog(hwnd, IDOK);
-				break;
-				case IDCANCEL:
-					EndDialog(hwnd, IDCANCEL);
-				break;
-			}
-		break;
-		default:
-			return FALSE;
-	}
-	return TRUE;
-}
-
-
-
-
 void CloseProc(HWND hwnd)
 {
 	ReleaseDC(hwnd,hDC);
@@ -390,18 +363,6 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			if (LOWORD(wParam) == AboutMenuId) doMainMenu(AboutMenuId);
 		#endif
 			if(btn_close==(HWND)lParam) CloseProc(hwnd);
-			if(btn_start==(HWND)lParam) {
-						MessageBox(hwnd, "If you use further this software:\n" \
-						"1. You agree to be yourself fully responsible for anything "\
-						"that can happen -- to you or your computer -- by using "\
-						"this software.\n"\
-						"2. You agree that this software cannot and doesn't replace any medical treatment.\n"\
-						"3. You also agree to have read the license before use.\n"\
-						"4. You agree not to use this software more than once a week, to avoid any unknow or unwanted physical or emotionnal effect.\n\n"
-						"If you disagree just click the QUIT button that will appear at start of this software.","CAUTION AND RESPONSABILITY", 
-						MB_OK | MB_ICONEXCLAMATION);
-						MainFormHandleEvent(btnstart);
-					}
 		#ifdef CalcRegSoftware
 			if(btn_brk==(HWND)lParam) StopProgram=1;
 			if(btn_ClCmd==(HWND)lParam) MainFormHandleEvent(btnclear);
@@ -413,6 +374,20 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			if(btn_gfxpset==(HWND)lParam) MainFormHandleEvent(btngfxpset);
 			if(btn_gfxwork==(HWND)lParam) MainFormHandleEvent(btngfxwork);
 			if(btn_gfxmove==(HWND)lParam) MainFormHandleEvent(btngfxmove);
+			if(btn_start==(HWND)lParam) MainFormHandleEvent(btnstart);
+		#else
+					if(btn_start==(HWND)lParam) {
+						MessageBox(hwnd, "If you use further this software:\n" \
+						"1. You agree to be yourself fully responsible for anything "\
+						"that can happen -- to you or your computer -- by using "\
+						"this software.\n"\
+						"2. You agree that this software cannot and doesn't replace any medical treatment.\n"\
+						"3. You also agree to have read the license before use.\n"\
+						"4. You agree not to use this software more than once a week, to avoid any unknow or unwanted physical or emotionnal effect.\n\n"
+						"If you disagree just click the QUIT button that will appear at start of this software.","CAUTION AND RESPONSABILITY", 
+						MB_OK | MB_ICONEXCLAMATION);
+						MainFormHandleEvent(btnstart);
+					}
 		#endif
 			if(btn_1==(HWND)lParam) MainFormHandleEvent(btn0);
 			if(btn_1==(HWND)lParam) MainFormHandleEvent(btn1);
