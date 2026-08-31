@@ -36,12 +36,6 @@ typedef struct floactet{
 	float cmplx;
 }floactet;
 
-/*
-typedef struct BTN{
-	int flag;
-	HWND btn;
-	}BTN;
-*/
 
 typedef struct Matrix{
 	int n;	//n line
@@ -104,7 +98,7 @@ extern void RemoveComments(char *txt);
 
 extern void DisplayManual();
 
-extern void Execute(void);
+void Execute(void);
 DWORD WINAPI Thread_Execute( LPVOID lpParam );//en multitache
 extern void Rprintf(float x);//write and enter
 static void RCPrintf(floactet F);//write complexe number Re+Im*i
@@ -238,10 +232,10 @@ float SoundFrequency,SoundAmplitude,SoundDuration,SamplesPerSecond;
 
 #define OpListSize 9 // add the size if add new instructions or special codes in OperatorList
 static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListSize
-static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_trp_mtxn_mtxp_fM_sign_";
-//									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26    27     28     29     30    31
+static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_trp_mtxn_mtxp_fM_sign_?_";
+//									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26    27     28     29     30    31  32
 static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_action_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_colorgfx_dataM_fctobjM_getindM_modobjM_killbtn_savesndM_copyM_";
-//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28            29           30       31             32         33       34			35           36
+//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28            29           30       31             32         33       34			35           36    
 //char blabli[]= { {'hello'},0x1,{'hi'},0x0};
 
 //--------------labels
@@ -339,17 +333,27 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 
 //clscmd    clears the cmd window
 //defM 1,5,3    Create matrix M1 with dimension n=5, p=3;
-//fillM 2,1.5,3  fill matrix M2 from value 1.5 to 3
+//  if is is re-used on the same matrix, then the memory allocated for that matrix is released before creating the new matrix dimensions 
+//fillM 2,1.5,3  fill matrix M2 with values linearly from 1.5 to 3
 //mtxn(Mn°mtx) is a math function returning the n size of Mn°mtx
 //mtxp(Mn°mtx) is a math function returning the p size of Mn°mtx
 //loadsndM n°mtx
 //loadsndM n°mtx,"myfile.wav" put no space in the line before the guillemet
-//playsndM n°mtx,SampleRate
+//playsndM n°mtx,SampleRate								For mono mode
+//also: playsndM n°mtx1,sampleRate,n°mtx2		For Stereo mode mtx1 on left, mtx2 on right, mtx should have the same dimensions nxp
+//remark: if mtx1=mtx2 then it is the same as in mono mode.
 //savesndM n°mtx
 //savesndM n°mtx,"myfile.wav" saving raw format of wave in mono mode only quality 16bits
 //recsndM0,44100  Record sound at 44100 SamplesPerSec quality=16bits into Matrix 0 of size M0.nxp
 //printx,"blabli x=" put no spaces in the line before the guillemet
 //M1=trp(M0)  defines the matrix M1 as the transposed of M0, no need to use defM1 to create M1 matrix
+//remark: in computation matrices, put the scalars always on the left of the matrix
+//example: M1=10*cos(2*pi*M2)
+//Usual matrix product: M2=3*M1*M0, M1 and M0 should have M0n=M1p		
+//remark:  M1=8195*cos(w*(1+b*sin(2*pi*M0))*M0)
+//		This will not make calculation in the sens of usual matrix product
+//		It will be done as M1(i,j)=8195*cos(w*(1+b*sin(2*pi*M0(i,j) ))*M0(i,j) )
+
 //matrix rules: if Mtx1[size1,p] * Mtx2[size1,p] it is a product like scalar for each componant one by one
 //						if Mtx1[size1 or n,p] * Mtx2[size p!=1,k] result is math matrix product Mtx[n,k]
 // M = scalar a, this is possible means full of the value scalar a
@@ -409,7 +413,7 @@ int VDemo = 0; //0=version normale, 1=version demo
 
 //----------------------------------
 
-int debug=0; // possible values 0=nodebug, 1, 2
+int debug=0; // possible values 0=nodebug, 1, 2,-1,-2,-3,-4
 int NbrMaxOperationOnLine=100;//in CodeList
 //#define NbrMaxOperationOnLine 100
 int CodeListOffsetMax; //Gets the number of coding instructions
@@ -455,9 +459,7 @@ extern char NewFunctionalties[];
 
 	extern HWND ProgBtn[];
 	extern int MaxNbrButtons; //max button defined in calcregmain.c
-	extern HWND	btn_0,btn_1,btn_2,btn_3,btn_4,btn_5,btn_6,btn_7,btn_8,btn_9;
-	extern HWND	btn_10,btn_11,btn_12,btn_13,btn_14,btn_15,btn_16,btn_17,btn_18,btn_19;
-	extern HWND hEditP,hmywin;
+	extern HWND hEditP,hmywin,hEditC;
 	extern HINSTANCE hinst;
 	RECT wndrect; //valrect to get a mouse value between -10 and 10
 
@@ -477,13 +479,28 @@ void RCPrintf(floactet F){
 	}
 
 
+
+
 	
 //------------ Here is the starting point of the CalcReg Machinery ---------------------------
 
-
-//void Execute(void) {
-
 extern int ProgInExecution;
+
+void Execute(){
+		//Launching EXECUTE as a Thread for multitask handling
+		//En cas de plantage voir la taille de la pile (0 = taille par default )dans CreateThread
+		HANDLE hThread1;
+		DWORD Thread1ID, Thread1Param = 100;
+		hThread1 = CreateThread(NULL, 0, Thread_Execute, &Thread1Param, 0, &Thread1ID);
+		if (hThread1 == NULL){
+			PrintCmd("Error on launching the Thread EXE!\n");
+		}
+		/*else{
+			//We set the priority one point under the windows priority
+			SetThreadPriority(hThread1,THREAD_PRIORITY_BELOW_NORMAL);
+		}*/
+}
+
 
 DWORD WINAPI Thread_Execute( LPVOID lpParam ){
 
@@ -572,7 +589,7 @@ DWORD WINAPI Thread_Execute( LPVOID lpParam ){
 		for (i=0;i<MaxNbrButtons;i++)if(ProgBtn[i]!=0){ProgBtn[i]=0;DestroyWindow(ProgBtn[i]);}
 
 		//init matrix stuff
-		for (i=0;i<NbrMaxMatrix;i++)MAccu[i].ptr=0; // no matrix available yet
+		for (i=0;i<NbrMaxMatrix;i++)MAccu[i].ptr=0; // no matrix available yet so we clear the pointers
 	#ifdef CalcRegSoftware
 		//
 	#else
@@ -583,6 +600,9 @@ DWORD WINAPI Thread_Execute( LPVOID lpParam ){
 	CalcMain(CodeList);
 //------------ end --------
 
+	//reset debug to zero
+	debug=0;
+	
 	//close audio device eventually
 	if (AudioDeviceState == 1) {CloseAudioDevice();AudioDeviceState = 0;}
 
@@ -845,7 +865,7 @@ int doMainMenu (int command)
 	case DebugMenuId:
 		debug=1;
 		Execute();
-		debug=0;
+		//debug=0;
 		break;
 	case PrecisionMenuId:
 		DeleteCmd();
@@ -861,22 +881,22 @@ int doMainMenu (int command)
 	case DebugSCMenuId: //for display list of codes only
 		debug=-1;
 		Execute();
-		debug=0;
+		//debug=0;
 		break;
 	case DebugSPMenuId: //for display programm after replacements of variables
 		debug=-2;
 		Execute();
-		debug=0;
+		//debug=0;
 		break;
 	case DebugLEMenuId: //for display list of codes only
 		debug=-3;
 		Execute();
-		debug=0;
+		//debug=0;
 		break;
 	case DebugInfoMenuId: //for display list of codes only
 		debug=-4;
 		Execute();
-		debug=0;
+		//debug=0;
 		break;
 	case TBreakMenuId:
 		BreakActivated=-BreakActivated;
@@ -1051,6 +1071,7 @@ float X0,X1,Y0,Y1,Y;
 			if(WholeMnemoProg[i] == 0x0A ) istrt=i+1;
 			if (WholeMnemoProg[i] ==0x0D) istrt=i+1;
 			if (WholeMnemoProg[i] == Octet(":") ){
+					if (lblptr >=LabelListSize){PrintCmd("The Maximum number of Labels is reached!!!\nchange in the calcregPC.c\n");return 0;}
 					Labels[lblptr].adr=istrt; //situation of the Label in WholeMnemoProg 
 					if (debug == -4) {sprintf(s,"Label[%d]@%d(Mnemo)\n",lblptr,istrt);PrintCmd(s);}
 					lblptr++;
@@ -1718,6 +1739,7 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			NumM=(int)CodeOfOneLine[OffsetLine+1].value;
 			MAccu[NumM].n=(int)CodeOfOneLine[OffsetLine+3].value;
 			MAccu[NumM].p=(int)CodeOfOneLine[OffsetLine+5].value;
+			if (MAccu[NumM].ptr!=0) free(MAccu[NumM].ptr);//First free this Memory before redefining it
 			//create matrix
 			MAccu[NumM].ptr = (float*)malloc(MAccu[NumM].n*MAccu[NumM].p*sizeof(float) );
 			if (MAccu[NumM].ptr == 0) {Error = 1; PrintCmd("Error Allocation for Matrix!\n");goto EndMain;}
@@ -1884,7 +1906,7 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
  			OffsetLine=0;
 			}else{PrintCmd("colorgfx!\n");goto EndMain;}
 		}	
-		
+				
 //------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==14) {//bsr 
 			if (debug > 0 ) {PrintCmd("bsr \n");}
@@ -3502,7 +3524,47 @@ OutForPower:
 							}	//key
 
 		if (CodeVal==31 ) {if (CodeListLine[i+1].value > 0) val=1;else val=-1;goto KeepOn;}	//sign
-
+		if (CodeVal==32 ) {
+			char *cmdtext;
+			DWORD	CmdTextLength;
+		LoopTextGetNbr:
+			CmdTextLength = GetWindowTextLength(hEditC);
+			if (CodeListLine[i+1].value==1){
+				if (CmdTextLength>=2){
+						cmdtext=(char*)malloc((CmdTextLength+1)*sizeof(char));
+						if (cmdtext ==0){PrintCmd("Couldn't allocate memory!\nTaking value 0\n");val=0;goto KeepOn;}
+						GetWindowText(hEditC, cmdtext, CmdTextLength);
+					if (cmdtext[CmdTextLength-2]!=0x0D){
+						Wait(100); //wait 100 milliseconds
+						free(cmdtext); 
+						goto LoopTextGetNbr;
+					}
+				}else {Wait(100); goto LoopTextGetNbr;}
+			}
+			if (CodeListLine[i+1].value==0){
+			if (CmdTextLength == 0 ){PrintCmd("No number in Cmd window:\ntaking value 0\n");val=0;goto KeepOn;}
+			cmdtext=(char*)malloc((CmdTextLength+1)*sizeof(char));
+			if (cmdtext ==0){PrintCmd("Couldn't allocate memory!\nTaking value 0\n");val=0;goto KeepOn;}
+			GetWindowText(hEditC, cmdtext, CmdTextLength);
+			}
+			//Search for the last Return character Last char should be "return"
+			//if (cmdtext[CmdTextLength-2]==0x0D)PrintCmd("prev char is 0x0D\n");
+			//Last char is 0x0D if it is returned
+			/*char msg_s[100];
+			sprintf(msg_s,"char-3 is : %c\n",cmdtext+CmdTextLength-3);
+			PrintCmd(msg_s);*/
+			int pt=1;
+			while (pt<CmdTextLength && cmdtext[CmdTextLength-pt]!=0x0A)//it doesn't work with 0x0D
+				{pt++;}
+			//here i should indicate the position of the number in cmdtext
+			sscanf(cmdtext+CmdTextLength-pt,"%f",&val);
+			
+			//sprintf(msg_s,"got number: %f\n",val);
+			//PrintCmd(msg_s);
+			free(cmdtext);
+			
+		}//getnbr: ?()	
+		
 	KeepOn:
 		if (MathError !=0 ) {sprintf(s,"Math Error = %d\n",MathError);PrintCmd(s);return 3;}
 		if (ErrorCode == 0) {CodeListLine[i].code=1; CodeListLine[i].value=val;}

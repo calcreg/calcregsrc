@@ -1,0 +1,15 @@
+
+
+defM0,1,10
+defM1,1,10
+dataM0,1,2,3,4
+dataM1,1,2,3
+dataM0,5,6,7,8
+dataM0,9,10
+
+h=1
+loop:
+print M0(1,h)
+h=h+1
+h<11 => goto loop
+end

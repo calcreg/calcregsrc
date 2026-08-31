@@ -45,8 +45,7 @@ HWND		btn_close,btn_start;
 HWND		btn_ClCmd,btn_ClProg,btn_gfxmove,btn_gfxwork,btn_gfxplus,btn_gfxmoins,btn_gfxderivate,btn_gfxpset;
 HWND		btn_test,btn_brk;
 #endif
-HWND		btn_0,btn_1,btn_2,btn_3,btn_4,btn_5,btn_6,btn_7,btn_8,btn_9;
-HWND		btn_10,btn_11,btn_12,btn_13,btn_14,btn_15,btn_16,btn_17,btn_18,btn_19;
+
 HWND hmywin,mybtn;
 HBRUSH hbrush;
 //HBRUSH BrushTable[16];
@@ -173,15 +172,6 @@ void ObjectCreation(HWND hwnd)
 	btn_test = CreateWindow("BUTTON","Test",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+75,50,25,hwnd,0,hinst,NULL);			
 	btn_ClCmd = CreateWindow("BUTTON","Clear",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+205,50,25,hwnd,0,hinst,NULL);			
 
-	btn_1 = CreateWindow("BUTTON","1",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+286,18,18,hwnd,0,hinst,NULL);			
-	btn_2 = CreateWindow("BUTTON","2",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+28,wndrect.top+286,18,18,hwnd,0,hinst,NULL);			
-	btn_3 = CreateWindow("BUTTON","3",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+46,wndrect.top+286,18,18,hwnd,0,hinst,NULL);			
-	btn_4 = CreateWindow("BUTTON","4",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+268,18,18,hwnd,0,hinst,NULL);			
-	btn_5	= CreateWindow("BUTTON","5",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+28,wndrect.top+268,18,18,hwnd,0,hinst,NULL);			
-	btn_6	= CreateWindow("BUTTON","6",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+46,wndrect.top+268,18,18,hwnd,0,hinst,NULL);			
-	btn_7 = CreateWindow("BUTTON","7",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+250,18,18,hwnd,0,hinst,NULL);			
-	btn_8 = CreateWindow("BUTTON","8",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+28,wndrect.top+250,18,18,hwnd,0,hinst,NULL);			
-	btn_9 = CreateWindow("BUTTON","9",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+46,wndrect.top+250,18,18,hwnd,0,hinst,NULL);			
 	btn_start = CreateWindow("BUTTON","EXE",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+105,50,25,hwnd,0,hinst,NULL);			
 	btn_close = CreateWindow("BUTTON","Close",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,wndrect.left+10,wndrect.top+180,50,25,hwnd,0,hinst,NULL);
 #else

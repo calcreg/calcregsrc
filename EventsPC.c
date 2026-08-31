@@ -19,8 +19,8 @@ static int Rmin (int x1,int x2);
 static int Rmax (int x1,int x2);
 int Rabs(int x1);
 
-void Execute(void);
-extern DWORD WINAPI Thread_Execute( LPVOID lpParam );
+extern void Execute(void);
+//extern DWORD WINAPI Thread_Execute( LPVOID lpParam );
 extern void PrintCmd(char * s) ;
 extern void DeleteCmd() ;
 extern void Printf(const char * format, ...); //should be Printf and not printf otherwise it conflicts with StdIOPalm.h definition
@@ -47,23 +47,7 @@ int Button=0; //for the keyboard in CalcRegPC
 int MouseLeftClick=0;//init up=0; down=1
 
 int ProgInExecution=0; //=1 while program in execution
-
-void Execute(){
-		//Launching EXECUTE as a Thread for multitask handling
-		//En cas de plantage voir la taille de la pile (0 = taille par default )dans CreateThread
-		HANDLE hThread1;
-		DWORD Thread1ID, Thread1Param = 100;
-		hThread1 = CreateThread(NULL, 0, Thread_Execute, &Thread1Param, 0, &Thread1ID);
-		if (hThread1 == NULL){
-			PrintCmd("Error on launching the Thread EXE!\n");
-		}
-		/*else{
-			//We set the priority one point under the windows priority
-			SetThreadPriority(hThread1,THREAD_PRIORITY_BELOW_NORMAL);
-		}*/
-}
-
-
+//--
 /*
  * MainFormHandleEvent
  */
