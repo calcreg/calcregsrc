@@ -121,7 +121,7 @@ void Line(float x1, float y1, float x2, float y2, float Color); //line x1,y1,x2,
 void FloatToString(float value, char *buffer, int Rounding);
 
 //Matrix
-int FillSphere(Matrix *MAccu,int NumM,float Radius,float period);
+int FillSphere(Matrix *MAccu,int NumM,int PtLinkM,float Radius,float period);
 
 int MatrixPower(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine);
 int MatrixSubAddition(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSignP,int imaxLine);
@@ -200,15 +200,18 @@ float HlowPrecision=0.00001; //Low precision 1E-05;
 //------------------------------------------------------------------------------------- 
 //-------------------------------------------------------------------------------------
 //-------------------------   Coding For matrices --------------------------
-	int FillSphere(Matrix *MAccu,int NumM,float Radius,float period){
+	int FillSphere(Matrix *MAccu,int NumM,int PtLinkM,float Radius,float period){
 			float teta=0, pi=3.1415927,phi;
 			int k,j,NbrLatitude;
 			int Error=0;
 			int Mp=MAccu[NumM].p;
-			if (MAccu[NumM].n !=3) {PrintCmd("fillsphM: Mtx Size should be Mn=3\n");Error=1;goto EndMain;} 
+			if (MAccu[NumM].n !=3 && MAccu[NumM].n !=4) {PrintCmd("fillsphM: Mtx Size should be Mn=3\n");Error=1;goto EndMain;} 
 			if (period==0 || MAccu[NumM].p / period != (float) (int)(MAccu[NumM].p / period) ) {PrintCmd("fillsphM n°,radius,period_phi:\nInvalid period or Mp should be a multiple of the period_phi \n");Error=1;goto EndMain;}
 			//fill matrix with sphere
 			if (MAccu[NumM].ptr == 0) {Error = 1; PrintCmd("Can't fill Matrix sphere, not defined!\n");goto EndMain;}
+			if (MAccu[PtLinkM].ptr == 0) {Error = 1; PrintCmd("To fill Matrix sphere, PtLinkMatrix must be defined!\n");goto EndMain;}
+			if (MAccu[PtLinkM].p!=Mp) {PrintCmd("fillsphM: M.p should be same as PtLinkM.p\n");Error=1;goto EndMain;} 
+			if (MAccu[PtLinkM].n!=4) {PrintCmd("fillsphM: PtLinkM.n should be equal to 4\n");Error=1;goto EndMain;} 
 			NbrLatitude=Mp/(int)period;
 			for (j=0;j<NbrLatitude;j++){
 				for (k=0;k<(int)period;k++){
@@ -220,6 +223,33 @@ float HlowPrecision=0.00001; //Low precision 1E-05;
 					MAccu[NumM].ptr[Mp*2+k+j*(int)period]= Radius*RMath_cos(teta);//z
 					}
 			//PrintCmd("teta=");Rprintf(teta);
+			}
+			//fillPtLinkM CAREFUL: the index on mtx are from 1 to p, but here in memory the tables start from 0, we thus add 1
+	//            Table of link
+	//				  P1 |
+	//			  P4 --   -- P2  
+	//					   |  P3
+	
+			for (j=0;j<NbrLatitude;j++){
+				for (k=0;k<(int)period;k++){
+					if (j>0){
+					MAccu[PtLinkM].ptr[k+j*(int)period]=(j-1)*(int)period+k+1;// j-1,k
+					}else{//condition au limites
+						MAccu[PtLinkM].ptr[k+j*(int)period]=0;// no link point index
+						}	
+					if (k<(int)period-1){
+					MAccu[PtLinkM].ptr[Mp+k+j*(int)period]=j*(int)period+k+1+1;//j,k+1
+					}else{MAccu[PtLinkM].ptr[Mp+k+j*(int)period]=j*(int)period+1;//j,k=0
+						}
+					if (j<NbrLatitude-1){
+					MAccu[PtLinkM].ptr[2*Mp+k+j*(int)period]=(j+1)*(int)period+k+1;//j+1,k
+					}else{MAccu[PtLinkM].ptr[2*Mp+k+j*(int)period]=0;//no link point index
+						}
+					if (k>0){
+					MAccu[PtLinkM].ptr[3*Mp+k+j*(int)period]=j*(int)period+k-1+1;//j,k-1
+					}else{MAccu[PtLinkM].ptr[3*Mp+k+j*(int)period]=j*(int)period+(int)period-1+1;//j,period
+						}
+				}
 			}
 		EndMain:
 	return Error;

@@ -1,10 +1,11 @@
-gfxdim -6,50,-3,3,0.1
+gfxdim -6,200,-3,3,0.1
 x=-6
-defM0,3,100
+defM0,3,200
+defM1,4,200
 fillM0,0,1.2
-fillsphM0,1,20
+fillsphM0,1,1,20
 x=0
-Trf(x)= cos(2*3.1415927/20*x)
+//Trf(x)= cos(2*3.1415927/20*x)
 M0(2,25)=2
 x=1
 Trf(x)= 1*M0(1,x)
@@ -12,4 +13,11 @@ x=1
 Trf(x)= 1*M0(2,x)
 x=1
 Trf(x)= 1*M0(3,x)
+ gfxdim 0, 200, 0,200,1
+x=1
+Trf(x)= 1*M1(1,x)
+x=1
+Trf(x)= 1*M1(2,x)
+x=1
+Trf(x)= 1*M1(3,x)
  

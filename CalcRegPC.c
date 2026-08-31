@@ -163,7 +163,7 @@ extern float RMath_ach(float x);
 extern float RMath_abs(float x);
 
 //Matrix
-extern int	FillSphere(Matrix *MAccu,int NumM,float Radius,float period);
+extern int FillSphere(Matrix *MAccu,int NumM,int PtLinkM,float Radius,float period);
 
 extern int MatrixPower(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine);
 extern int MatrixSubAddition(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSignP,int imaxLine);
@@ -329,7 +329,10 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //saveM0   save the matrix 0 selection of name is done through the win32API
 //saveM1,"mtx.m" The the matrix 1 in file mtx.m
 //createbtn n°btn,x,y,width,height,"btnname"  use key(0) == n°btn  to reach btn data for those you created n°btn>=10 is safer not ot interact with the small keyboard already existing
-//fillsphM n°mtx,Radius,nbr data for phi=2pi    This fills the matrix as a sphere, the dimension should be Mn=3 and Mp a multiple of a
+//fillsphM n°mtx,n°PtLinkMtx,Radius,nbr data for phi=2pi    This fills the matrix as a sphere, the dimension should be Mn=3 and Mp a multiple of a
+//																							PtLinkMtx is the matrix which contains the link to four index p of points in the sphere
+//																							Mtx should be Mn=3 or 4, Mp is set by user. PtlinkMtx :Mn=4, Mp[PtLinkMtx] = Mp[Mtx]
+
 
 //MathFunctions
 extern int MathError; //send back a code if error in the Math functions. MathError=1 out of range exponential
@@ -1548,11 +1551,13 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==27) {//fillsphM
 			if (CodeOfOneLine[OffsetLine+1].code==1&& CodeOfOneLine[OffsetLine+2].code==10 &&
 			CodeOfOneLine[OffsetLine+3].code==1&& CodeOfOneLine[OffsetLine+4].code==10 &&
-			CodeOfOneLine[OffsetLine+5].code==1) {
+			CodeOfOneLine[OffsetLine+5].code==1&& CodeOfOneLine[OffsetLine+6].code==10 &&
+			CodeOfOneLine[OffsetLine+7].code==1) {
 			NumM = (int)CodeOfOneLine[OffsetLine+1].value;
-			float Radius = CodeOfOneLine[OffsetLine+3].value;
-			float period = CodeOfOneLine[OffsetLine+5].value;
-			Error = FillSphere(MAccu,NumM,Radius,period);
+			int PtLinkM = (int)CodeOfOneLine[OffsetLine+3].value;
+			float Radius = CodeOfOneLine[OffsetLine+5].value;
+			float period = CodeOfOneLine[OffsetLine+7].value;
+			Error = FillSphere(MAccu,NumM,PtLinkM,Radius,period);
 			if (Error !=0) goto EndMain;
  			OffsetLine=0;
 			}else{PrintCmd("Fill Matrix sphere!\n");goto EndMain;}
