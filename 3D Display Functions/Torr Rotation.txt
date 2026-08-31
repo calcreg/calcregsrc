@@ -1,17 +1,41 @@
 pi=3.1415927
-action0 
+action0
+action1
+clscmd
 gfxdim -10,10,-10,10,1
 N=500
-defM1,4,N
-defM2,4,N //Matrice Link
-defM3,4,4
-defM4,4,4
-defM5,4,4
+defM3,4,4//Rx
+defM4,4,4//Ry
+defM5,4,4//Rz
+
+T=20
+P=20
+m=T*P
+defM0,T,P  //x
+defM1,T,P  //y
+defM2,T,P  //z
+defM10,4,m  //Mobj
+defM11,4,m  //PtLink
+
+
 teta=pi/5
 bsr defineMatrix
-fillsphM1,2,5,50
-M1=M4*M4*M1
-dispobjM1,2,3
+
+//------ Definition objet -------
+R=10
+r=7
+a=2*pi/(P+5)  //Pour torr fermé mettre 2*pi/(P-1)
+b=2*pi/(T-1)  
+x=1
+F1(x)=10 //x*phi/P
+teta=1
+phi=1
+
+fM0(teta,phi)=F1(R)*cos(a*phi)+r*cos(teta*b)*cos(phi*a)
+fM1(teta,phi)=F1(R)*sin(a*phi)+r*cos(teta*b)*sin(phi*a)
+fM2(teta,phi)=r*sin(teta*b)
+vobj3dM10,11,0,1,2
+
 loop:
 gfxdim 0,10,0,10,1
 wtext9,9.6,"QUIT"
@@ -25,19 +49,20 @@ goto loop
 end
 
 rotation:
-c=key(4)
-c==1=>goto rotation
+key(0)
+mx=key(3)
+mx==1=>goto rotation
 a=key(5)-key(1)
 b=key(6)-key(2)
-a=pi*a/100
-b=pi*b/100
+a=pi*a/10
+b=-pi*b/10
 teta=b
 dataM4,cos(teta),0,sin(teta),0, 0,1,0,0, sin(-teta),0,cos(teta),0, 0,0,0,1
 teta=a
 dataM5,cos(teta),sin(-teta),0,0, sin(teta),cos(teta),0,0, 0,0,1,0, 0,0,0,1
-M1=M4*M5*M1
-gfxdim -10,10,-10,10,1
-dispobjM1,2,5
+M10=M4*M5*M10
+gfxdim -30,30,-30,30,1
+dispobjM10,11,5
 goto loop
 
 appuie:

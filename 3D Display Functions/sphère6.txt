@@ -1,5 +1,7 @@
 pi=3.1415927
-action0 
+action0
+action1
+clscmd
 gfxdim -10,10,-10,10,1
 N=500
 defM1,4,N
@@ -25,12 +27,13 @@ goto loop
 end
 
 rotation:
-c=key(4)
-c==1=>goto rotation
+key(0)
+mx=key(3)
+mx==1=>goto rotation
 a=key(5)-key(1)
 b=key(6)-key(2)
-a=pi*a/100
-b=pi*b/100
+a=pi*a/10
+b=-pi*b/10
 teta=b
 dataM4,cos(teta),0,sin(teta),0, 0,1,0,0, sin(-teta),0,cos(teta),0, 0,0,0,1
 teta=a

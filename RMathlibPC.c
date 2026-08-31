@@ -413,9 +413,10 @@ int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode){
 	float NormL=RMath_sqrt(Lx*Lx+Ly*Ly+Lz*Lz);
 	int ColorOVF=0;
 	//SelectObject(hDC,BrushTable[10]);
-	SelectObject(hDC,hbrush);
+	HBRUSH hbrushOld=SelectObject(hDC,hbrush);
 	SelectionStylo(0);
-
+	HPEN hpen,hpenOld;
+	
 	int Mp = MAccu[NumM].p;
 	int Mn = MAccu[NumM].n;
 	int PtLinkMn = MAccu[PtLinkM].n;
@@ -617,11 +618,12 @@ if (DrawingMode != 5){
 				ColorGraph=(int)(Clrgfx3Da+AvLightFactor*(Clrgfx3Db+Clrgfx3Db*(cosalfa)));//half color for transparency
 				if (ColorGraph>31 && ColorOVF<ColorGraph)ColorOVF=ColorGraph;				
 				}
-				if (DrawingMode == 4||DrawingMode == 5) SelectionStylo(8*ColorGraph+7);
-				//COLORREF	colpen   = 8*ColorGraph+7;
-				//HPEN hpen	= CreatePen(PS_SOLID,1,colpen);
-				//SelectObject(hDC,hpen);
-				SelectObject(hDC,BrushTable[ColorGraph]);//set brush color
+				if (DrawingMode == 4||DrawingMode == 5) {
+				//SelectionStylo(8*ColorGraph+7);
+				COLORREF	colpen   = 8*ColorGraph+7;
+				hpen	= CreatePen(PS_SOLID,1,colpen);
+				hpenOld=SelectObject(hDC,hpen);}
+				hbrushOld=SelectObject(hDC,BrushTable[ColorGraph]);//set brush color
 
 				}
 			}else{//DrawingMode==2
@@ -629,7 +631,7 @@ if (DrawingMode != 5){
 			Y1=z1;Y2=z2;Y3=z3;Y4=z4;
 			}
 			FillQuadrilatere(X1,Y1,X2,Y2,X3,Y3,X4,Y4,ColorGraph);
-			
+			SelectObject(hDC,hpenOld);DeleteObject(hpen); //to avoid bugs
 			/*	Line(X1,Y1,X2,Y2,0);
 				Line(X1,Y1,X3,Y3,0);
 				Line(X2,Y2,X4,Y4,0);
@@ -642,6 +644,8 @@ if (DrawingMode != 5){
 
 	FREELIST:
 		free(list);
+		SelectObject(hDC,hbrushOld);
+		for(i=0;i<32;i++)DeleteObject(BrushTable[i]); //clearing the Brushes
 	}//if DrawingMode 1
 
 	OutDrawObject:

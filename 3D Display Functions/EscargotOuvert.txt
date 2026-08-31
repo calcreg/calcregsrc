@@ -30,6 +30,6 @@ fM2(teta,phi)=r*sin(teta*b)
 
 vobj3dM4,5,0,1,2
 M4=M6*M4
-action3,20,-10,-20
+action3,-50,1,50
 dispobjM4,5,3
 end
