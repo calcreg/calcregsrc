@@ -12,7 +12,7 @@
 
 #include "CalcReg.h"
 #include "CalcRegSoftware.h"
-
+#include "Prog3d.h" //this is for the menu for 3d plotting
 //--------------------------------------------
 #define	ChartRectLeft		30
 #define	ChartRectTop		52
@@ -20,16 +20,16 @@
 #define	ChartRectHeight		90
 #define MaxDataPoints		ChartRectWidth
 #define VertScale			ChartRectHeight / 100
-#define ProgTextMaxChars 100
-#define MnemoListSize 100
+#define ProgTextMaxChars 1000
+#define MnemoListSize 1000
 #define CodeListSize 10000 // nbr of Codes floactet = octet + float
 
 #define LabelListSize 200
 #define CharMaxOneLine 200 //printing  maximum 200 chars in once => s[200]
-#define LineSize 200 //InstructionLine size It is the maximum possible characters per lines
+#define LineSize 2000 //InstructionLine size It is the maximum possible characters per lines
 #define BrkX 140
 #define BrkY 12
-#define MaxSubRoutine 100 //Maximum subroutines for bsr
+#define MaxSubRoutine 1000 //Maximum subroutines for bsr
 typedef struct floactet{
 	unsigned char code;
 	float value;
@@ -127,7 +127,8 @@ static signed int TestForLabels(char *WholeProg, int index);
 static  int CalcMain(floactet *CodeList);
 static int TraceFunctionOneVariable(floactet *CodeOfOneLine, floactet *CodeList);
 static int TraceFunctionTwoVariable(floactet *CodeOfOneLine, floactet *CodeList);
-static IndicError(int LineErrorCode);
+static IndicErrorCode(floactet *CodeList, int LineErrorCode);
+static IndicError( int LineErrorCode);
  
 int CreateVariablesList(char *text);//gives back the number of Accu necessary
 extern int CompareVarNames(char* txt, int i1, int i2);
@@ -231,43 +232,6 @@ MSG Msg;
 //Sound
 float SoundFrequency,SoundAmplitude,SoundDuration,SamplesPerSecond;
 
-// program 3D fM4.txt ------------------
-/*
-char prog3d[]={
-//gfxdim -5,70,-5.7,4.5,1
-0x67,0x66,0x78,0x64,0x69,0x6d,0x20,0x2d,0x35,0x2c,0x37,0x30,0x2c,0x2d,0x35,0x2e,0x37,0x2c,0x34,0x2e,0x35,0x2c,0x31,0x0a,
-//action 0
-0x61,0x63,0x74,0x69,0x6f,0x6e,0x20,0x30,0x0a,
-//x=1
-0x78,0x3d,0x31,0x0a,
-//y=1
-0x79,0x3d,0x31,0x0a,
-//N=40
-0x4e,0x3d,0x34,0x30,0x0a,
-//a=N/2
-0x61,0x3d,0x4e,0x2f,0x32,0x0a,
-//b=a
-0x62,0x3d,0x61,0x0a,
-//m=N^2
-0x6d,0x3d,0x4e,0x5e,0x32,0x0a,
-//defM0,N,N
-0x64,0x65,0x66,0x4d,0x30,0x2c,0x4e,0x2c,0x4e,0x0a,
-//fM0(x,y)= 5*exp (0.04*(-(x-a)^2-(y-b)^2))
-0x66,0x4d,0x30,0x28,0x78,0x2c,0x79,0x29,0x3d,0x20,0x35,0x2a,0x65,0x78,0x70,0x20,0x28,0x30,0x2e,0x30,0x34,0x2a,0x28,0x2d,0x28,0x78,0x2d,0x61,0x29,0x5e,0x32,0x2d,0x28,0x79,0x2d,0x62,0x29,0x5e,0x32,0x29,0x29,0x0a,
-////print M0(1,5)
-0x2f,0x2f,0x70,0x72,0x69,0x6e,0x74,0x20,0x4d,0x30,0x28,0x31,0x2c,0x35,0x29,0x0a,
-//defM1,3,m
-0x64,0x65,0x66,0x4d,0x31,0x2c,0x33,0x2c,0x6d,0x0a,
-//defM2,4,m
-0x64,0x65,0x66,0x4d,0x32,0x2c,0x34,0x2c,0x6d,0x0a,
-//fctobjM0,1,2
-0x66,0x63,0x74,0x6f,0x62,0x6a,0x4d,0x30,0x2c,0x31,0x2c,0x32,0x0a,
-//dispobjM1,2,1
-0x64,0x69,0x73,0x70,0x6f,0x62,0x6a,0x4d,0x31,0x2c,0x32,0x2c,0x31,0x0a,0};
-// --------------------------
-*/
-#include "prog3d.h" 
-//char prog3d[]="hello\t how are you\nrallright.";
 
 #define OpListSize 9 // add the size if add new instructions or special codes in OperatorList
 static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListSize
@@ -455,7 +419,7 @@ int StartInfoDone=0;
 int GfxBigDisplay=-1;
 int CountBreak=0; //init
 int DispBrk=0;
-int BreakActivated=1; //init brk 1 activated, -1 for disabled at start
+int BreakActivated=-1; //init brk 1 activated, -1 for disabled at start
 int StopProgram=0;
 extern int GfxDerivate; //if =1 Then Draw function with its derivated
 int systate=1; //1=displacement of gfx, zoom etc... is Active
@@ -2056,39 +2020,48 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 	//-------------------------------------------------------EndLoop---------------------------------
 	if (debug > 0 )PrintCmd("End\n");
 EndMain:
-	if (Error!=0){sprintf(s,"Error Indication= %d ",Error);PrintCmd(s);IndicError(CounterLineCode);}
+	if (Error!=0){sprintf(s,"\nError Indication= %d ",Error);PrintCmd(s);IndicErrorCode(CodeList,CodeListOffset);}
 	return (0);
  }
 
- static IndicError(int LineErrorCode){
-/*PalmOs
-	MemPtr  progtext;    
-	FieldPtr FieldProgTextPtr;
-	FormPtr Frm = FrmGetFormPtr(frmadc16);
-	int i,k,is;
-	i=0;k=0;
-	sprintf (s,"Line %d\n",LineErrorCode);PrintCmd(s);
-	if (LineErrorCode < 1) goto HighLight ;
-	FieldProgTextPtr=(FieldPtr)(FrmGetObjectPtr(Frm, (FrmGetObjectIndex(Frm, fld_prog))));
-	progtext = FldGetTextPtr(FieldProgTextPtr); //return the ptr to a the lock memory string of the fld_prog
-	StrCopy (WholeMnemoProg,progtext);
-	while (i<strlen(WholeMnemoProg)){
-			if (WholeMnemoProg[i] == 0x0A ) k++;
-			if (WholeMnemoProg[i] == 0x0D ) k++;
-			i++;
-			if (k==(LineErrorCode-2)) {is=i;}  //position at the line of error detected
-			if (k==(LineErrorCode-1)) {SetUpTextProg(is); goto HighLight;}
-		}
-	HighLight:
-		FldSetSelection (FieldProgTextPtr, (UInt16) i, (UInt16) i+1);
-	*/
+ 
+  static IndicError(int LineErrorCode){
 	int k,i=0;char p[CharMaxOneLine];
 	for(k=0;k<LineErrorCode;k++){while(WholeMnemoProg[i]!=0x0A&&i<strlen(WholeMnemoProg)){i++;}i++;}
 	k=0;
 	while (WholeMnemoProg[i]!=0x0A &&WholeMnemoProg[i]!=0){p[k]=WholeMnemoProg[i++];k++;}
 	p[k]=0;
-	sprintf (s,"Line %d\n%s",LineErrorCode,p);PrintCmd(s);
-	//PrintCmd(WholeMnemoProg);
+	sprintf (s,"\nLine %d\n%s",LineErrorCode,p);PrintCmd(s);
+}
+
+ 
+ 
+ static IndicErrorCode(floactet *CodeList, int ErrorOffsetCode){
+	int k,i=0,LineError;
+	char p[CharMaxOneLine];
+	int lengthprog=strlen(WholeMnemoProg);
+	LineError=0;
+	for(k=0;k<ErrorOffsetCode;k++){
+		if(CodeList[k].code==0xFF) LineError++;
+		}
+	i=0;
+	int NoLabel=0,nbrlabelsfnd=0;
+	for(k=0;k<LineError+nbrlabelsfnd;k++){
+		while(NoLabel==0&&WholeMnemoProg[i]!=0x0A&&i<lengthprog){
+			if (WholeMnemoProg[i]==':'){
+			//PrintCmd("\nlabel found");
+			nbrlabelsfnd++;NoLabel=1;} //this is to avoid counting Label: as a line because it is not converted into 0xFF for codelist
+			if (NoLabel==1 &&WholeMnemoProg[i]!=0x0A) NoLabel=0;
+			i++;
+			}
+		i++;
+		}		
+	k=0;
+	while (WholeMnemoProg[i]!=0x0A &&WholeMnemoProg[i]!=0){
+		p[k]=WholeMnemoProg[i++];k++;
+		}
+	p[k]=0;
+	sprintf (s,"\nOffsetCode=%d\nLine %d\nbefore code -->\n%s\n",ErrorOffsetCode,LineError+nbrlabelsfnd,p);PrintCmd(s);
 }
  
  static int TraceFunctionOneVariable(floactet *CodeOfOneLine, floactet *CodeList)
