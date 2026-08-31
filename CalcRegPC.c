@@ -167,6 +167,8 @@ extern int FillSphere(Matrix *MAccu,int NumM,int PtLinkM,float Radius,float peri
 extern int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode);
 static int FillMatrixTwoVariable(int NumM,floactet *CodeOfOneLine, floactet *CodeList);
 extern int FunctToObjMatrix(Matrix *MAccu,int Mfct,int Mobj,int PtLinkM);
+extern int GetClosestPoint(Matrix *MAccu,int NumM,int VectP,int ResM3,int mask);
+extern int ModifObject(Matrix* MAccu,int NumM,int PtLinkM,int IndexP,int Vect,int mod);
 
 extern int MatrixPower(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine);
 extern int MatrixSubAddition(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSignP,int imaxLine);
@@ -222,6 +224,8 @@ extern int GfxZoom,GfxMove;
 
 //key or mouse rectangle
 extern int Button;
+extern int XpenDown,YpenDown,MouseLeftClick,PenMoved,XpenUp,YpenUp;
+MSG Msg;
 
 //Sound
 float SoundFrequency,SoundAmplitude,SoundDuration,SamplesPerSecond;
@@ -231,8 +235,8 @@ float SoundFrequency,SoundAmplitude,SoundDuration,SamplesPerSecond;
 static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListSize
 static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_trp_mtxn_mtxp_fM_";
 //									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26    27     28     29     30 
-static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_colorgfx_dataM_fctobjM_";
-//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28            29           30       31 
+static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_action_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_colorgfx_dataM_fctobjM_getindM_modobjM_";
+//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28            29           30       31             32         33
 //char blabli[]= { {'hello'},0x1,{'hi'},0x0};
 
 //--------------labels
@@ -318,6 +322,15 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //getserial Baudrate,SerFlag
 //putserial Baudrate,SerFlag,bytedata
 //key(0) or key(1) value from keyboard(0) or the mouse board rectangle(1)
+// !! Use also key(0) to let the windows Update its MSG signals
+// This is important to retrieve the Mouse up down moved, etc...
+// put key(0) in a loop otherwise you won't get the proper reel time signals
+//						key(1) XpenDown,
+//						key(2)YpenDown,
+//						key(3)leftclickon=1, leftclickoff=0
+//						key(4)mousemoved=1, not moved=0
+//						key(5)=XpenUp
+//						key(6)=YpenUp
 
 //clscmd    clears the cmd window
 //defM 1,5,3    Create matrix M1 with dimension n=5, p=3;
@@ -338,11 +351,30 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //																							PtLinkMtx is the matrix which contains the link to four index p of points in the sphere
 //																							Mtx should be Mn=3 or 4, Mp is set by user. PtlinkMtx :Mn=4, Mp[PtLinkMtx] = Mp[Mtx]
 //dispobjM objM,PtLinkM,DrawingMode   objM is the matrix containing the different points objM[3 or 4,npts], and PtLinkM is the matrix containing the link points
-//																	DrawingMode is the mode to draw: 0=transparent, 1=hidden faces not drawn
+//						DrawingMode is the mode to draw: 
+//						0=transparent, 
+//						1=hidden faces not drawn (xpoints front, y is horizontal, z is vertical to screen)
+//						2=Same as 3D but projected on 2D (only visible faces on plan 2D	y horizontal, z vertical)	
+
 //colorgfx n°color   This sets the color of the pencil
 //dataM n°mtx,a11,a12,a13,...,a21,a22,a23,...a31,a32,a33,...anp used to fill data in the mtx
 //fMn°(x,y)= exp(-(x2+y^2)^)  fills the matrix with the exponential, it starts from x=1 (y=1) up to Mn (Mp respectively)
 //ftobjM n°M1,n°M2,n°PtLinkM  transfert matrix style Meshgrid to an object with its PtLink Matrix to be displayable with dispobjM
+//getindM n°M1,n°VectP,n°IndexPts,Mask    get the better index of point close to vectP[3,1]=x,y,z, result in matrix n°IndexPts1,2,3 bests 
+//				Mask is used to discard or considere the coordinates of an axes
+//				for example: to get better approximation point only on x,y consideration in an object Matrix of x,y,z coordinates, 
+//									Use Mask=6 =  %110    x is on, y is on and z is off
+//				Mask = 5 =%101 will considere x and z  data to get a better approximation point index in the objectM1
+
+//modobjM n°M1,n°PtLinkM,IndexP,Vect,mod   modify the object M1, with its PtLinkM according to mod and Vect in point of IndexP (in M1) 
+//						mod =	0  flattening on the plan orthogonal to the vector defined by mouse drag 
+//									1 exponential large by mouse dragging
+//									2 exponential narow by mouse dragging
+//									3 sharp exponential by mouse dragging
+
+//action n    	n=0 clear gfx screen 
+//					n=1 systate gfx control inactive, zoom move gfx, this action also resets the MouseMoved and MouseLeftClick
+//					n=2 systate gfx control activated zoom move gfx,this action also resets the MouseMoved and MouseLeftClick
 
 //MathFunctions
 extern int MathError; //send back a code if error in the Math functions. MathError=1 out of range exponential
@@ -375,7 +407,9 @@ int DispBrk=0;
 int BreakActivated=-1; //init brk 1 activated, -1 for disabled at start
 int StopProgram=0;
 extern int GfxDerivate; //if =1 Then Draw function with its derivated
-
+int systate=1; //1=displacement of gfx, zoom etc... is Active
+					// -1=displacement inactive
+					
 //Serial
 extern int SerialReady; //Serial device opened =1, closed =0
 extern int BaudRate;
@@ -1005,7 +1039,7 @@ float X0,X1,Y0,Y1,Y;
 				pos=CodeList[i].value;
 			CodeList[i].value=Labels[pos].n;CodeList[i].cmplx=0;
 	}}
-	if (debug > 0 || debug == -1) {
+	if (debug == -1 ) {
 		PrintCmd ("----------------\n");
 		for  (i=0;i<CodeListOffsetMax;i++){
 			a=CodeList[i].code;
@@ -1013,6 +1047,8 @@ float X0,X1,Y0,Y1,Y;
 			c=CodeList[i].cmplx;
 			sprintf(s, " %d [%d][%d][%d]\n",i,a,b,c);PrintCmd(s);
 			}
+		}
+		if (debug == -1 || debug == -2 || debug == -3){
 		PrintCmd ("----------------\nExiting without launching.");
 		return 0;
 		}
@@ -1259,10 +1295,28 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			}else{PrintCmd("parameter grid!\n");}
 		}	
 //-------------
-		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==8) {//workspace
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==10) {//action
 			if (CodeOfOneLine[OffsetLine+1].code==1){
-				AdditionalProgMem=100+(int)CodeOfOneLine[OffsetLine+1].value;
-			}else{PrintCmd("workspace parameter!\n");}
+				switch((int)CodeOfOneLine[OffsetLine+1].value){
+					case 0: //clr gfx area
+						WinEraseRectangleReg(DrawZoneX+1,DrawZoneY,DrawZoneW,DrawZoneH);//Define the erasing rectangle dimensions	
+					break;
+					case 1: //inactive gfx control
+						systate=-1;
+						PenMoved=0;MouseLeftClick=0;
+						#ifdef CalcRegSoftware
+						PrintCmd("Gfx control inactive\n");
+						#endif
+					break;
+					case 2://activate gfx control
+						systate=1;
+						PenMoved=0;MouseLeftClick=0;
+						#ifdef CalcRegSoftware
+						PrintCmd("Gfx control active\n");			
+						#endif
+					break;
+				}
+			}else{PrintCmd("action parameter!\n");}
 		}	
 //-------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==7) {//Line x1,y1,x2,y2,color
@@ -1519,8 +1573,11 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 							textdsp[i]=WholeMnemoProg[TextIndex+i];i++;}
 							textdsp[i]=0; //terminate the ascii chain
 							RECT prc;
-							prc.top = DrawZoneY+(int)CodeOfOneLine[OffsetLine+3].value;
-							prc.left=DrawZoneX+(int)CodeOfOneLine[OffsetLine+1].value;
+							prc.left=(int)((CodeOfOneLine[OffsetLine+1].value-DimXmin)*DrawZoneW/(DimXmax-DimXmin)+DrawZoneX);
+							prc.top=(int)(-(CodeOfOneLine[OffsetLine+3].value-DimYmin)*DrawZoneH/(DimYmax-DimYmin)+DrawZoneY+DrawZoneH);
+
+							//prc.top = DrawZoneY+(int)CodeOfOneLine[OffsetLine+3].value;
+							//prc.left=DrawZoneX+(int)CodeOfOneLine[OffsetLine+1].value;
 							prc.bottom = prc.top+15;
 							if (prc.left+tsize*10<DrawZoneX+DrawZoneW)prc.right = prc.left+tsize*10;//DrawZoneX+DrawZoneW;
 							else prc.right=DrawZoneX+DrawZoneW;
@@ -1584,6 +1641,40 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			if (Error !=0) goto EndMain;
  			OffsetLine=0;
 			}else{PrintCmd("Fill Matrix sphere!\n");goto EndMain;}
+		}	
+		
+//------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==32) {//getindM
+			if (CodeOfOneLine[OffsetLine+1].code==1&& CodeOfOneLine[OffsetLine+2].code==10 &&
+			CodeOfOneLine[OffsetLine+3].code==1&& CodeOfOneLine[OffsetLine+4].code==10 &&
+			CodeOfOneLine[OffsetLine+5].code==1&& CodeOfOneLine[OffsetLine+6].code==10 &&
+			CodeOfOneLine[OffsetLine+7].code==1) {
+			NumM = (int)CodeOfOneLine[OffsetLine+1].value;
+			int VectP = (int)CodeOfOneLine[OffsetLine+3].value;
+			int ResM3 = (int)CodeOfOneLine[OffsetLine+5].value;
+			int mask = (int)CodeOfOneLine[OffsetLine+7].value;
+			Error = GetClosestPoint(MAccu,NumM,VectP,ResM3,mask);
+			if (Error !=0) goto EndMain;
+ 			OffsetLine=0;
+			}else{PrintCmd("getindM!\n");goto EndMain;}
+		}	
+		
+//------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==33) {//modobjM
+			if (CodeOfOneLine[OffsetLine+1].code==1&& CodeOfOneLine[OffsetLine+2].code==10 &&
+			CodeOfOneLine[OffsetLine+3].code==1&& CodeOfOneLine[OffsetLine+4].code==10 &&
+			CodeOfOneLine[OffsetLine+5].code==1&& CodeOfOneLine[OffsetLine+6].code==10 &&
+			CodeOfOneLine[OffsetLine+7].code==1&& CodeOfOneLine[OffsetLine+8].code==10 &&
+			CodeOfOneLine[OffsetLine+9].code==1) {
+			NumM = (int)CodeOfOneLine[OffsetLine+1].value;
+			int PtLinkM = (int)CodeOfOneLine[OffsetLine+3].value;
+			int IndexP = (int)CodeOfOneLine[OffsetLine+5].value;
+			int Vect = (int)CodeOfOneLine[OffsetLine+7].value;
+			int mod = (int)CodeOfOneLine[OffsetLine+9].value;
+			Error = ModifObject(MAccu,NumM,PtLinkM,IndexP,Vect,mod);
+			if (Error !=0) goto EndMain;
+ 			OffsetLine=0;
+			}else{PrintCmd("modobjM !\n");goto EndMain;}
 		}	
 		
 //------------
@@ -2937,11 +3028,25 @@ static int CalculOneLine(floactet *CodeListLine){
 		if (CodeVal==24 ) {val=0;PrintCmd("Activate Complexe before use mod(z)\n");MathError=8;goto KeepOn;}	//mod(z)
 		if (CodeVal==25 ) {val=0;PrintCmd("Activate Complexe before use arg(z)\n");MathError=8;goto KeepOn;}	//arg(z)
 		if (CodeVal==26 ) {
+								if(CodeListLine[i+1].value==0){
 								MSG Msg;
 								GetMessage(&Msg, NULL, 0, 0);
 								TranslateMessage(&Msg);
 								DispatchMessage(&Msg);
-								val=Button;Button=0;}	//key
+								val=(float)Button;Button=0;goto KeepOn;}
+								if(CodeListLine[i+1].value==1){
+								//MSG Msg;
+								//GetMessage(&Msg, NULL, 0, 0);
+								//TranslateMessage(&Msg);
+								//DispatchMessage(&Msg);
+								val=(float)XpenDown;goto KeepOn;}
+								if(CodeListLine[i+1].value==2){
+								//MSG Msg;
+								//GetMessage(&Msg, NULL, 0, 0);
+								//TranslateMessage(&Msg);
+								//DispatchMessage(&Msg);
+								val=(float)YpenDown;goto KeepOn;}
+								}	//key
 
 	KeepOn:
 		if (MathError !=0 ) {sprintf(s,"Math Error = %d\n",MathError);PrintCmd(s);return 3;}
@@ -3189,12 +3294,40 @@ OutForPower:
 		if (CodeVal==23 ) {val=RMath_abs(CodeListLine[i+1].value);goto KeepOn;}	//abs
 		if (CodeVal==24 ) {val=0;PrintCmd("Activate Complexe before use mod(z)\n");MathError=8;goto KeepOn;}	//mod(z)
 		if (CodeVal==25 ) {val=0;PrintCmd("Activate Complexe before use arg(z)\n");MathError=8;goto KeepOn;}	//arg(z)
-		if (CodeVal==26 ) {
-								MSG Msg;
+ 		if (CodeVal==26 ) {
+								switch((int)CodeListLine[i+1].value){
+								case 0:
 								GetMessage(&Msg, NULL, 0, 0);
 								TranslateMessage(&Msg);
 								DispatchMessage(&Msg);
-								val=Button;Button=0;}	//key
+								val=(float)Button;Button=0;
+								break;
+								
+								case 1:
+								//val=(float)XpenDown;
+								val=(float)((XpenDown-DrawZoneX)/DrawZoneW*(DimXmax-DimXmin)+DimXmin);
+								break;
+								case 2:
+								val= (float)((-YpenDown+DrawZoneY+DrawZoneH)/DrawZoneH*(DimYmax-DimYmin)+DimYmin);
+								//val=(float)YpenDown;
+								break;
+								case 3:
+								val=(float)MouseLeftClick;
+								break;
+								case 4:
+								val=(float)PenMoved;PenMoved=0;
+								break;
+								case 5:
+								val=(float) ((XpenUp-DrawZoneX)/DrawZoneW*(DimXmax-DimXmin)+DimXmin);
+								//val=(float)XpenUp;
+								break;
+								case 6:
+								val=(float)((-YpenUp+DrawZoneY+DrawZoneH)/DrawZoneH*(DimYmax-DimYmin)+DimYmin);
+								//val=(float)YpenUp;
+								break;
+								}
+							}	//key
+
 
 	KeepOn:
 		if (MathError !=0 ) {sprintf(s,"Math Error = %d\n",MathError);PrintCmd(s);return 3;}

@@ -1,0 +1,57 @@
+
+defM0,4,200
+pi=3.1415927
+a=4
+b=4
+
+defM1,4,200
+fillsphM0,1,1.5,20
+defM2,4,4 //Rz pi/2 pour aller a droite
+defM3,4,4 //Ry pi/2 pour aller en bas
+defM4,4,4 //Tfront en haut
+defM5,4,4 //Tleft en haut a droite
+defM6,4,4 //Tup en bas à droite
+
+defM10,4,200
+
+dataM2,cos(pi/2),sin(-pi/2),0,0, sin(pi/2),cos(pi/2),0,0, 0,0,1,0, 0,0,0,1
+dataM3,cos(pi/2),0,sin(pi/2),0, 0,1,0,0, sin(-pi/2),0,cos(pi/2),0, 0,0,0,1
+//dataM4,1,0,0,0, 0,1,0,b, 0,0,1,0, 0,0,0,1 
+//dataM5,1,0,0,a, 0,1,0,b, 0,0,1,0, 0,0,0,1 
+//dataM6,1,0,0,a, 0,1,0,(-b), 0,0,1,0, 0,0,0,1 
+
+M(1,82)=2
+M(1,81)=2
+
+M(1,101)=2
+M(1,102)=2
+
+teta=pi/10
+
+gfxdim -2,-6,-6,2,1
+grid 10
+
+gfxdim -3,8,-8,3,1
+
+//M10=M4*M0 //l'image de face en haut
+M10=M0 //l'image de face en haut
+dispobjM10,1,1
+
+gfxdim -8,3,-8,3,1
+//M10=M5*M0 //l'image de gauche à droite
+M10=M2*M0 //l'image de gauche à droite
+dispobjM10,1,1
+
+
+gfxdim -8,3,-3,8,1
+//M10=M6*M0 //l'image vue de haut à droite en bas
+M10=M3*M0
+dispobjM10,1,1
+
+//gfxdim -2,6,-2,6,1
+//M10=M0 //l'image en perspective
+//dispobjM10,1,1
+
+
+
+end

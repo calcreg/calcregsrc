@@ -50,6 +50,7 @@ HWND		btn_test,btn_brk;
 HWND		btn_0,btn_1,btn_2,btn_3,btn_4,btn_5,btn_6,btn_7,btn_8,btn_9;
 HWND		btn_10,btn_11,btn_12,btn_13,btn_14,btn_15,btn_16,btn_17,btn_18,btn_19;
 HWND hmywin,mybtn;
+HBRUSH hbrush;
 HDC			hDC;
 RECT		drawrect,wndrect;
 RECT		prect,brect;
@@ -60,8 +61,9 @@ COLORREF	colpen,colbrush;
 int			x,y;
 // for the execution at start
 	int startExecution=1; //1 at start , 0 when once executed
-//---------------------------
+//--------------------extern values are in EventPC.c
 extern Pset;
+extern int 	MouseLeftClick;//=1 down, =0;unpressed
 extern int XpenDown, YpenDown,XpenUp,YpenUp;
 extern float DimXmin,DimXmax,DimYmin,DimYmax,IncX;
 extern float DrawZoneX, DrawZoneY,DrawZoneW,DrawZoneH;
@@ -69,7 +71,7 @@ extern int PenMoved; //=1 when down and moved then up
 extern int RedrawingGfx,GfxMove,GfxZoom;
 extern int StopProgram, BreakActivated,NbrMaxBtn;
 
-extern int Button;	
+extern int Button,systate;	
 
 
 
@@ -226,9 +228,8 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			break;
 
 		case WM_CREATE:
-			
 			ObjectCreation(hwnd);
-			
+			hbrush= CreateSolidBrush(0xAAAAFF);			
 		//Creation txt window heditProg
 		long lfHeight;
 		#ifdef CalcRegSoftware
@@ -421,11 +422,13 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			break;
 
 		case WM_LBUTTONDOWN:
+			MouseLeftClick=1;//down
 			x = LOWORD(lParam);
 			y = HIWORD(lParam);
 			if(x>drawrect.left & x<drawrect.right & y>drawrect.top & y<drawrect.bottom){
 			XpenDown=x; 
 			YpenDown=y;
+			if(systate==1)
 			if (Rabs(XpenDown-(DrawZoneX+DrawZoneW/2))<DrawZoneW/2 &&
 				Rabs(YpenDown-(DrawZoneY+DrawZoneH/2))<DrawZoneH/2) {
 				if (Pset ==1){
@@ -455,13 +458,15 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			break;
 
 		case WM_LBUTTONUP:
+			MouseLeftClick=0;
 			x = LOWORD(lParam);
 			y = HIWORD(lParam);
 				if(LOWORD(lParam)>drawrect.left & LOWORD(lParam)<drawrect.right &
 				HIWORD(lParam)>drawrect.top & HIWORD(lParam)<drawrect.bottom){
 			XpenUp=x; 
 			YpenUp=y;
-			if (Rabs(XpenUp-(DrawZoneX+DrawZoneW/2))<DrawZoneW/2 &&
+				if(systate==1)
+				if (Rabs(XpenUp-(DrawZoneX+DrawZoneW/2))<DrawZoneW/2 &&
 				Rabs(YpenUp-(DrawZoneY+DrawZoneH/2))<DrawZoneH/2) {
 
 				if (PenMoved == 1 &&(Rabs(XpenUp-XpenDown)+ 

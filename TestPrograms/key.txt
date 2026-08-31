@@ -1,0 +1,18 @@
+
+
+
+loop:
+mx=key(3)
+mx>0 =>goto out2
+c=key(0)
+c==9=>goto outing
+goto loop
+
+outing:
+print0
+end
+
+out2:
+mx=key(1)
+printmx
+end

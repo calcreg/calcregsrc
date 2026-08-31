@@ -1,0 +1,143 @@
+gfxdim -10,10,-10,10,1
+pi=3.1415927
+
+defM0,4,400
+defM1,4,400
+fillM0,0,1.2
+fillsphM0,1,1.5,40
+
+defM2,4,4
+defM3,4,4
+a=2
+b=1
+c=1
+dataM3,1,0,0,a,0,1,0,b,0,0,1,c,0,0,0,1
+M4=M0 //save the matrix
+//M0=M3*M4
+
+teta=pi/4+pi/3
+
+
+
+//bsr down
+teta=3*pi/20
+//bsr right
+teta=pi/10
+//bsr down
+
+defM5,3,1 //vectP
+defM6,3,1//resM3
+dataM5,1,1,1
+getindM0,5,6
+print M6(1,1)
+print M6(2,1)
+print M6(3,1)
+end
+
+loop:
+c = key(0)
+c==4 =>bsr left
+c==6 =>bsr right
+c==8=>bsr up
+c==2=>bsr down
+c ==9=>goto outing
+bsr Wait
+goto loop
+end
+
+
+Wait:
+x=100
+lwait:
+x=x-1
+x>0=>goto lwait
+rts
+
+down:
+M2(1,2)=0
+M2(1,2)=0
+M2(1,3)=0
+M2(2,1)=0
+M2(2,2)=0
+M2(2,3)=0
+M2(3,1)=0
+M2(3,2)=0
+M2(3,3)=0
+M2(1,1)=cos(teta)
+M2(3,3)=cos(teta)
+M2(2,2)=1
+M2(1,3)=sin(teta)
+M2(3,1)=-sin(teta)
+
+M0=M2*M0
+bsr display
+rts
+
+outing:
+end
+
+left:
+M2(1,2)=0
+M2(1,2)=0
+M2(1,3)=0
+M2(2,1)=0
+M2(2,2)=0
+M2(2,3)=0
+M2(3,1)=0
+M2(3,2)=0
+M2(3,3)=0
+M2(1,1)=1
+M2(2,3)=-sin(teta)
+M2(2,2)=cos(teta)
+M2(3,3)=cos(teta)
+M2(3,2)=sin(teta)
+M0=M2*M0
+bsr display
+rts
+
+right:
+M2(1,2)=0
+M2(1,2)=0
+M2(1,3)=0
+M2(2,1)=0
+M2(2,2)=0
+M2(2,3)=0
+M2(3,1)=0
+M2(3,2)=0
+M2(3,3)=0
+M2(1,1)=1
+M2(2,3)=sin(teta)
+M2(2,2)=cos(teta)
+M2(3,3)=cos(teta)
+M2(3,2)=-sin(teta)
+M0=M2*M0
+bsr display
+rts
+
+up:
+M2(1,2)=0
+M2(1,2)=0
+M2(1,3)=0
+M2(2,1)=0
+M2(2,2)=0
+M2(2,3)=0
+M2(3,1)=0
+M2(3,2)=0
+M2(3,3)=0
+M2(1,1)=cos(teta)
+M2(3,3)=cos(teta)
+M2(2,2)=1
+M2(1,3)=-sin(teta)
+M2(3,1)=sin(teta)
+M0=M2*M0
+bsr display
+rts
+
+
+display:
+grid 10
+//colorgfx 16
+M0=M3*M0 //translation
+dispobjM0,1,1
+rts
+

@@ -1,0 +1,59 @@
+//loop:			 this is a label
+//grid Step	//StepX and Y for grid
+//gfxdim xmin,xmax,ymin,ymax,IncX //Gfx definition
+//box3d wx,wy,wz,Inc3d  wx width of the box from -wx to wx Xmax3d = wx =-Xmin3d
+//F1(x) = 8*x+2
+//Trf(x)= exp(x+1)+F1(x)     Plot 2D
+//Trf(x,y)= exp(x+y)+F1(x)  Plot 3D
+
+//line x1,y1,x2,y2,color
+//x<10=>goto loop  available test condition: <,>,==
+//getserial Baudrate,SerFlag
+//putserial Baudrate,SerFlag,bytedata
+//key(0) or key(1) value from keyboard(0) or the mouse board rectangle(1)
+// !! Use also key(0) to let the windows Update its MSG signals
+// This is important to retrieve the Mouse up down moved, etc...
+// put key(0) in a loop otherwise you won't get the proper reel time signals
+//						key(1) XpenDown,
+//						key(2)YpenDown,
+//						key(3)leftclickon=1, leftclickoff=0
+//						key(4)mousemoved=1, not moved=0
+//						key(5)=XpenUp
+//						key(6)=YpenUp
+
+//clscmd    clears the cmd window
+//defM 1,5,3    Create matrix M1 with dimension n=5, p=3;
+//fillM 2,1.5,3  fill matrix M2 from value 1.5 to 3
+//loadsndM n°mtx
+//loadsndM n°mtx,"myfile.wav" put no space in the line before the guillemet
+//recsndM0,44100  Record sound at 44100 SamplesPerSec quality=16bits into Matrix 0 of size M0.nxp
+//printx,"blabli x=" put no spaces in the line before the guillemet
+//M1=trp(M0)  defines the matrix M1 as the transposed of M0, no need to use defM1 to create M1 matrix
+//matrix rules: if Mtx1[size1,p] * Mtx2[size1,p] it is a product like scalar for each componant one by one
+//						if Mtx1[size1 or n,p] * Mtx2[size p!=1,k] result is math matrix product Mtx[n,k]
+// M = scalar a, this is possible means full of the value scalar a
+// resulting calculation being M[size=1,1] is also taken as a scalar
+//saveM0   save the matrix 0 selection of name is done through the win32API
+//saveM1,"mtx.m" The the matrix 1 in file mtx.m
+//createbtn n°btn,x,y,width,height,"btnname"  use key(0) == n°btn  to reach btn data for those you created n°btn>=10 is safer not ot interact with the small keyboard already existing
+//fillsphM n°mtx,n°PtLinkMtx,Radius,nbr data for phi=2pi    This fills the matrix as a sphere, the dimension should be Mn=3 and Mp a multiple of a
+//																							PtLinkMtx is the matrix which contains the link to four index p of points in the sphere
+//																							Mtx should be Mn=3 or 4, Mp is set by user. PtlinkMtx :Mn=4, Mp[PtLinkMtx] = Mp[Mtx]
+//dispobjM objM,PtLinkM,DrawingMode   objM is the matrix containing the different points objM[3 or 4,npts], and PtLinkM is the matrix containing the link points
+//						DrawingMode is the mode to draw: 
+//						0=transparent, 
+//						1=hidden faces not drawn (xpoints front, y is horizontal, z is vertical to screen)
+//						2=Same as 3D but projected on 2D (only visible faces on plan 2D	y horizontal, z vertical)	
+
+//colorgfx n°color   This sets the color of the pencil
+//dataM n°mtx,a11,a12,a13,...,a21,a22,a23,...a31,a32,a33,...anp used to fill data in the mtx
+//fMn°(x,y)= exp(-(x2+y^2)^)  fills the matrix with the exponential, it starts from x=1 (y=1) up to Mn (Mp respectively)
+//ftobjM n°M1,n°M2,n°PtLinkM  transfert matrix style Meshgrid to an object with its PtLink Matrix to be displayable with dispobjM
+//getindM n°M1,n°M2,n°M3    get the better index of point close to vectPoint M2[3,1]=x,y,z, result in matrix n°M3 
+//modobjM n°M1,n°PtLinkM,IndexP,Vect,mod   modify the object M1, with its PtLinkM according to mod and Vect in point of IndexP (in M1)
+//					mod=0  Planish
+//					mod=1  drain or push  an exponential form out of the point
+
+//action n    	n=0 clear gfx screen 
+//					n=1 systate gfx control inactive, zoom move gfx, this action also resets the MouseMoved and MouseLeftClick
+//					n=2 systate gfx control activated zoom move gfx,this action also resets the MouseMoved and MouseLeftClick

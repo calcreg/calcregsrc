@@ -19,6 +19,7 @@ extern void SelectionStylo(COLORREF);
 //windows stuff
 extern HWND hmywin;
 extern HDC hDC; 
+extern HBRUSH 	hbrush;
 
 
 //#include "CalcReg.h"		// app
@@ -137,12 +138,16 @@ int FillSphere(Matrix *MAccu,int NumM,int PtLinkM,float Radius,float period);
 int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode);
 void FillQuadrilatere(float X1,float Y1,float X2,float Y2,float X3,float Y3,float X4,float Y4,int ColorGraph);
 int FunctToObjMatrix(Matrix *MAccu,int NumM,int M2,int PtLinkM);
+int GetClosestPoint(Matrix *MAccu,int NumM,int VectP,int ResM3,int mask);
+int ModifObject(Matrix* MAccu,int NumM,int PtLinkM,int IndexP,int Vect,int mod);
 
 int MatrixPower(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine);
 int MatrixSubAddition(Matrix *MAccu,floactet *CodeListLine,int i,int iptrEqualSignP,int imaxLine);
 int MatrixMultiplication(Matrix *MAccu,floactet *CodeListLine,int i, int imaxLine);
 int MatrixDivision(Matrix *MAccu,floactet *CodeListLine,int i,int imaxLine);
 int MathFunctionMatrices (Matrix *MAccu, floactet *CodeListLine,int i);
+
+
 
 
 
@@ -277,6 +282,8 @@ int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode){
 	int Error,i,k,L,foundPlace,pt,pt1,pt2,NoDraw,m,mmax,minPt,maxPt;
 	float xmax,xmin,x,x1,y1,z1,x2,y2,z2,x3,y3,z3,x4,y4,z4,X1,Y1,X2,Y2,X3,Y3,X4,Y4;
 
+	SelectObject(hDC,hbrush);
+
 	int Mp = MAccu[NumM].p;
 	int Mn = MAccu[NumM].n;
 	int PtLinkMn = MAccu[PtLinkM].n;
@@ -340,8 +347,8 @@ int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode){
 	}//if DrawingMode 0
 
 	//						---- DrawingMode 1  ----
-	if (DrawingMode == 1){ //only visible faces
-
+	if (DrawingMode == 1 || DrawingMode == 2){ //only visible faces
+	//DrawingMode 1=3D display, 2=Projection on 2D display
 	//Here we need to find the points order to display in x from back to front
 	//therefore for x decreasing order.
 	ListOrder *list = (ListOrder*) malloc((Mp+1)*sizeof (struct ListOrder));
@@ -437,7 +444,7 @@ OUTLIST:
 		if (NoDraw==0){//ok to draw
 		
 			//Here we have to make the test of over riding and hiding lines
-			
+			if (DrawingMode == 1){
 			X1=y1-x1*(xp-y1)/zp;
 			Y1=z1-x1*(yp-z1)/zp;
 			X2=y2-x2*(xp-y2)/zp;
@@ -446,7 +453,10 @@ OUTLIST:
 			Y3=z3-x3*(yp-z3)/zp;
 			X4=y4-x4*(xp-y4)/zp;
 			Y4=z4-x4*(yp-z4)/zp;
-
+			}else{//DrawingMode==2
+			X1=y1;X2=y2;X3=y3;X4=y4; //we projecte with similarity with the 3D but on 2D none perspective
+			Y1=z1;Y2=z2;Y3=z3;Y4=z4;
+			}
 			FillQuadrilatere(X1,Y1,X2,Y2,X3,Y3,X4,Y4,ColorGraph);
 			
 			/*	Line(X1,Y1,X2,Y2,0);
@@ -551,6 +561,158 @@ int FunctToObjMatrix(Matrix *MAccu,int NumM,int M2,int PtLinkM){
 	return Error;
 }
 
+
+int GetClosestPoint(Matrix *MAccu,int NumM,int VectP,int ResM3,int mask){
+
+//Matrix VectP is a point line or column dim =3*1 or 1*3 
+//it is the point to match
+
+//Matrix ResM3 is the matrix which will contain the result found, we give the closest and another 
+//close point in case that one is not the good one, the user will chose
+int k,kmin,kmin2,kmin3;
+float hmin,hmin2,dx,dy,dz,h,m1,m2,m3;
+int Mn=MAccu[NumM].n;
+int Mp=MAccu[NumM].p;
+int VectMn=MAccu[VectP].n;
+int VectMp=MAccu[VectP].p;
+int ResM3n=MAccu[ResM3].n;
+int ResM3p=MAccu[ResM3].p;
+if (mask>7){PrintCmd("Mask should be <7, read manual\n");return 1;}
+if (Mn!=3 && Mn !=4){PrintCmd("Mn should be 3 or 4\n"); return 1;}
+if (VectMn*VectMp !=3){PrintCmd("VectP should be 3*1 or 1*3 size\n"); return 1;}
+if (ResM3n*ResM3p<3){PrintCmd("ResM3 shoud be at least size 3\n");return 1;}
+//bit4=0, bit 3 is x, bit 2 is y, bit 0 is z   mask=%0xyz
+ if(mask&0x01==1)m3=1;else m3=0;//to considere mask
+ if(mask&0x02==2)m2=1;else m2=0;
+ if(mask&0x04==4)m1=1;else m1=0;
+float Ptx=MAccu[VectP].ptr[0];
+float Pty=MAccu[VectP].ptr[1];
+float Ptz=MAccu[VectP].ptr[2];
+		dx=MAccu[NumM].ptr[0*Mp+0]-Ptx;
+		dy=MAccu[NumM].ptr[1*Mp+0]-Pty;
+		dz=MAccu[NumM].ptr[2*Mp+0]-Ptz;
+		hmin=m1*dx*dx+m2*dy*dy+m3*dz*dz;
+		kmin=0;kmin2=0;kmin3=0;hmin2=hmin;
+	for (k=1;k<Mp;k++){
+		dx=MAccu[NumM].ptr[0*Mp+k]-Ptx;
+		dy=MAccu[NumM].ptr[1*Mp+k]-Pty;
+		dz=MAccu[NumM].ptr[2*Mp+k]-Ptz;
+		h=m1*dx*dx+m2*dy*dy+m3*dz*dz;
+		//if(hmin2==h){kmin3=k+1;}
+		//if (hmin==h){kmin2=k+1;hmin2=h;}
+		if (hmin>=h){kmin3=kmin2,kmin2=kmin;hmin2=hmin;kmin=k;hmin=h;}
+	}
+	
+	//the result is the index in math convention strating from 1
+	//if an index is 0 for kmin2, kmin3: it means that there was no findings
+	MAccu[ResM3].ptr[0]=(float)(kmin+1);
+	MAccu[ResM3].ptr[1]=(float)(kmin2+1);
+	MAccu[ResM3].ptr[2]=(float)(kmin3+1);
+	return 0;
+}
+
+int ModifObject(Matrix* MAccu,int NumM,int PtLinkM,int IndexP,int Vect,int mod){
+
+//modobj NumM,PtLinkM,IndexP,Vect2,mod
+//NumM is the object matrix PtLink its link matrix
+//VectP is the Point Index in the matrix NumM where the modif is localised
+//Vect2 is a vector to assist the change, direction and intensity
+//mod is the mode: 
+//				0 flatten with plane orthogonal to Vect2 starting at point VectP
+//				1 exponential large change along Vect2 with an exponantial centered in VectP 
+//				2 exponential narrow change along Vect2 with an exponantial centered in VectP 
+//				3
+//P0
+float alfa,d,d2,x,y,z,x0,y0,z0;
+int k;
+	int Mp = MAccu[NumM].p;
+	int Mn = MAccu[NumM].n;
+	int PtLinkMn = MAccu[PtLinkM].n;
+	int PtLinkMp = MAccu[PtLinkM].p;
+
+	if (MAccu[NumM].ptr == 0) {PrintCmd("modobjM: objM not defined!\n");return 1;}
+	if (MAccu[PtLinkM].ptr == 0) {PrintCmd("modobjM: PtLinkMatrix not defined!\n");return 1;}
+	if (MAccu[Vect].ptr == 0) {PrintCmd("modobjM: Vect not defined!\n");return 1;}
+	if (PtLinkMp!=Mp) {PrintCmd("modobjM: objMp should be same as PtLinkM.p\n");return 1;} 
+	if (PtLinkMn!=4) {PrintCmd("modobjM: PtLinkM.n should be equal to 4\n");return 1;} 
+	if (MAccu[Vect].n*MAccu[Vect].p!=3) {PrintCmd("modobjM: Vect n*p should equal 3\n");return 1;} 
+
+	float a=MAccu[Vect].ptr[0];
+	float b=MAccu[Vect].ptr[1];
+	float c=MAccu[Vect].ptr[2];
+	if (a==0&&b==0&&c==0){PrintCmd("modobjM: Vect is null!\n");return 1;}
+
+switch (mod){
+	case 0:
+	x0=MAccu[NumM].ptr[0*Mp+IndexP-1]+a; //point xA c'est le point du plan d'aplatissage
+	y0=MAccu[NumM].ptr[1*Mp+IndexP-1]+b; //point yA
+	z0=MAccu[NumM].ptr[2*Mp+IndexP-1]+c; //point  zA
+	d=a*x0+b*y0+c*z0; //Plan Equation: ax+by+cz=d
+			for (k=0;k<Mp;k++){
+				x=MAccu[NumM].ptr[0*Mp+k];
+				y=MAccu[NumM].ptr[1*Mp+k];
+				z=MAccu[NumM].ptr[2*Mp+k];
+				d2=a*x+b*y+c*z;
+				if (d2-d<0){ //( a*(x-x0)+b*(y-y0)+c*(z-z0) <0 ){ scalar vector AM1.n<0
+					//we project the point on the plan of 
+					//normal vector Vect and point P
+					alfa=(d-d2)/(a*a+b*b+c*c);
+					//proj. on plan coordinates:
+					MAccu[NumM].ptr[0*Mp+k]=x+alfa*a;
+					MAccu[NumM].ptr[1*Mp+k]=y+alfa*b;
+					MAccu[NumM].ptr[2*Mp+k]=z+alfa*c;
+					}
+		}
+	break;
+	case 1:
+	x0=MAccu[NumM].ptr[0*Mp+IndexP-1]; //point xA c'est le point sur l'objet
+	y0=MAccu[NumM].ptr[1*Mp+IndexP-1]; //point yA
+	z0=MAccu[NumM].ptr[2*Mp+IndexP-1]; //point  zA
+		for (k=0;k<Mp;k++){
+				x=MAccu[NumM].ptr[0*Mp+k];
+				y=MAccu[NumM].ptr[1*Mp+k];
+				z=MAccu[NumM].ptr[2*Mp+k];
+				d2=(x-x0)*(x-x0)+(y-y0)*(y-y0)+(z-z0)*(z-z0); //distance Pt-P0
+				alfa=RMath_exp(-d2*(a*a+b*b+c*c));//vect grand, base serrée et hauteur grande
+				MAccu[NumM].ptr[0*Mp+k]=x+alfa*a;
+				MAccu[NumM].ptr[1*Mp+k]=y+alfa*b;
+				MAccu[NumM].ptr[2*Mp+k]=z+alfa*c;			
+		}
+	break;
+	case 2:
+	x0=MAccu[NumM].ptr[0*Mp+IndexP-1]; //point xA c'est le point sur l'objet
+	y0=MAccu[NumM].ptr[1*Mp+IndexP-1]; //point yA
+	z0=MAccu[NumM].ptr[2*Mp+IndexP-1]; //point  zA
+		for (k=0;k<Mp;k++){
+				x=MAccu[NumM].ptr[0*Mp+k];
+				y=MAccu[NumM].ptr[1*Mp+k];
+				z=MAccu[NumM].ptr[2*Mp+k];
+				d2=(x-x0)*(x-x0)+(y-y0)*(y-y0)+(z-z0)*(z-z0); //distance Pt-P0
+				alfa=RMath_exp(-4*d2*(a*a+b*b+c*c));//vect grand, base serrée et hauteur grande
+				MAccu[NumM].ptr[0*Mp+k]=x+alfa*a;
+				MAccu[NumM].ptr[1*Mp+k]=y+alfa*b;
+				MAccu[NumM].ptr[2*Mp+k]=z+alfa*c;			
+		}
+	break;
+	case 3:
+	x0=MAccu[NumM].ptr[0*Mp+IndexP-1]; //point xA c'est le point sur l'objet
+	y0=MAccu[NumM].ptr[1*Mp+IndexP-1]; //point yA
+	z0=MAccu[NumM].ptr[2*Mp+IndexP-1]; //point  zA
+		for (k=0;k<Mp;k++){
+				x=MAccu[NumM].ptr[0*Mp+k];
+				y=MAccu[NumM].ptr[1*Mp+k];
+				z=MAccu[NumM].ptr[2*Mp+k];
+				d2=(x-x0)*(x-x0)+(y-y0)*(y-y0)+(z-z0)*(z-z0); //distance Pt-P0
+				alfa=RMath_exp(-8*d2*(a*a+b*b+c*c));//vect grand, base serrée et hauteur grande
+				MAccu[NumM].ptr[0*Mp+k]=x+alfa*a;
+				MAccu[NumM].ptr[1*Mp+k]=y+alfa*b;
+				MAccu[NumM].ptr[2*Mp+k]=z+alfa*c;			
+		}
+	break;
+
+}
+	return 0;
+}
 
 
 

@@ -1,0 +1,24 @@
+action 1
+grid1
+
+loop:
+mx=key(4)
+mx==1 =>goto out2
+c=key(0)
+c==9=>goto outing
+goto loop
+
+outing:
+print0
+end
+
+out2:
+key(0)
+mx=key(3)
+mx==1=>goto out2
+mx=key(5)
+print key(1)
+print key(2)
+print key(5)
+print key(6)
+end

@@ -1,12 +1,10 @@
-action 1 //inactive control gfx
-clscmd
-N=200
-defM0,4,N
+
+defM0,4,200
 pi=3.1415927
 a=4
 b=4
 
-defM1,4,N
+defM1,4,200
 fillsphM0,1,1.5,20
 defM2,4,4 //Rz pi/2 pour aller a droite
 defM3,4,4 //Ry pi/2 pour aller en bas
@@ -14,9 +12,8 @@ defM4,4,4 //Rotation autour de z
 defM5,4,4 //Rotation autour de x
 defM6,4,4 //Tup en bas à droite
 defM7,1,3 //Vecteur normal au plan pour aplatir
-defM8,1,3 //receive points
-defM9,4,N//Mtx Save of M0 for Undo
-defM10,4,N
+
+defM10,4,200
 
 dataM2,cos(pi/2),sin(-pi/2),0,0, sin(pi/2),cos(pi/2),0,0, 0,0,1,0, 0,0,0,1
 dataM3,cos(pi/2),0,sin(pi/2),0, 0,1,0,0, sin(-pi/2),0,cos(pi/2),0, 0,0,0,1
@@ -27,15 +24,13 @@ dataM6,cos(pi/20),0,sin(pi/20),0, 0,1,0,0, sin(-pi/20),0,cos(pi/20),0, 0,0,0,1
 //dataM5,1,0,0,a, 0,1,0,b, 0,0,1,0, 0,0,0,1 
 //dataM6,1,0,0,a, 0,1,0,(-b), 0,0,1,0, 0,0,0,1 
 
-//M(1,82)=2
-//M(1,81)=2
+M(1,82)=2
+M(1,81)=2
 
-//M(1,101)=2
-//M(1,102)=2
-dataM7,0,0,(0.3)
-modobjM0,1,198,7,0//M,ptlink,ind,vect,mod
-dataM7,0,0,(-1.6)
-modobjM0,1,1,7,1//M,ptlink,ind,vect,mod
+M(1,101)=2
+M(1,102)=2
+dataM7,0,0,(-0.6)
+modobjM0,1,1,7,0//M,ptlink,ind,vect,mod
 
 teta=pi/10
 
@@ -43,50 +38,12 @@ bsr display
 
 loop:
 c=key(0)
-mx=key(4)
-mx==1=>goto modif
 c==4 => bsr turn
 c==8 => bsr roule
 c==1 => bsr roly
-c==5 => bsr undo
 c==9 => goto exit
 goto loop
 
-undo:
-M0=M9
-bsr display
-rts
-modif:
-key(0)
-mx=key(3)
-mx==1=>goto modif
-M9=M0
-mx=key(5)
-gfxdim -3,8,-8,3,1
-dataM7,0,key(1),key(6)
-//print M7(1,1)
-//printM7(1,2)
-getindM0,7,8,5 //result in M8 3 better points
-printM8(1,1)
-dataM7,0,(key(5)-key(1)),(key(6)-key(2))//vecteur
-//print M7(1,2)
-//printM7(1,3)
-modobjM0,1,(M8(1,1)),7,1
-//modobjM0,1,11,7,1
-bsr display
-pt2=M8(1,1)
-pt=M1(1,pt2)
-g1=M0(2,pt2)
-g2=M0(3,pt2)
-g3=M0(2,pt)
-g4=M0(3,pt)
-line g1,g2,g3,g4,1
-bcl:
-key(0)
-mx=key(4)
-mx==1=>goto bcl
-goto loop
-end
 
 display:
 
@@ -96,29 +53,22 @@ grid 10
 gfxdim -3,8,-8,3,1
 //M10=M4*M0 //l'image de face en haut
 M10=M0 //l'image de face en haut
-dispobjM10,1,2
+dispobjM10,1,1
 
 gfxdim -8,3,-8,3,1
 //M10=M5*M0 //l'image de gauche à droite
 M10=M2*M0 //l'image de gauche à droite
-dispobjM10,1,2
+dispobjM10,1,1
 
 
 gfxdim -3,8,-3,8,1
-//M10=M6*M0 //l'image vue de haut à gauche en bas
+//M10=M6*M0 //l'image vue de haut à droite en bas
 M10=M3*M0
-dispobjM10,1,2
-
-gfxdim -8,3,-3,8,1
-M10=M0 //l'image en perspective
 dispobjM10,1,1
-gfxdim 0,255,0,300,1
-wtext30,160,"front view Y-Z"
 
-wtext160,160,"left view X-Z"
-
-wtext30,20,"up view Y-(-X)"
-
+//gfxdim -2,6,-2,6,1
+//M10=M0 //l'image en perspective
+//dispobjM10,1,1
 rts
 
 
