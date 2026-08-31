@@ -245,7 +245,7 @@ static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListS
 static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_trp_mtxn_mtxp_fM_sign_?_";
 //									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26    27     28     29     30    31  32
 static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_action_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_colorgfx_dataM_fctobjM_getindM_modobjM_killbtn_savesndM_copyM_fftM_cmplx_";
-//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28            29           30       31             32         33       34			35           36         37     38
+//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28            29           30       31             32         33       34			35           36         37     38    
 //char blabli[]= { {'hello'},0x1,{'hi'},0x0};
 
 //--------------labels
@@ -384,9 +384,10 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //																							Mtx should be Mn=3 or 4, Mp is set by user. PtlinkMtx :Mn=4, Mp[PtLinkMtx] = Mp[Mtx]
 //dispobjM objM,PtLinkM,DrawingMode   objM is the matrix containing the different points objM[3 or 4,npts], and PtLinkM is the matrix containing the link points
 //						DrawingMode is the mode to draw: 
-//						0=transparent, 
+//						0=transparent iron wires, 
 //						1=hidden faces not drawn (xpoints front, y is horizontal, z is vertical to screen)
-//						2=Same as 3D but projected on 2D (only visible faces on plan 2D	y horizontal, z vertical)	
+//						2=Same as 3D but projected on 2D (projection comme en dessin industriel sur vue 2D (only visible faces on plan 2D y horizontal, z vertical)	
+//						3=3D avec la lumière selon orientation des figures.
 
 //colorgfx n°color   This sets the color of the pencil
 
@@ -413,6 +414,8 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //action n    	n=0 clear gfx screen 
 //					n=1 systate gfx control inactive, zoom move gfx, this action also resets the MouseMoved and MouseLeftClick
 //					n=2 systate gfx control activated zoom move gfx,this action also resets the MouseMoved and MouseLeftClick
+//					n=3 set the Light vector for 3D object shade plot
+//						set as: action 3,Lx,Ly,Lz
 
 //copyM n°M1,n°M2,mod   copy M2 at the place defined by mod in M1, the resulting Matrix is M1 with a new size if necessary
 //						The copy is made like: all the p values of M2 are copied to M1p; for all n M2(n,p) to M1(n,newposp)
@@ -1476,6 +1479,7 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 //-------------
 		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==10) {//action
 			if (CodeOfOneLine[OffsetLine+1].code==1){
+			extern float Lx,Ly,Lz;
 				switch((int)CodeOfOneLine[OffsetLine+1].value){
 					case 0: //clr gfx area
 						WinEraseRectangleReg(DrawZoneX+1,DrawZoneY,DrawZoneW,DrawZoneH);//Define the erasing rectangle dimensions	
@@ -1493,6 +1497,15 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 						#ifdef CalcRegSoftware
 						PrintCmd("Gfx control active\n");			
 						#endif
+					break;
+					case 3:
+						if (CodeOfOneLine[OffsetLine+2].code==10 &&CodeOfOneLine[OffsetLine+3].code==1 &&
+						CodeOfOneLine[OffsetLine+4].code==10 &&CodeOfOneLine[OffsetLine+5].code==1 &&
+						CodeOfOneLine[OffsetLine+6].code==10 &&CodeOfOneLine[OffsetLine+7].code==1){
+						Lx=CodeOfOneLine[OffsetLine+3].value;
+						Ly=CodeOfOneLine[OffsetLine+5].value;
+						Lz=CodeOfOneLine[OffsetLine+7].value;
+						}else PrintCmd("action: Syntaxe error for Light coordinates\n");
 					break;
 				}
 			}else{PrintCmd("action parameter!\n");}

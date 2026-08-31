@@ -20,7 +20,7 @@ extern void SelectionStylo(COLORREF);
 extern HWND hmywin,hEditC;
 extern HDC hDC; 
 extern HBRUSH 	hbrush;
-static HBRUSH 	BrushTable[16];
+static HBRUSH 	BrushTable[32];
 
 //#include "CalcReg.h"		// app
 
@@ -339,11 +339,13 @@ int FillSphere(Matrix *MAccu,int NumM,int PtLinkM,float Radius,float period){
 	return Error;
 	}
 
+	float Lx=-10,Ly=-10,Lz=-10;//Light coordinates
 int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode){
 	int Error,i,k,L,foundPlace,pt,pt1,pt2,NoDraw,m,mmax,minPt,maxPt;
 	float xmax,xmin,x,x1,y1,z1,x2,y2,z2,x3,y3,z3,x4,y4,z4,X1,Y1,X2,Y2,X3,Y3,X4,Y4;
-	float nx,ny,nz,normn,ux,uy,uz,normab,vx,vy,vz,wx,wy,wz,alfa,beta,gama,delta,cosalfa;
-	float Lx=-10,Ly=-10,Lz=-10;//Light coordinates
+	float nx,ny,nz,normn,normn2,ux,uy,uz,normab,vx,vy,vz,wx,wy,wz,alfa,beta,gama,delta,cosalfa;
+	float NormL=RMath_sqrt(Lx*Lx+Ly*Ly+Lz*Lz);
+	
 	//SelectObject(hDC,BrushTable[10]);
 	SelectObject(hDC,hbrush);
 
@@ -415,7 +417,8 @@ int DisplayObjectMatrix(Matrix *MAccu,int NumM,int PtLinkM,int DrawingMode){
 	//Here we need to find the points order to display in x from back to front
 	//therefore for x decreasing order.
 	//Creation d'une palette de Brush
-	for (i=0;i<16;i++){BrushTable[i]= CreateSolidBrush(i*0x000011);}
+	//for (i=0;i<16;i++){BrushTable[i]= CreateSolidBrush(i*0x000011);}
+	for (i=0;i<32;i++){BrushTable[i]= CreateSolidBrush(8*i+7);}
 
 	ListOrder *list = (ListOrder*) malloc((Mp+1)*sizeof (struct ListOrder));
 	if (list==0) {PrintCmd("dispobjM: Can't allocate memory for ListOrder\n"); goto OutDrawObject;}
@@ -521,7 +524,7 @@ OUTLIST:
 			X4=y4-x4*(xp-y4)/zp;
 			Y4=z4-x4*(yp-z4)/zp;
 			if (DrawingMode==3){ //setting the ColorGraph of the brush
-				nx=(y2-y1)*(z3-z1)-(y3-y1)*(y2-y1);//vecteur normal au Plan du quadrilatere
+/*				nx=(y2-y1)*(z3-z1)-(y3-y1)*(y2-y1);//vecteur normal au Plan du quadrilatere
 				ny=(x3-x1)*(z2-z1)-(z3-z1)*(x2-x1);
 				nz=(x2-x1)*(y3-y1)-(x3-x1)*(y2-y1);
 				normn=RMath_sqrt(nx*nx+ny*ny+nz*nz);
@@ -550,6 +553,24 @@ OUTLIST:
 //				if (cosalfa>=0)ColorGraph=(int)8*(cosalfa+1);
 //				else ColorGraph=0;
 				//SelectObject(hDC,CreateSolidBrush(0x111111*ColorGraph));//set brush color
+				SelectObject(hDC,BrushTable[ColorGraph]);//set brush color
+*/
+				nx=(y2-y1)*(z3-z1)-(y3-y1)*(y2-y1);//vecteur normal au Plan du quadrilatere
+				ny=(x3-x1)*(z2-z1)-(z3-z1)*(x2-x1);
+				nz=(x2-x1)*(y3-y1)-(x3-x1)*(y2-y1);
+				normn2=(nx*nx+ny*ny+nz*nz);
+			//n=m;p=u
+				uz=2*nx*nz/normn2;//vecteur p reflechi sur la facette
+				uy=2*nx*ny/normn2;
+				ux=-1+2*nx*nx/normn2;
+				normab=RMath_sqrt(uz*uz+uy*uy+ux*ux);// norm vecteur p
+				//light coordinates=Lx,Ly,Lz
+				gama=-Lx*ux-Ly*uy-Lz*uz; //-p.L
+				cosalfa=gama/(NormL*normab);
+				ColorGraph=(int)(16+15*(cosalfa));
+				//ColorGraph=(int)(11+2*(1-cosalfa));
+				//if (ColorGraph>=15)ColorGraph=15;
+				//if (ColorGraph<9)ColorGraph=9;
 				SelectObject(hDC,BrushTable[ColorGraph]);//set brush color
 
 				}

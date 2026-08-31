@@ -1,0 +1,99 @@
+//#COMPLEXE
+clscmd
+pi=3.1415927
+km=500 //fmax
+
+R=100
+C1=0.033E-6 //F
+C3=0.033E-6
+L2=680E-6//H
+L4=560E-6
+
+//M0 = f
+defM0,1,km
+fillM0,1,km //values up to 1s
+M0=1E+3*M0
+M1=1/(i*2*pi*C1*M0)
+//printM1
+M2=i*L2*2*pi*M0
+//printM2
+M3=1/(i*2*pi*C3*M0)
+//printM3
+M4=i*L4*2*pi*M0
+//printM4
+//alpha
+M6=R*M1*M2/(M1*M2+R*M2+R*M1)
+//printM6
+//beta
+M7=1/(1+((M3+M4+R)/(R+M4))*M2/M3)
+//printM7
+//transfert fonction
+M8=M6*M7/( (1-M6*M7/M2)*(R+M4) )
+//printM8
+
+gfxdim (-km/20),km,-50,10,1
+grid (km/5)
+x=1
+//Trf(x)=10*ln (mod(M8(1,x)))/ln10
+Trf(x)=x
+print mod(M8(1,1)),"methode 1="
+//------------------------------ 2nd Treatment ----------------------
+
+wmax=2*pi*km
+dw=1E+3
+R=100
+C1=0.033E-6 //F
+C3=0.033E-6
+L2=680E-6//H
+L4=560E-6
+
+
+gfxdim (-km/3),wmax,-50,10,1
+//grid100
+defM0,1,wmax
+
+Start:
+bsr Butterworth
+end
+
+
+Butterworth:
+w=1
+loop:
+bsr CALCIMPEDANCE
+bsr ALPHA
+bsr BETA
+bsr TRANSFER
+M0(1,w)=mod(transf)
+w=w+1
+w<wmax=>goto loop
+
+//Display in dB Scale
+x=1
+//Trf(x)=10*ln(M0(1,x))/ln10
+print M0(1,1),"methode 2="
+rts
+
+
+
+//transfer function
+CALCIMPEDANCE:
+z1=1/(i*C1*w*dw)
+z3=1/(i*C3*w*dw)
+z2=i*L2*w*dw
+z4=i*L4*w*dw
+rts
+ALPHA:
+alpha=R*z1*z2/(z1*z2+R*z2+R*z1)
+rts
+BETA:
+beta=1/(1+(z3+z4+R)/(R+z4)*z2/z3)
+rts
+TRANSFER:
+transf=alpha*beta/((1-alpha*beta/z2)*(R+z4))
+rts
+
+
+
+
+end

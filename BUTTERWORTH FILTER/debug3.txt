@@ -1,0 +1,47 @@
+//#COMPLEXE
+clscmd
+pi=3.1415927
+km=1000 //fmax
+Nsp=2000
+
+R=50 //ohms
+C1=33E-12 //F
+C3=15E-12
+L2=68E-9//H
+L4=68E-9
+C=10E-6 //F
+print (1/(R*C)),"f="
+
+//M0 = f
+defM0,1,km
+fillM0,1,km //values up to 1s
+M0=1E+6*M0
+//M2= R*i*C*2*pi*M1/(1+R*i*C*2*pi*M1)
+M1=1/(i*2*pi*C1*M0)
+printM1
+M2=i*L2*2*pi*M0
+printM2
+M3=1/(i*2*pi*C3*M0)
+printM3
+M4=i*L4*2*pi*M0
+printM4
+//alpha
+M6=R*M1*M2/(M1*M2+R*M2+R*M1)
+printM6
+//beta
+M7=1/(1+((M3+M4+R)/(R+M4))*M2/M3)
+//M7=1/(1+((M3+M4+R)/(R+M4))*M2/M4)
+printM7
+//transfert fonction
+M8=M6*M7/( (1-M6*M7/M2)*(R+M4) )
+printM8
+
+gfxdim (-km/20),km,-50,10,1
+grid (km/5)
+x=1
+Trf(x)=10*ln (mod(M8(1,x)))/ln10
+gfxdim 100,300,-7,7,1
+x=1
+Trf(x)=arg(M8(1,x))
+
+end

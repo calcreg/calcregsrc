@@ -1,0 +1,89 @@
+//#COMPLEXE
+box3d 4,24,4,0.2
+clscmd
+pi=3.1415927
+km=25 //fmax
+Nsp=2000
+
+R0=10 //ohms
+C1=33E-12 //F
+C3=15E-12
+L2=68E-9//H
+L4=68E-9
+C5=1E-9 //F
+Rm=40
+//M0 = f
+defM0,1,km
+fillM0,1,km //values up to 1s
+defM10,Rm,km
+M0=2E+7*M0
+
+//--- start ----
+R=R0
+k=0
+loop:
+k=k+1
+bsr CalcMtx
+//bsr Disp2D
+bsr FillMtx
+R=k*10+R0 //pour le nouveau calcul
+ 
+k<Rm => goto loop
+x=1
+y=1
+defM11,Rm,km
+defM12,4,(Rm*km)
+defM13,4,(Rm*km)
+fM11(x,y)=20*(mod(M10(x,y)))/ln10
+fctobjM11,12,13
+defM14,4,4
+dataM14,cos(pi/10),sin(pi/10),0,0, sin(-pi/10),cos(pi/10),0,0, 0,0,1,0, 0,0,0,1
+M12=M14*M12 //rotation
+action 0
+gfxdim (-km/2),(1.2*km),-5,5,1
+dispobjM12,13,1
+end
+
+
+FillMtx:
+h=0
+lopf:
+h=h+1
+M10(k,h)=M8(1,h) //remplissage
+h<km =>goto lopf
+rts
+
+
+CalcMtx:
+//M2= R*i*C*2*pi*M1/(1+R*i*C*2*pi*M1)
+M1=1/(i*2*pi*C1*M0)
+//printM1
+//M2=i*L2*2*pi*M0
+M2=i*L2*2*pi*M0/(1-L2*C5*M0*M0)
+//printM2
+M3=1/(i*2*pi*C3*M0)
+//printM3
+M4=i*L4*2*pi*M0
+//printM4
+//alpha
+M6=R*M1*M2/(M1*M2+R*M2+R*M1)
+//printM6
+//beta
+M7=1/(1+((M3+M4+R)/(R+M4))*M2/M3)
+//printM7
+//transfert fonction
+M8=M6*M7/( (1-M6*M7/M2)*(R+M4) )
+//printM8
+rts
+
+Disp2D:
+gfxdim (-km/20),km,-50,10,1
+grid (km/5)
+x=1
+Trf(x)=10*ln (mod(M8(1,x)))/ln10
+gfxdim (-km/20),km,-7,7,1
+x=1
+Trf(x)=arg(M8(1,x))
+rts
+
+end
