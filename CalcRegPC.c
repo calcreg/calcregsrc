@@ -164,6 +164,7 @@ extern float RMath_abs(float x);
 
 //Matrix
 extern int RMath_FFT(Matrix *MAccu,int NumMfct,int NumMa,int NumMb,int Strt, int Stop);
+extern int RMath_FFTInv(Matrix *MAccu,int NumMfct,int NumMa,int NumMb,int Mt);
 
 extern int ObjectSphCoord(Matrix *MAccu,int NumM,int PtLinkM,int M1,int M2, int M3);
 extern int FillSphere(Matrix *MAccu,int NumM,int PtLinkM,float Radius,float period);
@@ -251,7 +252,7 @@ float SoundFrequency,SoundAmplitude,SoundDuration,SamplesPerSecond;
 static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListSize
 static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_trp_mtxn_mtxp_fM_sign_?_";
 //									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26    27     28     29     30    31  32
-static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_action_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_colorgfx_dataM_fctobjM_getindM_modobjM_killbtn_savesndM_copyM_fftM_cmplx_vobj3dM_savebmp_";
+static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_action_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_colorgfx_dataM_fctobjM_getindM_modobjM_killbtn_savesndM_copyM_fftM_fftinvM_vobj3dM_savebmp_";
 //																0       1      2       3   4    5    6    7      8       9        10        11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28            29           30       31             32         33     		  34			35           36         37     38         39       		40
 //char blabli[]= { {'hello'},0x1,{'hi'},0x0};
 
@@ -434,7 +435,7 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //fftM0,1,2  Perform the fft of signal fct(t) in M0, the coeff ak and bk are output in M1 and M2. M0,M1 and M2 should have Mn=1. N=M0.p and Kmax=M1.p=M2.p
 //fftM0,1,2,a,b   same as standard fft but taking window [a,b]
 //						if a=b=0 same as fftM0,1,2
-
+//fftinvMa,b,c,d	Ma is the fct to create, Mb and Mc are ak and bk,Md is the matrix of the variable t, Ma.p=Md.p Ma.n=Mb.n=Mc.n=Md.n=1
 
 //MathFunctions
 extern int MathError; //send back a code if error in the Math functions. MathError=1 out of range exponential
@@ -1836,14 +1837,36 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			char * textdsp;
 				 TextIndex=(int)CodeOfOneLine[OffsetLine+5].value;
 			if (TextIndex != 0){
-				i=0;
-				while (WholeMnemoProg[TextIndex+i]!='"'){i++;}
-				int tsize=i;
-				textdsp=(char*)malloc(tsize*sizeof(char) );
-				i=0;
+				i=0; int nbrdsp=0;
 				while (WholeMnemoProg[TextIndex+i]!='"'){
+					if (WholeMnemoProg[TextIndex+i]=='%'&&
+						(WholeMnemoProg[TextIndex+i+1]=='d' ||
+							WholeMnemoProg[TextIndex+i+1]=='f') ){nbrdsp++;}
+					i++;
+				}
+				int tsize=i+nbrdsp*10+10;//10 en extra
+				textdsp=(char*)malloc(tsize*sizeof(char) );
+			i=0;
+			while (WholeMnemoProg[TextIndex+i]!='"'){
 							textdsp[i]=WholeMnemoProg[TextIndex+i];i++;}
 							textdsp[i]=0; //terminate the ascii chain
+
+			char *finalText= (char*) malloc((tsize)*sizeof(char));//On ajoute la taille requise pour les nombres a afficher
+			i=0;int p=0;finalText[0]=0;
+			for(k=0;k<nbrdsp;k++){
+				while (WholeMnemoProg[TextIndex+i]!=0&&
+									WholeMnemoProg[TextIndex+i]!='%'){
+					textdsp[p]=WholeMnemoProg[TextIndex+i];i++;p++;}
+					textdsp[p]=0;//terminate string
+				if (WholeMnemoProg[TextIndex+i+1]=='d')sprintf(finalText,"%s%d",textdsp,(int)CodeOfOneLine[OffsetLine+7+2*k].value);
+				if (WholeMnemoProg[TextIndex+i+1]=='f')sprintf(finalText,"%s%f",textdsp,CodeOfOneLine[OffsetLine+7+2*k].value);
+				i=i+2;
+				strcpy(textdsp,finalText);
+				p=strlen(textdsp);
+			}
+				strcpy(finalText,textdsp);					
+//				sprintf(finalText,textdsp,(int)CodeOfOneLine[OffsetLine+5+2*1].value);
+				//c
 							RECT prc;
 							prc.left=(int)((CodeOfOneLine[OffsetLine+1].value-DimXmin)*DrawZoneW/(DimXmax-DimXmin)+DrawZoneX);
 							prc.top=(int)(-(CodeOfOneLine[OffsetLine+3].value-DimYmin)*DrawZoneH/(DimYmax-DimYmin)+DrawZoneY+DrawZoneH);
@@ -1853,10 +1876,12 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 							prc.bottom = prc.top+15;
 							if (prc.left+tsize*10<DrawZoneX+DrawZoneW)prc.right = prc.left+tsize*10;//DrawZoneX+DrawZoneW;
 							else prc.right=DrawZoneX+DrawZoneW;
-							DrawText(hDC, textdsp, -1, &prc, DT_SINGLELINE |DT_VCENTER);
+					//c		DrawText(hDC, textdsp, -1, &prc, DT_SINGLELINE |DT_VCENTER);
+							DrawText(hDC, finalText, -1, &prc, DT_SINGLELINE |DT_VCENTER);
 							//PrintCmd(textdsp);
+			free(finalText);			
+			free(textdsp);
 			}
-			free(textdsp);			
 			OffsetLine=0;
 			}else{PrintCmd("wtext!\n");goto EndMain;}
 		}	
@@ -1981,6 +2006,67 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			}
 			OffsetLine=0;
 			}else{PrintCmd("fftM Matrix!\n");goto EndMain;}
+		}	
+		
+//------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==38) {//fftinvM
+			printf("pass0\n");
+			if (CodeOfOneLine[OffsetLine+1].code==1&& CodeOfOneLine[OffsetLine+2].code==10 &&
+			CodeOfOneLine[OffsetLine+3].code==1&& CodeOfOneLine[OffsetLine+4].code==10 &&
+			CodeOfOneLine[OffsetLine+5].code==1&& CodeOfOneLine[OffsetLine+6].code==10 &&
+			CodeOfOneLine[OffsetLine+7].code==1){
+			int Mfct=(int)CodeOfOneLine[OffsetLine+1].value;
+			int Ma=(int)CodeOfOneLine[OffsetLine+3].value;
+			int Mb=(int)CodeOfOneLine[OffsetLine+5].value;
+			int Mt=(int)CodeOfOneLine[OffsetLine+7].value;
+			switch(RMath_FFTInv(MAccu,Mfct,Ma,Mb,Mt)){
+			case 2:
+				PrintCmd("Matrix Mfct not defined\n");
+				goto EndMain;
+				break;
+			case 3:
+				PrintCmd("Matrix Mfct bad size\n");
+				goto EndMain;
+				break;
+			case 4:
+				PrintCmd("Matrix Mfct mtx.n should =1\n");
+				goto EndMain;
+				break;
+			case 5:
+				PrintCmd("Matrix Ma not defined\n");
+				goto EndMain;
+				break;		
+			case 6:
+				PrintCmd("Matrix Ma mtx.n should =1\n");
+				goto EndMain;
+				break;
+			case 7:
+				PrintCmd("Matrix Mb not defined\n");
+				goto EndMain;
+				break;
+			case 8:
+				PrintCmd("Matrix Mb mtx.n should =1\n");
+				goto EndMain;
+				break;
+			case 9:
+				PrintCmd("Matrix Ma and Mb should have same size\n");
+				goto EndMain;
+				break;
+			case 10:
+				PrintCmd("fftinvM: Mt undefined \n");
+				goto EndMain;
+				break;
+			case 11:
+				PrintCmd("fftinvM: Mt.p should equal NumMfct.p \n");
+				goto EndMain;
+				break;
+			case 12:
+				PrintCmd("fftinvM: Mt.n should equal 1 \n");
+				goto EndMain;
+				break;
+				}
+			OffsetLine=0;
+			}else{PrintCmd("fftinvM Matrix!\n");goto EndMain;}
 		}	
 		
 //------------
@@ -2537,16 +2623,19 @@ int StrtStr,EndStr,p,a,BackFromAccu=0;
 		if (MnemoListLine[i]=='"' )  {//PrintCmd("text detected\n");
 			CodeList[CodeListOffset].code = 1;
 			CodeList[CodeListOffset].value = (float)(offsetI+i+1);//OffsetI is the current position into WholeMnemoProg
-			CodeList[CodeListOffset+1].code = 0xFF; //return code
-			CodeList[CodeListOffset+1].value = 0;
+			//c CodeList[CodeListOffset+1].code = 0xFF; //return code
+			//c CodeList[CodeListOffset+1].value = 0;
 			i++;
 		//	while (MnemoListLine[i]!=0 && MnemoListLine[i] != '"'
 		//		&& MnemoListLine[i]!=0x0D && MnemoListLine[i] !=0x0A){
 			while (MnemoListLine[i]!=0){
 				if (MnemoListLine[i] == '"') {		
-					CodeListOffset=CodeListOffset+2; //+2 'cause of adding return code				
+					//c CodeListOffset=CodeListOffset+2; //+2 'cause of adding return code				
+					CodeListOffset=CodeListOffset+1; //+2 'cause of adding return code				
 					CodeListOffsetMax=CodeListOffset;
-					goto EndConvert; //this line is finished
+					//goto EndConvert; //this line is finished
+					i++; //c MODIFICATIONTEXT
+					goto StartConvList; //c there could be some extra data behind
 					}
 				i++;
 			}

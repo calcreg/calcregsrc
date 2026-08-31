@@ -1,0 +1,54 @@
+Nsp=4000
+
+tmp=1  //s
+
+defM1,1,Nsp
+fillM1,0,tmp
+pi=3.1415927
+M0=cos(2*pi*50*M1)
+M0=M0*M0
+M0=2*(0.5-M0)
+M0=M0*M0 //modulation par lui-même
+
+gfxdim -0.1,(Nsp/100),-5,5,1
+grid1000
+x=1
+Trf(x)=M0(1,x)
+
+M1=M0 //to get same mtx size
+fillM1,0,tmp // up to 2sec?
+
+f=1/tmp
+pi=3.1415927
+w=2*pi*f
+
+km=1000  // ------- kmax
+defM3,1,km
+defM7,1,km
+fillM3,0,0
+fillM7,0,0
+//fftM0,3,7
+//bsr DisplaySpectrum
+//end
+
+
+
+
+k=1
+loop:
+M3(1,k)= M0*trp(cos(k*w*M1))
+M7(1,k)= M0*trp(sin(k*w*M1))
+k=k+1
+k<km=>goto loop
+bsr DisplaySpectrum
+end
+
+
+DisplaySpectrum:
+gfxdim -0.1,km,-1,1,1
+grid1000
+x=1
+Trf(x)=abs(M3(1,x))
+x=1
+Trf(x)=abs(M7(1,x))
+rts

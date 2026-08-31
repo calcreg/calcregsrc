@@ -136,6 +136,7 @@ void FloatToString(float value, char *buffer, int Rounding);
 
 //Matrix
 int RMath_FFT(Matrix *MAccu,int NumMfct,int NumMa,int NumMb,int Strt, int Stop);
+int RMath_FFTInv(Matrix *MAccu,int NumMfct,int NumMa,int NumMb,int Mt);
 
 int ObjectSphCoord(Matrix *MAccu,int NumM,int PtLinkM,int M1,int M2, int M3);
 int FillSphere(Matrix *MAccu,int NumM,int PtLinkM,float Radius,float period);
@@ -303,6 +304,74 @@ int ObjectSphCoord(Matrix *MAccu,int NumM,int PtLinkM,int M1,int M2, int M3){
 	return Error;
 	}
 
+	
+//----------------------------         FFTInv	-----------------------------
+// ------------------------------------------------------------------------------
+// ------------- Transformée de Fourrier inverse --------------------------
+// ------------------------------------------------------------------------------
+int RMath_FFTInv(Matrix *MAccu,int NumMfct,int NumMa,int NumMb, int Mt){
+//où N est le nombre maximum de tirage N=nblines
+// Pour aller voir ce qui se passe plus loin, il faut
+//augmenter rang dans les definitions.
+//La fonction sera alors définie plus loin jusqu'à (N+rang)*FctStep
+
+//Error=1 <=> Allocation Tables Cosin pb  ----- obsolete
+//Error=2 <=> Matrix Mfct not defined
+//Error=3 <=> Matrix Mfct bad size 
+//Error=4 <=> Matrix Mfct mtx.n should =1
+//Error=5 <=> Matrix Ma not defined 
+//Error=6 <=> Matrix Ma mtx.n should =1
+//Error=7 <=> Matrix Mb not defined
+//Error=8 <=> Matrix Mb mtx.n should =1
+//Error=9 <=> Matrix Ma and Mb should have same size
+//Error=10 <=> Matrix Mt not defined
+//Error =11 <=> Mt.p should be equal to NumMfct.p
+//Error =12 <=> Mt.n should equal 1
+int Error=0;
+	if (MAccu[NumMfct].ptr==0){Error=2;return Error;}
+	if (MAccu[NumMfct].n!=1){Error=4;return Error;}
+	if (MAccu[NumMa].ptr==0){Error=5;return Error;}
+	if (MAccu[NumMa].n!=1){Error=6;return Error;}
+	if (MAccu[NumMb].ptr==0){Error=7;return Error;}
+	if (MAccu[NumMb].n!=1){Error=8;return Error;}
+
+	if (MAccu[Mt].ptr==0){Error=10;return Error;}
+	if (MAccu[Mt].n!=1){Error=12;return Error;}
+	if (MAccu[NumMfct].p!=MAccu[Mt].p){Error=11;return Error;}
+	int N=MAccu[NumMfct].p;
+	int K=MAccu[NumMa].p;
+	if (MAccu[NumMa].p != MAccu[NumMb].p){Error=9;return Error;}
+	if (N==0){Error=3;return Error;}
+
+int i,k;
+float Sum;
+float cosa,sina,SaveCs,SaveSn,NewCs;
+float t=0; //variable de la fonction pfct la TF inverse de la FFT(Ffct)
+	for(i=0;i<N;i++){
+		t=MAccu[Mt].ptr[i];
+		Sum=MAccu[NumMa].ptr[0]/2;// la moyenne, Num[n-1].ak[0]/2;
+//c
+	cosa=cos(2*pi*t/(float)N);//=cos(2*pi*k*dt/T);  because dt/T=1/N
+	sina=sin(2*pi*t/(float)N);//=sin(2*pi*k*dt/T); 
+	SaveCs=cosa;SaveSn=sina;
+//c		
+		for (k=1;k<K;k++){
+//			Sum=Sum+MAccu[NumMa].ptr[k]*cos(2*pi*((float)k)*t/(float)N)+MAccu[NumMb].ptr[k]*sin(2*pi*((float)k)*t/(float)N);
+			Sum=Sum+MAccu[NumMa].ptr[k]*SaveCs+MAccu[NumMb].ptr[k]*SaveSn;
+//c
+		NewCs=SaveCs*cosa-SaveSn*sina;
+		SaveSn=SaveSn*cosa+sina*SaveCs;
+		SaveCs=NewCs;
+//c
+			}
+		MAccu[NumMfct].ptr[i]=Sum; //Num[n-1].pfct[i]=Sum;
+	}
+	return Error;
+}
+
+	
+	
+//--------------------------- Transformée de Fourrier ------------------
 
 int RMath_FFT(Matrix *MAccu,int NumMfct,int NumMa,int NumMb,int Strt, int Stop){
 //d'abord, generation du cosinus et sinus pour la suite 2pik/T,k allant de 1 à N
@@ -332,8 +401,11 @@ float cosa,sina,SaveCs,SaveSn,NewCs,Suma,Sumb;
 	if (Strt==0 && Stop ==0) {Strt=0;Stop=N;}
 	if (Stop<Strt||Stop==Strt||Stop-Strt<=2){Error=10;return Error;}
 for (k=0;k<K;k++){ //Here N is NOT always =Stop-Strt
-	cosa=cos(2*pi*k/N);//=cos(2*pi*k*dt/T);  because dt/T=1/N
-	sina=sin(2*pi*k/N);//=sin(2*pi*k*dt/T);
+// Changement le Fev 2014 suite à vérification avec la TFinverse du loto
+//	cosa=cos(2*pi*k/N);//=cos(2*pi*k*dt/T);  because dt/T=1/N
+	cosa=cos(2*pi*(float)k/(float)(Stop-Strt));//=cos(2*pi*k*dt/T);  because dt/T=1/N
+//	sina=sin(2*pi*k/N);//=sin(2*pi*k*dt/T); 
+	sina=sin(2*pi*(float)k/(float)(Stop-Strt));//=sin(2*pi*k*dt/T);
 	SaveCs=1;SaveSn=0;Suma=0;Sumb=0;
 //The sum coeff a and b is made while calculating cos and sin at each step
 	for(i=Strt;i<Stop;i++){
