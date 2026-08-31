@@ -19,7 +19,7 @@ typedef struct Matrix{
 	float * ptr; //pointer on the matrix
 	}Matrix;
 
-int PlaySoundMatrix(Matrix *, int NumM, float SamplesPerSecond);
+int PlaySoundMatrix(Matrix *, int NumM, float SamplesPerSecond,int mode, int NumM2);
 int PlaySoundReg(float , float , float );
 int GetAudioMicro(Matrix *MAccu,int NumM,float SamplesPerSecond);
 int CloseAudioDevice(void);
@@ -150,8 +150,8 @@ int PlaySoundReg(float SoundFrequency, float SoundAmplitude, float SoundDuration
         return FALSE;
      }
 //------------------------------- Play Matrix ------------------
-int PlaySoundMatrix(Matrix *MAccu, int NumM, float SamplesPerSecond){
-         
+int PlaySoundMatrix(Matrix *MAccu, int NumM, float SamplesPerSecond,int mode, int NumM2){
+//mode is 1=mono, 2=stereo
 //        HWAVEOUT     hWaveOut;          // Handle to sound card output
 		 
         WAVEFORMATEX WaveFormat;        // The sound format
@@ -163,30 +163,43 @@ int PlaySoundMatrix(Matrix *MAccu, int NumM, float SamplesPerSecond){
                 // while the sound card is processing the sound buffer
         double x;
         int i,DataSize;
-
-		if(MAccu[NumM].ptr == 0) {PrintCmd("Matrix not defined!\n Use defM n°,sizen=1,sizep for use with recsndM n°,NbrSamplesPerSec\n");return 0;}
-		 DataSize = MAccu[NumM].n * MAccu[NumM].p; //Matrix Size
+		if(MAccu[NumM].ptr == 0) {PrintCmd("Matrix not defined!\n Use defM n°,sizen=1,sizep\nSee also recsndM n°,NbrSamplesPerSec\n");return 0;}
+		if (mode == 2) {
+			//PrintCmd("Mode Stereo\n");
+			//if(NumM==NumM2) PrintCmd("same mtx left and right\n");
+			if(MAccu[NumM2].ptr == 0) {PrintCmd("Matrix not defined!\n Use defM n°,sizen=1,sizep\nSee also recsndM n°,NbrSamplesPerSec\n");return 0;}
+			if (MAccu[NumM2].n!=MAccu[NumM].n ||MAccu[NumM2].p!=MAccu[NumM].p){PrintCmd("In Stereo mode:\nMtx1 and Mtx2 should have same size n and p!\n");return 0;}
+		}
+		DataSize = MAccu[NumM].n * MAccu[NumM].p; //Matrix Size, in Stereo in remains each matrix size
 
 		 // ** Initialize the sound format we will request from sound card **    
         WaveFormat.wFormatTag = WAVE_FORMAT_PCM;     // Uncompressed sound format
-        WaveFormat.nChannels = 1;                    // 1=Mono 2=Stereo
+        WaveFormat.nChannels = mode;                    // 1=Mono 2=Stereo
         WaveFormat.wBitsPerSample = 16;               // Bits per sample per channel
-        WaveFormat.nSamplesPerSec = (int)SamplesPerSecond; //44100;           // Sample Per Second
+        WaveFormat.nSamplesPerSec = (int)SamplesPerSecond; //example: 44100 // Sample Per Second
         WaveFormat.nBlockAlign = WaveFormat.nChannels * WaveFormat.wBitsPerSample / 8;
         WaveFormat.nAvgBytesPerSec = WaveFormat.nSamplesPerSec * WaveFormat.nBlockAlign;    
         WaveFormat.cbSize = 0;
 
-		short int *Data=(short int *)malloc(DataSize*sizeof(short int));
-		//unsigned char *Data=(char *)malloc(DataSize*sizeof(char));
+		short int *Data=(short int *)malloc(mode*DataSize*sizeof(short int));//twice as much in  mode=2 Stereo
 		if (Data == 0 ) {
 			Message("Error While allocating memory for sound");
 			return 0;
 			}
-		if (MAccu[NumM].n !=1) Message("Warning Matrix size nxp, n should be 1\n");
-		for (i=0; i<DataSize; i++) Data[i]=(short int)(MAccu[NumM].ptr[i]);
-		//for (i=0; i<DataSize; i++) Data[i]=(char)(0x80+0x7F*MAccu[NumM].ptr[i]);
-		//for (i=0; i<DataSize; i++) Data[i]=(unsigned char)MAccu[NumM].ptr[i];
+			
+		if (MAccu[NumM].n !=1) Message("Warning:\nMtx1.n should be equal to 1\n");
+		if (mode==2)if (MAccu[NumM2].n !=1) Message("Warning:\nMtx2.n should be equal to 1\n");
 
+		if (mode==1){
+			for (i=0; i<DataSize; i++) Data[i]=(short int)(MAccu[NumM].ptr[i]);
+			}
+		else{//PrintCmd("Dispatch Data mtx1 & 2\n"); //mode=2
+			for (i=0; i<DataSize; i++) { //true size of Data is 2*datasize in Stereo
+				Data[2*i]=(short int)(MAccu[NumM].ptr[i]);
+				Data[2*i+1]=(short int)(MAccu[NumM2].ptr[i]);
+				}
+			}
+		 
         // ** Create our "Sound is Done" event **
         Done = CreateEvent (0, FALSE, FALSE, 0);
               
@@ -199,7 +212,7 @@ int PlaySoundMatrix(Matrix *MAccu, int NumM, float SamplesPerSecond){
         // ** Create the wave header for our sound buffer **
         WaveHeader.lpData=(LPSTR)Data;
         //WaveHeader.dwBufferLength=BUFFERSIZE;
-        WaveHeader.dwBufferLength=DataSize*2; //because it is short int
+        WaveHeader.dwBufferLength=mode*DataSize*2; //because it is short int and Datasize is the size of one matrix, for stereo mode =2
         WaveHeader.dwFlags=0;
         WaveHeader.dwLoops=0;
               

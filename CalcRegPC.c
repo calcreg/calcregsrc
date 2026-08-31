@@ -185,7 +185,7 @@ extern int CalculFunctionComplexe(floactet *CodeListLine,int i);
 
 //record or playsound
 extern int PlaySoundReg(float ,float ,float );
-extern int PlaySoundMatrix(Matrix *, int NumM, float);
+extern int PlaySoundMatrix(Matrix *, int NumM, float,int mode, int NumM2);
 extern int GetAudioMicro(Matrix *, int NumM, float);
 extern int 	LoadSoundFile(Matrix *MAccu, int NumM,char*);
 extern int SaveSoundFile(Matrix *MAccu, int NumM,int SamplesPerSecond, char*);
@@ -1542,7 +1542,11 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			CodeOfOneLine[OffsetLine+3].code==1) {
 			NumM=(int)CodeOfOneLine[OffsetLine+1].value;//n°Matrix MAccu to play
 			SamplesPerSecond=CodeOfOneLine[OffsetLine+3].value;
-			PlaySoundMatrix(MAccu, NumM,SamplesPerSecond);
+				if (CodeOfOneLine[OffsetLine+4].code==10 &&
+							CodeOfOneLine[OffsetLine+5].code==1) {
+				int NumM2=(int)CodeOfOneLine[OffsetLine+5].value;//n°Matrix MAccu to play						
+				PlaySoundMatrix(MAccu, NumM,SamplesPerSecond,2,NumM2);//2=Stereo
+			}else PlaySoundMatrix(MAccu, NumM,SamplesPerSecond,1,0);//1=Mono
 
 			OffsetLine=0;
 			}else{PrintCmd("playsndM!\n");goto EndMain;}
@@ -3198,6 +3202,7 @@ static int CalculOneLine(floactet *CodeListLine){
 								GetMessage(&Msg, NULL, 0, 0);
 								TranslateMessage(&Msg);
 								DispatchMessage(&Msg);
+
 								val=(float)Button;Button=0;goto KeepOn;}
 								if(CodeListLine[i+1].value==1){
 								//MSG Msg;
@@ -3463,9 +3468,11 @@ OutForPower:
  		if (CodeVal==26 ) {
 								switch((int)CodeListLine[i+1].value){
 								case 0:
-								GetMessage(&Msg, NULL, 0, 0);
+								GetMessage(&Msg, hmywin, 0, 0);
 								TranslateMessage(&Msg);
 								DispatchMessage(&Msg);
+								
+
 								val=(float)Button;Button=0;
 								break;
 								

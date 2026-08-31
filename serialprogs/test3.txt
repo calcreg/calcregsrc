@@ -1,0 +1,11 @@
+
+putserial 9600,0,65
+getserial 9600,0,0
+
+gfxdim 0,1000,-5,256,1
+grid 100
+x=0
+Trf(x)=OSC(x)
+
+
+end

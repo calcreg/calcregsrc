@@ -2,8 +2,8 @@
 //Legs=jambes
 //Back=dos
 //Belly=ventre
-//Emotional=le dos et le redressement
 
+gfxdim 0,20,0,10,1
 grid100
 Nsp=96000 //samples /s
 f0=440  //Hz
@@ -42,8 +42,9 @@ createbtn17,mid,(meny+60),120,20,"Legs Sequence"
 createbtn16,mid,(meny+80),120,20,"Back Sequence"
 createbtn18,mid,(meny+100),120,20,"Belly Sequence"
 createbtn19,mid,(meny+130),120,20,"Emotional"
+createbtn10,mid,(meny+150),120,20,"Liver"
 
-createbtn10,10,(meny+120),160,20,"Save file.wav mod"
+//createbtn10,10,(meny+120),160,20,"Save file.wav mod"
 createbtn9,60,(meny+140),120,40,"QUIT"
 
 defM0,1,le
@@ -68,7 +69,8 @@ clavier==2 =>bsr plusdix
 clavier==3 =>bsr pluscent
 clavier==4 =>bsr plusmille
 clavier==5 =>bsr plusdixmille
-clavier==10 =>bsr Activemodsave
+//clavier==10 =>bsr Activemodsave
+clavier==10 =>bsr Liver
 clavier==11 =>bsr moinsun
 clavier==12 =>bsr moinsdix
 clavier==13 =>bsr moinscent
@@ -109,7 +111,7 @@ rts
 detente:
 bsr displaytext
 M2(1,1)=14953
-M2(1,2)=14960
+M2(2,2)=14960
 M2(1,3)=14952
 M2(1,4)=14964
 M2(1,5)=15220
@@ -133,6 +135,7 @@ M2(1,22)=15570
 M2(1,23)=15507
 M2(1,24)=15509
 M2(1,25)=15530
+advMax=26
 
 index=1
 M3=M1
@@ -172,14 +175,8 @@ M2(1,16)=14953
 M2(1,17)=15545
 M2(1,18)=15540
 M2(1,19)=15516
-
-index=1
-det2:
-f=M2(1,index)
-bsr jouer
-index=index+1
-index<20=>goto det2
-rts
+advMax=20
+goto compute
 
 legs:
 bsr displaytext
@@ -215,14 +212,8 @@ M2(1,29)=15660
 M2(1,30)=15160
 M2(1,31)=15220
 M2(1,32)=14900
-
-index=1
-det3:
-f=M2(1,index)
-bsr jouer
-index=index+1
-index<33=>goto det3
-rts
+advMax=33
+goto compute
 
 back:
 bsr displaytext
@@ -260,14 +251,9 @@ M2(1,31)=15518
 M2(1,32)=15513
 M2(1,33)=15550
 M2(1,34)=14900
+advMax=35
+goto compute
 
-index=1
-det4:
-f=M2(1,index)
-bsr jouer
-index=index+1
-index<35=>goto det4
-rts
 
 belly:
 bsr displaytext
@@ -298,14 +284,27 @@ M2(1,24)=14960
 M2(1,25)=14964
 M2(1,26)=14960
 M2(1,27)=14960
+advMax=28
+goto compute
 
-index=1
-det5:
-f=M2(1,index)
-bsr jouer
-index=index+1
-index<28=>goto det5
-rts
+Liver:
+bsr displaytext
+M2(1,1)=15775
+M2(1,2)=15840
+M2(1,3)=15935
+M2(1,4)=15975
+M2(1,5)=16225
+M2(1,6)=16230
+M2(1,7)=16225
+M2(1,8)=16230
+M2(1,9)=16586
+M2(1,10)=16600
+M2(1,11)=16616
+M2(1,12)=16565
+M2(1,13)=15950
+M2(1,14)=15810
+advMax=15
+goto compute
 
 Emotional://ouverture poumons sternum, dos (émotionel),cou, tête (air), libération culpabilité 
 bsr displaytext
@@ -366,13 +365,19 @@ M2(1,54)=16610
 M2(1,55)=16614
 M2(1,56)=16610
 M2(1,57)=16610
+advMax=58
+goto compute
 
+
+compute:
 index=1
 det6:
 f=M2(1,index)
 bsr jouer
 index=index+1
-index<58=>goto det6
+index<advMax=>goto det6
+gfxdim 0,20,0,10,1
+wtext6,2.5,"Sequence finished"
 rts
 
 
@@ -438,10 +443,22 @@ M1=4096+4095*cos(w*(1+b*sin(2*pi*M0))*M0)
 mode==1 => goto outjouer
 clscmd
 print f
-gfxdim -0.5,400,-1.2,1.2,1
+gfxdim -0.5,200,-1.2,1.2,1
 grid100
 x=1
 Trf(x)=M1(1,x)/8192
+
+gfxdim 0,20,0,10,1
+wtext6,2.5,"... advancement ..."
+line 0,1.6,20,1.6,3 
+line 0,1.5,20,1.5,3
+cur=20*index/(advMax-1)
+line 0,1.51,cur,1.51,3 
+line 0,1.53,cur,1.53,3 
+line 0,1.55,cur,1.55,3 
+line 0,1.57,cur,1.57,3 
+line 0,1.59,cur,1.59,3 
+line cur,1.5,cur,1.6,3
 playsndM1,Nsp
 outjouer:
 rts

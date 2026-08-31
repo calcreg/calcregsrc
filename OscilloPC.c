@@ -11,7 +11,6 @@
 #define OscilloSize 1000
 #define DataToSendSize 10
 
-int  waitfordata(int NbrTrialToGet);
 float Oscilloscope(float a);
 void GetOscilloData(int info);
 void PutSerialData();
@@ -45,15 +44,13 @@ HANDLE hSerialPC;
 
 void Wait(int Time){
 	int nbrticks,nbrticks2;
-	/*
-	nbrticks=TimGetTicks();
+	
+	nbrticks=(int)GetTickCount();
 	nbrticks2=nbrticks;
 	while (nbrticks2<nbrticks+Time){
 	if (BreakActivated==1) if( CheckForBreak() == 1) return;
-	nbrticks2=TimGetTicks();}
-	*/
-	PrintCmd ("Wait not yet implemented\n");
-	}
+	nbrticks2=(int)GetTickCount();}
+}
 
 
 
@@ -233,41 +230,3 @@ void PutSerialData(){
 }
 	
 
-int  waitfordata(int NbrTrialToGet){
-/*
-Boolean ret;
-ULong nbytes=3;
-Byte anbytes;
-Err err;
-int i;
-UInt32 nbrticks,nbrticks2;
-
-
-for (i=0;i<OscilloSize;i++){Oscillo[i]=0;}
-//SerReceiveWait(SerIORef, 3, 10);  // Regan: Changé de 1000 à 10 timout
-//SerReceiveCheck(SerIORef, &nbytes);//Checks the receive FIFO and returns the number of bytes in the serial receive queue
-//anbytes = SerReceive(SerIORef, data, nbytes, 100, &err);
-
-	for (i=0;i<NbrTrialToGet;i++){
-	nbrticks=TimGetTicks();
-	anbytes = SerReceive(SerIORef, Oscillo,OscilloSize, 20, &err);//Wait 20 max for the timeout between bytes
-	nbrticks2=TimGetTicks();
-	//DeltaTicks=nbrticks2-nbrticks;
-	if (err ==0) {goto OutFor;}// got one set without error => out
-	SerReceiveFlush(SerIORef, 0);//Flush remaining data.
-	}
-
-OutFor:
-
-if (err != 0)
-ret = false;
-   
-else
-ret = true;
-SerReceiveFlush(SerIORef, 0);//Put to 0 otherwise it waits
-
-//ret=false;//modif regan //Ne pas générer d'erreur intempestive
-return(ret);
-*/
-	PrintCmd ("wait for data oscillo not yet implemented\n"); 
-}

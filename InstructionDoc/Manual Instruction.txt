@@ -141,3 +141,7 @@
 //						mod<0 insert M2 in M1 at (-mod) position p
 //						mod=0 : merge matrix M2 at the end of M1 resulting size is M1p+M2p
 //						mod>0 : copy (replace data) at position p=mod
+// sign    function math: sign(x) ou bien sign(M) pour nombre et matrix
+//					example of use : M1=8192*sqrt(abs(cos(w*M0)))*sign(cos(w*M0))
+//					the sqrt need positive values but we want the signed function modified.
+

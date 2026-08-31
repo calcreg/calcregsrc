@@ -412,7 +412,8 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 					}
 		#endif
 		//Handling prog Buttons
-			for (i=0;i<MaxNbrButtons;i++)if (ProgBtn[i]!=0) if( ProgBtn[i]==(HWND)lParam) Button=i;
+			for (i=0;i<MaxNbrButtons;i++)
+				if (ProgBtn[i]!=0) if( ProgBtn[i]==(HWND)lParam) Button=i;
 			break;
 
 		case WM_LBUTTONDOWN:

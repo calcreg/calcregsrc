@@ -1,0 +1,302 @@
+//Head=tete
+//Legs=jambes
+//Back=dos
+//Belly=ventre
+
+gfxdim 0,20,0,10,1
+grid100
+Nsp=96000 //samples /s
+f0=440  //Hz
+f=f0
+
+a=1 //for variation of +/-a Hz
+dt=1/Nsp
+duration=5 // seconds
+le=duration/dt
+pi=3.1415927
+mode=0//for saving
+
+col2=50 
+col=col2+70
+mid= col+70
+meny=350
+gfxdim 0,20,0,10,1
+wtext1,10,"Welcome to Ultra Sound Generator"
+
+createbtn1,col,meny,60,20,"+1"
+createbtn2,col,(meny+20),60,20,"+10"
+createbtn3,col,(meny+40),60,20,"+100"
+createbtn4,col,(meny+60),60,20,"+1000"
+createbtn5,col,(meny+80),60,20,"+10000"
+//--------------------------------------
+createbtn11,col2,(meny),60,20,"-1"
+createbtn12,col2,(meny+20),60,20,"-10"
+createbtn13,col2,(meny+40),60,20,"-100"
+createbtn14,col2,(meny+60),60,20,"-1000"
+createbtn15,col2,(meny+80),60,20,"-10000"
+//---------------------------------------
+createbtn8,mid,(meny),60,20,"Play"
+createbtn6,mid,(meny+20),120,20,"Relax Sequence"
+createbtn7,mid,(meny+40),120,20,"Head Sequence"
+createbtn17,mid,(meny+60),120,20,"Legs Sequence"
+createbtn16,mid,(meny+80),120,20,"Back Sequence"
+createbtn18,mid,(meny+100),120,20,"Belly Sequence"
+createbtn19,mid,(meny+120),120,20,"Emotional"
+createbtn10,mid,(meny+140),120,20,"Liver"
+
+//createbtn10,10,(meny+120),160,20,"Save file.wav mod"
+createbtn9,60,(meny+120),120,40,"QUIT"
+
+defM0,1,le
+defM1,1,le
+defM2,1,60
+defM3,1,le // this is the matrix to receive the whole file to save in .wav format
+fillM0,0,duration //0 to 2s
+launchSound:
+w=2*pi*f
+//the signal is on 16bits from 0 to 8191
+di=5 //5s
+M1=4095*exp(-(di/2-M0)*(di/2-M0))*cos(w*(1+0.01*M0*sin(w/10*(di/2-M0)*(di/2-M0)))*M0)
+//bsr displaytext
+playsndM1,Nsp
+
+bsr displaytext
+lp:
+clavier=key(0)
+clavier==9 =>goto fin
+clavier==1 =>bsr plusun
+clavier==2 =>bsr plusdix
+clavier==3 =>bsr pluscent
+clavier==4 =>bsr plusmille
+clavier==5 =>bsr plusdixmille
+//clavier==10 =>bsr Activemodsave
+clavier==10 =>bsr Liver
+clavier==11 =>bsr moinsun
+clavier==12 =>bsr moinsdix
+clavier==13 =>bsr moinscent
+clavier==14 =>bsr moinsmille
+clavier==15 =>bsr moinsdixmille
+f0=f
+clavier == 8=>bsr jouer2
+clavier == 6=> bsr detente
+clavier == 7=> bsr head
+clavier == 17=> bsr legs
+clavier == 16=> bsr back
+clavier == 18=> bsr belly
+clavier == 19=> bsr Emotional
+f=f0
+gfxdim 0,20,0,10,1
+wtext8,6,"...READY..."
+goto lp
+fin:
+print 0
+end
+
+displaytext:
+gfxdim 0,20,0,10,1
+wtext1,5,"Please DO NOT OVER USE this tool"
+wtext1,4,"Certain frequencies can have"
+wtext1,3,"unwanted effects."
+wtext1,2,"This is not to replace any medical"
+wtext1,1,"treatment... Please Read License."
+//
+rts
+
+Activemodsave:
+mode=1
+print mode,"mode activated"
+rts
+
+
+detente:
+bsr displaytext
+dataM2,14953,14960,14952,14964,15220,15290,14900,14900,14885
+dataM2,14450,14850,14449,14100,14959,14966,15330,14966
+dataM2,14966,15650,15660,15540,15570,15507,15509,15530
+advMax=26
+
+index=1
+M3=M1
+det:
+f=M2(1,index)
+bsr jouer
+copyM3,1,0 //merge M1 to M3
+index=index+1
+index<26=>goto det
+mode == 1 => goto createfile
+rts
+
+createfile:
+gfxdim 0,10,0,10,1
+savesndM3,Nsp
+rts
+
+
+head:
+bsr displaytext
+dataM2,15070,15050,15090,15590,15595,15640,15660,15650
+dataM2,15420,15450,15250,15210,14100,14200,14700,14953
+dataM2,15545,15540,15516
+advMax=20
+goto compute
+
+legs:
+bsr displaytext
+dataM2,14959,14966,14968,15190,15210,15200,15220,15290
+dataM2,15320,15440,15230,15290,14980,14990,15020,15110
+dataM2,15130,15140,15160,15585,15610,15620,15630,15645
+dataM2,15640,15524,15529,15530,15660,15160,15220,14900
+advMax=33
+goto compute
+
+back:
+bsr displaytext
+dataM2,14955,14954,14952,14951,14956,14957,14960
+dataM2,14964,14968,14500,14900,14870,14900,14885,14884,14450
+dataM2,15070,15080,15070,15150,15170,15160,15635,15645,15660
+dataM2,15540,15555,15560,15529,15524,15518,15513,15550,14900
+advMax=35
+goto compute
+
+
+belly:
+bsr displaytext
+dataM2,15575,15570,15565,15521,15513,15511,15509,15507,15509
+dataM2,15506,15507,15500,15640,15620,15615,15610,15160,14970
+dataM2,15410,14860,14900,14450,14959,14960,14964,14960,14960
+advMax=28
+goto compute
+
+Liver:
+bsr displaytext
+dataM2,15775,15840,15935,15975,16225
+dataM2,16230,16225,16230,16586,16600,16616,16565,15950,15810
+advMax=15
+goto compute
+
+Emotional://ouverture poumons sternum, dos (émotionel),cou, tête (air), libération culpabilité 
+bsr displaytext
+dataM2,14952,14953,14950,14957,14960,14966,14700
+dataM2,14900,14860,14884,14100,14200,14400,19032,15180,15290,15390
+dataM2,15160,15507,15509,15509,15516,15520,15540,15620,15705,16020
+dataM2,16030,16035,16040,16045,16075,16090,16100,16130,16175,15815
+dataM2,16100,16115,16375,16435,16485,16510,16520,16525,16530,16536
+dataM2,16538,16560,16562,16570,16610,16612,16610,16614,16610,16610
+advMax=58
+goto compute
+
+
+compute:
+index=1
+det6:
+f=M2(1,index)
+bsr jouer
+index=index+1
+index<advMax=>goto det6
+gfxdim 0,20,0,10,1
+wtext6,2.5,"Sequence finished"
+rts
+
+
+
+plusun:
+f=f+1
+clscmd
+print f
+rts
+plusdix:
+f=f+10
+clscmd
+print f
+rts
+pluscent:
+f=f+100
+clscmd
+print f
+rts
+plusmille:
+f=f+1000
+clscmd
+print f
+rts
+plusdixmille:
+f=f+10000
+clscmd
+print f
+rts
+
+moinsun:
+f=f-1
+clscmd
+print f
+rts
+moinsdix:
+f=f-10
+clscmd
+print f
+rts
+moinscent:
+f=f-100
+clscmd
+print f
+rts
+moinsmille:
+f=f-1000
+clscmd
+print f
+rts
+moinsdixmille:
+f=f-10000
+clscmd
+print f
+rts
+
+
+jouer:
+w=2*pi*f
+//the signal is on 16bits from 0 to 8191
+b=a/w
+M1=8195*cos(w*(1+b*sin(2*pi*M0))*M0)
+mode==1 => goto outjouer
+clscmd
+print f
+gfxdim -0.5,200,-1.5,0.7,1
+grid100
+x=1
+Trf(x)=M1(1,x)/16384
+
+gfxdim 0,20,0,10,1
+wtext6,2.5,"... advancement ..."
+line 0,1.6,20,1.6,3 
+line 0,1.5,20,1.5,3
+cur=20*index/(advMax-1)
+line 0,1.51,cur,1.51,3 
+line 0,1.53,cur,1.53,3 
+line 0,1.55,cur,1.55,3 
+line 0,1.57,cur,1.57,3 
+line 0,1.59,cur,1.59,3 
+line cur,1.5,cur,1.6,3
+playsndM1,Nsp
+outjouer:
+rts
+
+
+jouer2:
+w=2*pi*f
+//the signal is on 16bits from 0 to 8191
+b=a/w
+M1=8195*cos(w*M0)
+gfxdim -0.5,400,-1.5,0.7,1
+grid100
+x=1
+Trf(x)=M1(1,x)/16384
+playsndM1,Nsp
+//playsndM1,Nsp
+//playsndM1,Nsp
+clscmd
+print f
+rts
+
+
+
+end

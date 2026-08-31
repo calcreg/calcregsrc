@@ -1,0 +1,9 @@
+//
+hello:
+print1
+defM0,1,10
+hi:
+print2
+hey:
+M0(2,1)=0
+end

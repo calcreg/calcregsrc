@@ -1,0 +1,24 @@
+//Works with OscilloArduino
+//In CalcReg.c Oscillo should be unsigned Oscillo[]
+//in OscilloArduino4.ino AtmegA328 analog(A0) :
+//unsigned char Data[i]=(signed char)((int)analogRead(A0)/4);
+//putserial 9600,0,66 //
+//Signal T<50µs:
+//     envoyer F+t=70+t
+//Exemple:  t=1
+//putserial 9600,0,71
+//Signal f petit utiliser B=66
+
+putserial 9600,0,49 //'1' 
+
+getserial 9600,0,0
+
+gfxdim 0,500,-25,300,1
+grid 10
+//line 0,128,1000,128,3
+//line 0,-128,1000,-128,3
+x=0
+Trf(x)=OSC(x)
+
+
+end

@@ -1,0 +1,13 @@
+//Works with OscilloArduino
+putserial 9600,0,66
+getserial 9600,0,0
+
+gfxdim 0,1000,-256,256,1
+grid 100
+line 0,128,1000,128,3
+line 0,-128,1000,-128,3
+x=0
+Trf(x)=OSC(x)
+
+
+end

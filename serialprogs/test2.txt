@@ -1,0 +1,4 @@
+
+putserial 9600,0,65
+getserial 9600,0,0
+end
