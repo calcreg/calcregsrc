@@ -229,8 +229,8 @@ float SoundFrequency,SoundAmplitude,SoundDuration,SamplesPerSecond;
 static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListSize
 static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_trp_mtxn_mtxp_";
 //									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26    27     28     29
-static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_";
-//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28
+static unsigned char InstructionList[]= "end_print_goto_<_=>_==_>_line_grid_gfxdim_workspace_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_colorgfx_";
+//																0       1      2       3   4    5    6    7      8       9        10               11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28            29
 //char blabli[]= { {'hello'},0x1,{'hi'},0x0};
 
 //--------------labels
@@ -335,7 +335,7 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //																							Mtx should be Mn=3 or 4, Mp is set by user. PtlinkMtx :Mn=4, Mp[PtLinkMtx] = Mp[Mtx]
 //dispobjM objM,PtLinkM,DrawingMode   objM is the matrix containing the different points objM[3 or 4,npts], and PtLinkM is the matrix containing the link points
 //																	DrawingMode is the mode to draw: 0=transparent, 1=hidden faces not drawn
-
+//colorgfx n°color   This sets the color of the pencil
 
 //MathFunctions
 extern int MathError; //send back a code if error in the Math functions. MathError=1 out of range exponential
@@ -1530,6 +1530,9 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			//create matrix
 			MAccu[NumM].ptr = (float*)malloc(MAccu[NumM].n*MAccu[NumM].p*sizeof(float) );
 			if (MAccu[NumM].ptr == 0) {Error = 1; PrintCmd("Error Allocation for Matrix!\n");goto EndMain;}
+			//init
+			int k;
+			for (k=0;k<MAccu[NumM].n*MAccu[NumM].p;k++)MAccu[NumM].ptr[k]=0;
 			OffsetLine=0;
 			}else{PrintCmd("Matrix!\n");goto EndMain;}
 		}	
@@ -1578,6 +1581,14 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			if (Error !=0) goto EndMain;
  			OffsetLine=0;
 			}else{PrintCmd("Display Matrix Object!\n");goto EndMain;}
+		}	
+		
+//------------
+		if (CodeOfOneLine[OffsetLine].code==11&&CodeOfOneLine[OffsetLine].value==29) {//colorgfx
+			if (CodeOfOneLine[OffsetLine+1].code==1) {
+			ColorGraph = (int)CodeOfOneLine[OffsetLine+1].value;
+ 			OffsetLine=0;
+			}else{PrintCmd("colorgfx!\n");goto EndMain;}
 		}	
 		
 //------------
