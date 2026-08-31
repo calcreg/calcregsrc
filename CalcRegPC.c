@@ -368,7 +368,13 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //						2=Same as 3D but projected on 2D (only visible faces on plan 2D	y horizontal, z vertical)	
 
 //colorgfx n°color   This sets the color of the pencil
+
 //dataM n°mtx,a11,a12,a13,...,a21,a22,a23,...a31,a32,a33,...anp used to fill data in the mtx
+// It is possible to fill on several lines   
+//										example: dataM0,1,2,3,4
+//													   dataM0,5,6,7,8
+// But you should not jump one line otherwise it is reinitialised to first index filling
+
 //fMn°(x,y)= exp(-(x2+y^2)^)  fills the matrix with the exponential, it starts from x=1 (y=1) up to Mn (Mp respectively)
 //ftobjM n°M1,n°M2,n°PtLinkM  transfert matrix style Meshgrid to an object with its PtLink Matrix to be displayable with dispobjM
 //getindM n°M1,n°VectP,n°IndexPts,Mask    get the better index of point close to vectP[3,1]=x,y,z, result in matrix n°IndexPts1,2,3 bests 
@@ -1024,6 +1030,8 @@ static int SubRoutineStack[MaxSubRoutine];
 static int PointerSubRoutine=0;
 
 int nbits,NumM,Mn,Mp,AccIndex,lblptr, istrt,pos,k,K,offsetP,OkLine,CodeListOffsetSave,CounterLineCode;
+int PrevDataMLine=0,PrevMtx=-1,Prevk=0;//set PrvMtx=-1 for impossible mtx nbr
+
 float x1,y1,x2,y2,color;
 float X0,X1,Y0,Y1,Y;
 
@@ -1130,6 +1138,9 @@ float X0,X1,Y0,Y1,Y;
 	DispBrk=0;
 	PointerSubRoutine=0;//init
 	CounterLineCode=0; //init the counter of code line in execution.
+		//Remark: CounterLineCode doesn't give the true Line Code 
+		//because it is not reinitialised to target line when there is a goto or bsr...
+
 LoopCodeProgram: //-----------------------------------Loop-----------------------------------
 
 	if (BreakActivated==1) if( CheckForBreak() == 1) return;
@@ -1967,13 +1978,19 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 			NumM = (int)CodeOfOneLine[OffsetLine+1].value;
 			if (NumM > NbrMaxMatrix/2 ) {Error=1;PrintCmd("Matrix Nbr too high \n");goto EndMain;}
 			if (MAccu[NumM].ptr ==0) {Error=1;PrintCmd("Matrix not defined\n");goto EndMain;}
-
+/*	char msg_s[50];
+			sprintf(msg_s,"CounterLineCode=%d\nPrevMtx=%d\nPrevDataMLine=%d,Prevk=%d\n",CounterLineCode,PrevMtx,PrevDataMLine,Prevk);
+			PrintCmd(msg_s);*/
+			if(PrevMtx!=NumM||CounterLineCode!=PrevDataMLine+1)
+				Prevk=0; //initialise Prevk for filling Different matrix
 			k=0;while(CodeOfOneLine[OffsetLine+2*k+2].code==10&&
 					CodeOfOneLine[OffsetLine+2*k+3].code==1){
-						MAccu[NumM].ptr[k]=CodeOfOneLine[OffsetLine+2*k+3].value;
-						if (k==MAccu[NumM].n*MAccu[NumM].p){Error=1;PrintCmd("Exceeding Mtx size in dataM filling\n");goto EndMain;}
+						MAccu[NumM].ptr[k+Prevk]=CodeOfOneLine[OffsetLine+2*k+3].value;
+						if (k+Prevk>=MAccu[NumM].n*MAccu[NumM].p){Error=1;PrintCmd("Exceeding Mtx size in dataM filling\n");goto EndMain;}
 						k++;
 					}//while
+					PrintCmd("---\n");
+			PrevDataMLine=CounterLineCode; Prevk=Prevk+k;PrevMtx=NumM;
  			OffsetLine=0;
 			}else{PrintCmd("dataM fill Matrix!\n");goto EndMain;}
 		}	
