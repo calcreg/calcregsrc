@@ -1,7 +1,8 @@
 //#NOCOMPLEXE
 action 1 //inactive control gfx
 clscmd
-N=2000
+N=800
+med=N/10
 defM0,4,N
 pi=3.1415927
 a=4
@@ -17,7 +18,7 @@ menx=50
 meny=360//30//360
 
 defM1,4,N
-fillsphM0,1,1.5,100
+fillsphM0,1,1.5,med
 defM2,4,4 //Rz pi/2 pour aller a droite
 defM3,4,4 //Ry pi/2 pour aller en bas
 defM4,4,4 //Rotation autour de z
@@ -35,6 +36,9 @@ defM15,4,4 //elongate
 
 defM16,3,NbrSqPtMax //mtx of point for squeleton
 defM17,4,NbrSqPtMax //link points
+
+defM18,4,4 //matrice pour la rotation big display
+
 
 StartMenu:
 createbtn10,menx,meny,40,20,"mode"
@@ -56,10 +60,7 @@ createbtn17,(menx+110),(meny+20),50,20,"Mag Z-"
 createbtn6,(menx+160),(meny+20),50,20,"Mag Z+"
 createbtn18,(menx+170),(meny+120),80,20,"RESTART"
 createbtn19,(menx+110),(meny+80),80,20,"Squeleton"
-
-
-
-
+createbtn20,menx,(meny+100),100,20,"Save Image"
 
 
 
@@ -103,15 +104,19 @@ c==11=>bsr move
 c==3=>bsr reduce
 c==2=>bsr magnify
 c==12=>saveM0
-c==13=>bsr bigDisplay
+c==13=>goto bigDisplay
 c==14=>bsr ChargerMtx
 c==18=> bsr restart
-c==19=> bsr squeleton
+c==19=> goto squeleton
+c==20=> bsr saveimage
 c==1 => goto exit
 goto loop
 
+saveimage:
+savebmp1,"image.bmp"
+rts
 restart:
-fillsphM0,1,1.5,100
+fillsphM0,1,1.5,med
 bsr display
 M9=M0
 rts
@@ -161,7 +166,8 @@ mod==4=>wtext0,10,"large exponential cut  "
 mod==5=>wtext0,10,"stiff exponential cut   "
 mod==6=>wtext0,10,"blade cut                    "
 mod==7=>wtext0,10,"cylinder hole              "
-mod==8=>goto init
+mod==8=>wtext0,10,"form object                "
+mod==9=>goto init
 rts
 init:
 wtext0,10,"flatten mode=                        "
@@ -186,6 +192,7 @@ key(0)
 mx=key(3)
 mx==1=>goto modif
 M9=M0
+mod==8=>goto FormModif
 gfxdim -3,8,-8,3,1
 mod>0=>goto stress
 dataM7,0,key(1),key(2)
@@ -231,6 +238,55 @@ mx==1=>goto bcl
 goto loop
 end
 
+// ---- Form Modif -----
+FormModif:
+ypt1=key(1)
+zpt1=key(2)
+ypt2=key(5)
+zpt2=key(6)
+//Equation de droite y=f(z)=az+b
+zpt2==zpt1=>goto loop
+a=(ypt2-ypt1)/(zpt2-zpt1)
+b=ypt1-a*zpt1
+
+zpt1>zpt2=>goto ZMIN
+zptmin=zpt1
+zptmax=zpt2
+goto skipm
+ZMIN:
+zptmax=zpt1
+zptmin=zpt2
+skipm:
+
+h=1
+ModifShrink:
+z=M0(3,h)
+z<zptmin => goto skipPoint
+z>zptmax => goto skipPoint
+x=M0(1,h)
+y=M0(2,h) //pour le teste de YptM0(h)
+
+c=abs(a*z+b)
+d=sqrt(x^2+y^2)+0.01
+M0(2,h)=M0(2,h)*c/d
+M0(1,h)=M0(1,h)*c/d //modification
+skipPoint:
+h=h+1
+h<N=>goto ModifShrink
+
+bsr display
+gfxdim -3,8,-8,3,1
+wtext0,0,"modif form"
+line ypt1,zpt1,ypt2,zpt2,3
+
+bclF:
+key(0)
+mx=key(4)
+mx==1=>goto bclF
+goto loop
+//-------------------------
+
+
 //--------------------------------------------------------
 
 zero:
@@ -240,11 +296,56 @@ print0,"index zero"
 goto bcl
 
 
+//-------  BigDisplay -------------
+
 bigDisplay:
 action 0
 gfxdim-3,3,-3,3,1
-dispobjM0,1,3
+action3,-10,-10,-5
+dispobjM0,1,5
+
+loopBD:
+key(0)
+gfxdim 0,10,0,10,1
+wtext9,9.6,"QUIT"
+line 9,9,9,10,0
+line 9,9,10,9,0
+c=key(4)
+c==1=>bsr rotationBD
+c=key(3)
+c==0=> goto loopBD
+a=key(1)
+b=key(2)
+a<9=>goto loopBD
+b<9=>goto loopBD
+goto loop
+
+rotationBD:
+key(0)
+mx=key(3)
+mx==1=>goto rotationBD
+a=key(5)-key(1)
+b=key(6)-key(2)
+a=pi*a/10
+b=-pi*b/10
+teta=b
+dataM18,cos(teta),0,sin(teta),0, 0,1,0,0, sin(-teta),0,cos(teta),0, 0,0,0,1
+M0=M18*M0
+teta=a
+dataM18,cos(teta),sin(-teta),0,0, sin(teta),cos(teta),0,0, 0,0,1,0, 0,0,0,1
+M0=M18*M0
+action0
+gfxdim-3,3,-3,3,1
+dispobjM0,1,5
+readyBD:
+key(0)
+mx=key(4)
+mx==1=>goto readyBD //avoid double click
+//print0
 rts
+
+//-------------------------
+
 
 display:
 
@@ -269,7 +370,7 @@ dispobjM10,1,2
 
 gfxdim -8,3,-3,8,1
 M10=M0 //l'image en perspective
-dispobjM10,1,1
+dispobjM10,1,5
 gfxdim 0,255,0,300,1
 wtext30,160,"front view Y-Z"
 
@@ -334,13 +435,14 @@ bouton<20 => goto loopbtn
 //menx and meny are defined at top
 createbtn1,menx,(meny+120),100,20,"QUIT"
 //createbtn2,menx,(meny+20),100,20,"Create 3D object"
-createbtn3,(menx+170),(meny+120),120,20,"Create 3D Object"
+createbtn3,(menx+150),(meny+100),120,20,"Create 3D Object"
 createbtn4,(menx+80),meny,30,20,"Rx-"
 createbtn5,(menx+110),meny,30,20,"Rx+"
 createbtn6,(menx+140),(meny),30,20,"Ry-"
 createbtn7,(menx+170),(meny),30,20,"Ry+"
 createbtn8,(menx+200),(meny),30,20,"Rz-"
 createbtn9,(menx+230),(meny),30,20,"Rz+"
+createbtn10,(menx+150),(meny+120),120,20,"Do New Skeleton"
 
 createbtn18,(menx+190),(meny+50),50,20,"UNDO"
 createbtn19,(menx+100),(meny+50),80,20,"Back"
@@ -348,22 +450,63 @@ createbtn19,(menx+100),(meny+50),80,20,"Back"
 nsqpt=0 //nbr point in squeleton
 action 0 //clean gfx screen
 gfxdim-2,2,-2,2,1
+dispobjM0,1,2
+
 SqLoop:
 c=key(0)
 mx=key(3) //left click
 mx==1=>bsr SqPlacePt
-c==3 => goto CreateObject
+c==3 => bsr CreateObject
 c==19=> goto BackFrSq
+c==10=> goto DoNewSkeleton
 c==1 => goto exit
+goto SqLoop
+
+DoNewSkeleton:
+nsqpt=0 //nbr point in squeleton
+action0
+gfxdim-2,2,-2,2,1
+dispobjM0,1,2
 goto SqLoop
 
 
 CreateObject:
-wtext0,0,"In preparation"
+c=key(0)
+mx=key(3) //left click
+mx==1=>goto CreateObject
+nsqpt>1 =>goto okobject
+wtext0,0,"Create skeleton first!"
+rts
+okobject:
+defM19,6,nsqpt
+h=1
+L=1
+a=nsqpt
+loopMod8:
+M19(1,h)=M16(1,L)
+M19(2,h)=M16(2,L)
+M19(3,h)=M16(3,L)
+L=L+1
+M19(4,h)=M16(1,L)
+M19(5,h)=M16(2,L)
+M19(6,h)=M16(3,L)
+h=h+1
+h<a=> goto loopMod8
+modobjM0,1,0.05,19,8
+//modobjM0,1,5,19,8
+//modobjM0,1,5,19,8
+gfxdim-2,2,-2,2,1
+action0
+dispobjM0,1,2
+//print M19
 rts
 
 BackFrSq:
+c=key(0)
+mx=key(4)
+mx==1=>goto BackFrSq
 goto StartMenu
+
 
 SqPlacePt:
 mx=key(3)

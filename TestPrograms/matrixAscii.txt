@@ -1,0 +1,8 @@
+
+loadM0,"MatrixLoto.m"
+n=mtxn(M0)
+p=mtxp(M0)
+print n,"n="
+print p,"p="
+print M0
+end

@@ -1,0 +1,8 @@
+defM0,1,10
+defM1,1,10
+fillM1,1.5,99.8
+M1(1,5)=200
+M1(1,6)=200
+orderM1,0,0
+printM0
+end

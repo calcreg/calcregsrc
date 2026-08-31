@@ -22,7 +22,7 @@
 #define VertScale			ChartRectHeight / 100
 #define ProgTextMaxChars 1000
 #define MnemoListSize 1000
-//#define CodeListSize 10000 // nbr of Codes floactet = octet + float
+#define CodeListSize 10000 // nbr of Codes floactet = octet + float
 
 #define LabelListSize 200
 #define CharMaxOneLine 200 //printing  maximum 200 chars in once => s[200]
@@ -62,14 +62,6 @@ typedef struct NbrCmplx{
 	float cmplx;
 }NbrCmplx;
 	
-typedef struct LPStack{ //Structure of LoopStack list
-	int accu;	//number (name) of the accu in Accu[]
-	float strt;	//start of the for
-	float end;	//end of the for
-	float step;	//step of the for
-	int addr;	//index in the list
-}LPStack;
-
 //compatibilityReg.c
 extern void WinEraseRectangleReg(int,int,int,int);
 extern HDC hDC;
@@ -110,7 +102,6 @@ extern void LoadProg();
 extern void RemoveComments(char *txt);//RMathlib.c
 extern int PreProcesser(char *); //RMathlib.c
 extern void DisplayManual();
-extern int CountLoopsForWhile(char *prog);//RMathlib.c
 
 void Execute(void);
 DWORD WINAPI Thread_Execute( LPVOID lpParam );//en multitache
@@ -237,7 +228,6 @@ extern float DimYmin;
 extern float DimYmax;
 extern float IncX;
 extern float StepX;
-extern float GridMode;
 
 //3D plots
 extern float zp,yp,xp,zp0,yp0,xp0;//should be proportional to the 3D dimension box
@@ -269,16 +259,12 @@ float SoundFrequency,SoundAmplitude,SoundDuration,SamplesPerSecond;
 static unsigned char OperatorList[] = "+-*/()=A,_"; //if add then change OpListSize
 static unsigned char MathFunctions[]= "exp_ln_sqrt_Trf_sin_cos_tan_fact_^_ch_sh_th_Re_Im_Int_OSC_acos_asin_ath_atan_ash_ach_abs_mod_arg_key_trp_mtxn_mtxp_fM_sign_?_int_";
 //									                        	1	  2     3     4     5      6     7      8    9  10  11_12 13 14   15    16     17      18    19     20   21   22    23   24     25   26    27     28     29     30    31  32  33
-static unsigned char InstructionList[]= "end_print_goto_<=_=>_==_>=_line_grid_gfxdim_action_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_colorgfx_dataM_fctobjM_getindM_modobjM_killbtn_savesndM_copyM_fftM_fftinvM_vobj3dM_savebmp_orderM_<_>_mandelbrotM_for_next_onerror_";
-//																0       1      2       3   4     5     6     7      8       9        10        11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28            29           30       31             32         33     		  34			35           36         37     38         39        		40			41    42   43        44     			45	46	47
+static unsigned char InstructionList[]= "end_print_goto_<=_=>_==_>=_line_grid_gfxdim_action_box3d_getserial_wait_bsr_rts_putserial_createbtn_clscmd_defM_playsndM_fillM_recsndM_loadsndM_saveM_loadM_wtext_fillsphM_dispobjM_colorgfx_dataM_fctobjM_getindM_modobjM_killbtn_savesndM_copyM_fftM_fftinvM_vobj3dM_savebmp_orderM_<_>_mandelbrotM_";
+//																0       1      2       3   4     5     6     7      8       9        10        11         12          13     14  15    16             17            18			19         20          21       22            23            24          25       26      27           28            29           30       31             32         33     		  34			35           36         37     38         39        		40			41    42   43        44     
 //char blabli[]= { {'hello'},0x1,{'hi'},0x0};
 
 //--------------labels
 lbl Labels[LabelListSize];
-//OnError Treatment CodeErrorLine
-#define ErrorLineSize 100
-floactet CodeErrorLine[ErrorLineSize];
-int OnErrorFlag;
 
 //---------------Accu
 struct var *AccuVar; //Pointer on Locked struct var memory for variables affectation of the Accu
@@ -287,8 +273,7 @@ NbrCmplx *Accu;
 int NbrVar; //total exact number of accu allocated
 //int MaxSizeVarName=50; //Size maximum for variable names
 #define MaxSizeVarName 50
-//Taille pour la liste des Codes, est modifiée en cas de nécessité dans le programme, suivie d'un relancement (ce changement est effectuée pour la session d'ouverture de CalcReg)
-int CodeListSize=10000; 
+
 //---------------FAccu
 //struct var *FAccuVar; //Pointer on Locked struct var memory for variables affectation of the Accu
 //MemHandle FMemHdle; //Handler on the structure FAccuVar opened in CountNbrVar
@@ -464,10 +449,7 @@ Code 15 = MAccu [15][N°MAccu] [i 1][j 1]
 //?(0) recupère le chiffre dans la fenetre de commande
 //mandelbrot Mx,My,Mc,nlim  Mx[1,p] My[1,q] Mc[p,q] nlim maximum d'itérations => complexité de la mandelbrot
 //																						Mc contient la matrice pxq des couleurs
-//onerror sousprog		Instruction qui transfert la gestion de l'error au sous-programme sousprog
-//onerror 0	le systeme de calcreg gère l'erreur, le programme s'arrete
-//on error 1	l'erreur reste cachée, aucune message d'erreur, le programme continue malgré l'erreur cachée.
-//grid Step, mode		where mode =0 no grid just graduation; mode !=0 grid set
+
 //MathFunctions
 extern int MathError; //send back a code if error in the Math functions. MathError=1 out of range exponential
 extern int FunctionPrecision; //For the precision of  the functions
@@ -486,10 +468,6 @@ int CodeListOffset;
 #define CodeOneLineSizeMax 100
 int AllowComplexe=-1; //Allow complexe number calculation
 floactet LastValCalculated;
-
-int NbrForWhileLoops; //to count the max ize for the LoopStack list of bracketing in/out for-while-next
-LPStack* LoopStack;
-int LoopStackIndex;
 
 int Iindex,NmaxLbl, TestCondition;
 char s[CharMaxOneLine]; //for the info printings.
@@ -650,18 +628,9 @@ if(MnemoProgSize>MLongSize) PrintCmd("Preparing data.\n");
 	if (ReorgVarList(NbrVar,WholeMnemoProg) !=0) goto FreeMemories;
 	if(MnemoProgSize>MLongSize) PrintCmd("done.\n");
 
-	//Search for "for" "while" and "next" instructions counting in/out and generate LoopStack list
-	if(MnemoProgSize>MLongSize) PrintCmd("Searching loops {for, while,next}...");
-	NbrForWhileLoops=CountLoopsForWhile(WholeMnemoProg);//gives back the exact number of Accu necessary, MemHdle is created, think to free memory at the end	
-	if (NbrForWhileLoops<0) {PrintCmd("for-while-next braketing error\n");goto FreeMemories;}
-	LoopStack= (LPStack*)malloc((NbrForWhileLoops+1)*sizeof(struct LPStack));
-	if(LoopStack==0) {PrintCmd("Can't allocate for LoopStack\n");goto FreeMemories;}
-	if(MnemoProgSize>MLongSize) PrintCmd("done.\n");
-	
-	
 	//win32 ->
     Accu = (NbrCmplx *) malloc(NbrVar*sizeof(struct NbrCmplx) +1);//size+1 if overflow possibilities
-	if(Accu == 0){PrintCmd("can't allocate Accu!");goto FreeMemories;}
+	if(Accu == 0){PrintCmd("can't allocate Accu!");return;}
  	
 	NbrMaxAccu = NbrVar;
 	
@@ -686,7 +655,6 @@ if(MnemoProgSize>MLongSize) PrintCmd("Preparing data.\n");
 		LastValCalculated.value=0; //init
 		LastValCalculated.cmplx=0;//init
 		Button = 0; //init the button for key();
-		OnErrorFlag=0; //0 Error => exit, 1 Errors are to be treated
 		//init all buttons previously opened of the program
 		for (i=0;i<MaxNbrButtons;i++)if(ProgBtn[i]!=0){ProgBtn[i]=0;DestroyWindow(ProgBtn[i]);}
 
@@ -722,7 +690,6 @@ if(MnemoProgSize>MLongSize) PrintCmd("Preparing data.\n");
 										//PrintCmd("CloseSerial device\n");
 										}//Close the Serial Device used
 FreeMemories:
-	if (LoopStack!=0)free(LoopStack);
 	if (progtext!=0) free(progtext);
 	if (WholeMnemoProg !=0) free(WholeMnemoProg); //free the memory for the list of correspondance with the Accu and the names of variables
 	if (Accu !=0) free(Accu); //free the memory for the list of correspondance with the Accu and the names of variables
@@ -1147,7 +1114,7 @@ int CheckForBreak(){
 
 // --------------------CalcMain--------------------
 static  int CalcMain(floactet *CodeList){
-
+ 
 //char *InstructionLine = "1+(1+(-1+3*2)-1)*2\n";
 static char InstructionLine[LineSize];
 int Error,i,a,b,c,nbrLine,NbrCodesCopied,OffsetLine=0;
@@ -1159,12 +1126,11 @@ static int SubRoutineStack[MaxSubRoutine];
 static int PointerSubRoutine=0;
 
 int nbits,NumM,Mn,Mp,AccIndex,lblptr, istrt,pos,k,K,offsetP,OkLine,CodeListOffsetSave,CounterLineCode;
-int PrevDataMLine,PrevMtx,Prevk;//set PrvMtx=-1 for impossible mtx nbr
+int PrevDataMLine=0,PrevMtx=-1,Prevk=0;//set PrvMtx=-1 for impossible mtx nbr
 
 float x1,y1,x2,y2,color;
 float X0,X1,Y0,Y1,Y;
-RestartConverting: //pour le cas de relancement doublage de CodeListSize
-PrevDataMLine=0;PrevMtx=-1,Prevk=0;
+
 
 		CodeListAdr=CodeList; //To transport CodeList out of here without any interference
 		ProgSize=strlen(WholeMnemoProg);
@@ -1223,11 +1189,6 @@ PrevDataMLine=0;PrevMtx=-1,Prevk=0;
 		if (CheckLabelDef(InstructionLine,LineSize) == 0) { 
 			//if (debug > 2) printf("No label \n");
 			Error = ConvertMnemo(InstructionLine, CodeList); //InstructionLine = Mnemolist for the test
-			if (Error==-1){ //exceeding CodeListSize, half handled in ConvertMnemo<=> size was doubled to solve problem
-				floactet *CodeList_intermediate = (floactet *) malloc(CodeListSize*sizeof(struct floactet));
-				if( CodeList_intermediate == 0){PrintCmd("Couldn't Re-allocate CodeList!\nRelaunch Manually \nby [EXE]\n");return 0;}
-				else {free(CodeList);CodeList=CodeList_intermediate; Error=0; goto RestartConverting;}
-				}
 		}else {
 				Labels[lblptr].n=CodeListOffset;
 				if (debug == -4) {sprintf(s,"Set Label[%d].n= %d (CodeList)\n",lblptr,CodeListOffset);PrintCmd(s);}
@@ -1268,7 +1229,7 @@ PrevDataMLine=0;PrevMtx=-1,Prevk=0;
 
 
 	if (debug != 0) PrintCmd("LAUNCHING...\n");
-	CodeListOffset=0;LoopStackIndex=0;
+	CodeListOffset=0;
 	OffsetLine=0;
 	CountBreak=0; //init
 	DispBrk=0;
@@ -1309,12 +1270,11 @@ LoopCodeProgram: //-----------------------------------Loop----------------------
 		if (debug !=0) PrintCmd("end\n");
 		goto EndMain;
 		}
-if(CodeOfOneLine[0].code == 11 && CodeOfOneLine[0].value <0){
-	//HandlingSpecial Instructions needing the number of the accu and not its value.
+
 	if (CodeOfOneLine[0].code == 11 && CodeOfOneLine[0].value == -1 && CodeOfOneLine[3].code == 7){//Trf(x)=...
 			if (CodeOfOneLine[2].code != 9 ){ PrintCmd("Error syntaxe Trf(x)\n");goto EndMain;}
 
-			if ((Error=TraceFunctionOneVariable(CodeOfOneLine,CodeList)) !=0 ) goto EndMain;
+			if (TraceFunctionOneVariable(CodeOfOneLine,CodeList) !=0 ) goto EndMain;
 			if (StopProgram==1) goto EndMain;
 			CodeListOffset=CodeListOffsetSave+NbrCodesCopied;
 			OffsetLine=0; ColorGraph++; 
@@ -1323,7 +1283,7 @@ if(CodeOfOneLine[0].code == 11 && CodeOfOneLine[0].value <0){
 	if (CodeOfOneLine[0].code == 11 && CodeOfOneLine[0].value == -1 && CodeOfOneLine[3].code == 10){//Trf(x)=...
 			if (CodeOfOneLine[2].code != 9 && CodeOfOneLine[4].code != 9){ PrintCmd("Error syntaxe Trf(x,y)\nx and y should be variables");goto EndMain;}
 
-			if ((Error=TraceFunctionTwoVariable(CodeOfOneLine,CodeList)) !=0 ) goto EndMain;
+			if (TraceFunctionTwoVariable(CodeOfOneLine,CodeList) !=0 ) goto EndMain;
 			if (StopProgram==1) goto EndMain;
 			CodeListOffset=CodeListOffsetSave+NbrCodesCopied;
 			OffsetLine=0; ColorGraph++; 
@@ -1339,61 +1299,7 @@ if(CodeOfOneLine[0].code == 11 && CodeOfOneLine[0].value <0){
 			OffsetLine=0; ColorGraph++; 
 			goto AlmostEndLoop;
 		}
-	}//End handling instruction with negative value
 
-	if (CodeOfOneLine[0].code == 11 && CodeOfOneLine[0].value == 45){ //for x,strt,end,step
-		if(CodeOfOneLine[1].code != 9 || CodeOfOneLine[2].code != 10 ||
-			CodeOfOneLine[4].code != 10 || CodeOfOneLine[6].code != 10 ||
-			(CodeOfOneLine[3].code !=9&&CodeOfOneLine[3].code !=1)||
-			(CodeOfOneLine[5].code !=9&&CodeOfOneLine[5].code !=1)||
-			(CodeOfOneLine[7].code !=9&&CodeOfOneLine[7].code !=1)){ PrintCmd("Syntaxe:\nfor(h,start,end,step)\n");goto EndMain;}
-		//Fill the stack intended for loop instructions like: for, while.
-			//This stack is prepared while analying program by strstr(wholeMnemoProg,"for") and "next".
-			//It is meant no to pass by here during that loop of "for".
-			//We don't bother for cases like end=start which should avoid doing the loop but in our case does.
-			LoopStack[LoopStackIndex].accu=(int)CodeOfOneLine[1].value; 
-			if(CodeOfOneLine[3].code ==1)LoopStack[LoopStackIndex].strt=CodeOfOneLine[3].value;
-				else LoopStack[LoopStackIndex].strt=Accu[(int)CodeOfOneLine[3].value].value;
-			if(CodeOfOneLine[5].code ==1)LoopStack[LoopStackIndex].end=CodeOfOneLine[5].value;
-				else LoopStack[LoopStackIndex].end=Accu[(int)CodeOfOneLine[5].value].value;
-			if(CodeOfOneLine[7].code ==1)LoopStack[LoopStackIndex].step=CodeOfOneLine[7].value;
-				else LoopStack[LoopStackIndex].step=Accu[(int)CodeOfOneLine[7].value].value;
-			/*char s[100];
-			sprintf(s,"for (A%d,%f,%f,%f)\n",(int)CodeOfOneLine[7].value,LoopStack[LoopStackIndex].strt,LoopStack[LoopStackIndex].end,LoopStack[LoopStackIndex].step);
-			PrintCmd(s);*/	
-			LoopStack[LoopStackIndex].addr=CodeListOffset+NbrCodesCopied;//Pointing after the whole "for" instruction.
-			Accu[(int)CodeOfOneLine[1].value].value=LoopStack[LoopStackIndex].strt; //x=strt
-			LoopStackIndex++;
-		if (StopProgram==1) goto EndMain;
-		CodeListOffset=CodeListOffsetSave+NbrCodesCopied;
-		OffsetLine=0;
-		goto AlmostEndLoop;
-		}
-	if (CodeOfOneLine[0].code == 11 && CodeOfOneLine[0].value == 46){ //next
-		//La pile pointe toujours un cran plus loin donc il faut la ramener en arrière pour voir cla boucle que l'on traite
-		float valueToset=Accu[(int)LoopStack[LoopStackIndex-1].accu].value+LoopStack[LoopStackIndex-1].step;
-		if (valueToset<=LoopStack[LoopStackIndex-1].end){
-			Accu[(int)LoopStack[LoopStackIndex-1].accu].value=valueToset;
-			CodeListOffset=LoopStack[LoopStackIndex-1].addr;
-			}else{LoopStackIndex--;CodeListOffset=CodeListOffsetSave+NbrCodesCopied;}
-		if (LoopStackIndex<0){PrintCmd("braketing for-while-next incoherence\n");Error=1;goto EndMain;}
-	if (StopProgram==1) goto EndMain;
-	OffsetLine=0;
-	goto AlmostEndLoop;
-		}
-	if (CodeOfOneLine[0].code == 11 && CodeOfOneLine[0].value == 47){ //onerror
-	CodeListOffset=CodeListOffsetSave+NbrCodesCopied;
-	if(NbrCodesCopied<ErrorLineSize)for (i=0;i<NbrCodesCopied;i++)CodeErrorLine[i]=CodeOfOneLine[i];
-	else for (i=0;i<ErrorLineSize;i++)CodeErrorLine[i]=CodeOfOneLine[i];
-	if (CodeOfOneLine[1].code==1 && CodeOfOneLine[1].value==0) {OnErrorFlag=0;}
-	if (CodeOfOneLine[1].code==1 && CodeOfOneLine[1].value==1) {OnErrorFlag=1;}
-	if (CodeOfOneLine[1].code==12) OnErrorFlag=1; // onerror label <=> if error then goto...
-	if (StopProgram==1) goto EndMain;
-	OffsetLine=0;
-	goto AlmostEndLoop;
-		}
-//end handling special instructions
-	
 	//The increase of the CodeListOffset should be after the treatment of the function Trf(x)=
 	CodeListOffset=CodeListOffset+NbrCodesCopied; 						//Prepare for next line
 
@@ -1496,8 +1402,8 @@ KeepOn:
 			if (CodeOfOneLine[OffsetLine+7].code == 1){
 				Mn= (int)CodeOfOneLine[OffsetLine+2].value;
 				Mp= (int)CodeOfOneLine[OffsetLine+4].value;
-				if (Mn<1 || Mn>MAccu[NumM].n) {if (OnErrorFlag==0)PrintCmd("index Matrix Out of range\n");Error=6; goto EndMain;}
-				if (Mp<1 || Mp>MAccu[NumM].p) {if (OnErrorFlag==0)PrintCmd("index Matrix Out of range\n");Error=6; goto EndMain;}
+				if (Mn<1 || Mn>MAccu[NumM].n) {PrintCmd("index Matrix Out of range");Error=6; goto EndMain;}
+				if (Mp<1 || Mp>MAccu[NumM].p) {PrintCmd("index Matrix Out of range");Error=6; goto EndMain;}
 				if (MAccu[NumM].ptr !=0){
 					MAccu[NumM].ptr[(Mn-1)*MAccu[NumM].p+Mp-1]=CodeOfOneLine[OffsetLine+7].value;
 				}else {PrintCmd("Matrix not defined!\n");Error = 6; goto EndMain;}
@@ -1644,9 +1550,6 @@ KeepOn:
 			if (CodeOfOneLine[OffsetLine+1].code==1) {
 			WinEraseRectangleReg(DrawZoneX+1,DrawZoneY,DrawZoneW,DrawZoneH);//Define the erasing rectangle dimensions	
 			StepX=CodeOfOneLine[OffsetLine+1].value;
-			if (CodeOfOneLine[OffsetLine+2].code==10 &&CodeOfOneLine[OffsetLine+3].code==1) {
-							GridMode=CodeOfOneLine[OffsetLine+3].value;
-							}
 			TracerAxis(DrawZoneX+DrawZoneW/2,DrawZoneY+DrawZoneH/2,DrawZoneW, DrawZoneH);
 			ColorGraph=1; //Set Color Graph to init
 			OffsetLine=0;
@@ -2053,20 +1956,7 @@ KeepOn:
 			if (prc.left+tsize*10<DrawZoneX+DrawZoneW)prc.right = prc.left+tsize*10;//DrawZoneX+DrawZoneW;
 			else prc.right=DrawZoneX+DrawZoneW;
 			//c		DrawText(hDC, textdsp, -1, &prc, DT_SINGLELINE |DT_VCENTER);
-	COLORREF colpen   = 0x000000;
-	StartHandleColor:
-	if (ColorGraph == 1)colpen=(0x0A0AFF);//red
-	if (ColorGraph == 2)colpen=(0x0AFF0A);//green
-	if (ColorGraph == 3)colpen=(0xFF0A0A);//blue
-	if (ColorGraph == 4)colpen=(0x0A0AFF);//yellow
-	if (ColorGraph == 5)colpen=(0xFF0FFF);//
-	if (ColorGraph == 6)colpen=(0x0FFFFF);//
-	if (ColorGraph>6) colpen=(0x0111111*(ColorGraph-6));
-	if (ColorGraph>22) {ColorGraph=ColorGraph-22; goto StartHandleColor;}
-
-			COLORREF oldColpen=SetTextColor(hDC,colpen);
 			DrawText(hDC, finalText, -1, &prc, DT_SINGLELINE |DT_VCENTER);
-			SetTextColor(hDC,oldColpen);
 			//PrintCmd(textdsp);
 			free(finalText);			
 			free(textdsp);
@@ -2543,9 +2433,6 @@ KeepOn:
 	//-------------------------------------------------------EndLoop---------------------------------
 	if (debug > 0 )PrintCmd("End\n");
 EndMain:
-	if(Error!=0 && OnErrorFlag==1){Error=0;	CodeListOffset=CodeListOffsetSave+NbrCodesCopied;
-				if (CodeErrorLine[1].code==12) {CodeListOffset = CodeErrorLine[1].value;}
-				goto AlmostEndLoop;}
 	if (Error!=0){sprintf(s,"Error code %d\n",Error);PrintCmd(s);
 									IndicErrorCode(CodeList,CodeListOffset);}
 	return (0);
@@ -2612,7 +2499,7 @@ EndMain:
 				ReplaceAccuByValue(CodeOfOneLine);
 
 				Error = ReplaceMAccuByValue(CodeOfOneLine); //get matrix values
-				if (Error !=0) {if (OnErrorFlag==0){sprintf (s,"While replacing Mtx n°(n,p) by Values Error= %d \n", Error);PrintCmd(s);}goto EndFunctionFX;}
+				if (Error !=0) {sprintf (s,"While replacing Mtx n°(n,p) by Values Error= %d \n", Error);PrintCmd(s);goto EndFunctionFX;}
 
 				Error = TreatParenthese(CodeOfOneLine);													//parenthese
 				if (Error != 0) {sprintf (s,"Parenthese Error = %d \n", Error);PrintCmd(s);goto EndFunctionFX;}
@@ -2886,8 +2773,7 @@ int StrtStr,EndStr,p,a,BackFromAccu=0;
 	ComeBackFromAccu:
 		BackFromAccu=0;
 	while (Out==0){
-		//if (CodeListOffset > CodeListSize-10) {PrintCmd("Exceeding Memory size for Codes --- contact Regan B.S. by email for info");return 5;} 
-		if (CodeListOffset > CodeListSize-10) {PrintCmd("Exceeding CodeListSize\nDoubling CodeListSize\nPlease wait...\n");CodeListSize=2*CodeListSize;return -1;} 
+		if (CodeListOffset > CodeListSize-10) {PrintCmd("Exceeding Memory size for Codes --- contact Regan B.S. by email for info");return 5;} 
 		if (MnemoListLine[i]=='"' )  {//PrintCmd("text detected\n");
 			CodeList[CodeListOffset].code = 1;
 			CodeList[CodeListOffset].value = (float)(offsetI+i+1);//OffsetI is the current position into WholeMnemoProg
@@ -3419,13 +3305,14 @@ int iptrstrt=0,Aind, Mn,Mp,NumM;
 				return 9;
 				}else {
 				NumM = (int) CodeOfOneLine[i].value;
+//	PrintCmd("coucou\n");
 				if (MAccu[NumM].ptr == 0) {sprintf(s,"Matrix M%d not defined!\n",NumM);PrintCmd(s);return 9;}
 				if (AllowComplexe ==1 && MAccu[NumM].Cptr == 0) {PrintCmd("Matrix.cmplx not defined!\n");return 9;}
 				Mn= (int) CodeOfOneLine[i+2].value;
 				Mp= (int) CodeOfOneLine[i+4].value;
 				if (Mn < 1 || Mn > MAccu[NumM].n ||Mp<1 || Mp >MAccu[NumM].p){ 
-					if (OnErrorFlag==0){sprintf(s,"Out Of Range Matrix!\nAttempting to reach M%d(%d,%d)\nusing max defined matrix:\nM%d(%d,%d)\n",NumM,Mn,Mp,NumM,MAccu[NumM].n,MAccu[NumM].p);
-					PrintCmd(s);}return 9;}
+					sprintf(s,"Out Of Range Matrix!\nAttempting to reach M%d(%d,%d)\nusing max defined matrix:\nM%d(%d,%d)\n",NumM,Mn,Mp,NumM,MAccu[NumM].n,MAccu[NumM].p);
+					PrintCmd(s);return 9;}
 				CodeOfOneLine[i].code = 1; 
 				CodeOfOneLine[i].value = MAccu[NumM].ptr[(Mn-1)*MAccu[NumM].p+Mp-1];
 				if (AllowComplexe==1)CodeOfOneLine[i].cmplx = MAccu[NumM].Cptr[(Mn-1)*MAccu[NumM].p+Mp-1];

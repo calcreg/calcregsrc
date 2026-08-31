@@ -1,0 +1,268 @@
+//#COMPLEXEON
+action 0
+action 1 //inactive control gfx
+clscmd
+shade=1
+
+N0=150
+N=N0
+clrlimit=1000
+centre=-0.77515+i*0.1362
+//largeur=0.0000950
+largeur=2
+
+m=N^2
+defM0,N,N
+
+menx=10
+meny=354
+createbtn20,(menx+40),meny,30,20,"Quit"
+createbtn13,(menx+40),(meny+40),80,20,"Save Image"
+createbtn14,(menx+40),(meny+60),80,20,"Hte def"
+createbtn15,(menx+40),(meny+80),80,20,"Basse def"
+createbtn16,(menx+40),(meny+100),80,20,"3D"
+createbtn17,(menx+40),(meny+120),80,20,"restart"
+createbtn18,(menx+40),(meny+140),80,20,"back"
+
+bsr fractale
+loopinit:
+c=key(0)
+mx=key(4)
+mx==1=>bsr zoom
+c==11=> bsr fractale
+c==13 => bsr SauverImage
+c==14 => bsr htedef
+c==15 => bsr lowdef
+c==16 =>bsr Launch3D
+c==17 =>bsr restart
+c==18 =>bsr back
+
+c==20 => goto exit
+goto loopinit
+
+
+SauverImage:
+savebmp1,"fractale.bmp"
+print 0,"image saved"
+rts
+
+back:
+largeur=largeurOld
+centre=centreOld
+N=N0
+bsr fractale
+rts
+
+restart:
+N0=150
+N=N0
+m=N^2
+defM0,N,N
+defM0,N,N
+clrlimit=1000
+centre=-0.77515+i*0.1362
+largeur=2
+bsr fractale
+rts
+
+htedef:
+N=456
+defM0,N,N
+bsr fractale
+rts
+lowdef:
+N=150
+defM0,N,N
+bsr fractale
+rts
+
+zoom:
+key(0)
+mx=key(3)
+mx==1=>goto zoom
+largeurOld=largeur
+centreOld=centre
+centre=key(1)+i*key(2)
+clscmd
+print centre,"centre="
+largeur = sqrt((key(5)-key(1))^2+(key(6)-key(2))^2)
+print largeur,"largeur="
+bsr mksquare
+wait(100)
+bcl:
+key(0)
+mx=key(4)
+mx==1=>goto bcl
+
+bsr fractale
+rts
+
+
+mksquare:
+Cx=Re(centre)
+Cy=Im(centre)
+L=largeur+dx
+color=1
+bsr square
+L=largeur
+color=3
+bsr square
+rts
+square:
+line (Cx-L),(Cy-L),(Cx+L),(Cy-L),color
+line (Cx-L),(Cy+L),(Cx+L),(Cy+L),color
+line (Cx-L),(Cy-L),(Cx-L),(Cy+L),color
+line (Cx+L),(Cy-L),(Cx+L),(Cy+L),color
+rts
+
+Launch3D:
+M0=5+4/(M0+0.5)
+gfxdim -50,(N+50),-90,30,1
+action 0
+//print M0(1,5)
+defM1,4,m
+defM2,4,m
+fctobjM0,1,2 //M1 and M2  objmtx and ptlinkmtx
+
+// rotation of the graph
+pi=3.1415927/2
+//menu pos
+menx=10
+meny=354
+
+defM4,4,4
+defM5,4,4
+defM6,4,4
+
+dataM4,cos(pi/10),sin(-pi/10),0,0, sin(pi/10),cos(pi/10),0,0, 0,0,1,0, 0,0,0,1
+dataM5,1,0,0,0, 0,cos(pi/10),sin(pi/10),0, 0,sin(-pi/10),cos(pi/10),0, 0,0,0,1
+dataM6,cos(pi/10),0,sin(pi/10),0, 0,1,0,0, sin(-pi/10),0,cos(pi/10),0, 0,0,0,1
+
+createbtn1,(menx+80),meny,30,20,"Rx-"
+createbtn2,(menx+110),meny,30,20,"Rx+"
+createbtn3,(menx+140),(meny),30,20,"Ry-"
+createbtn4,(menx+170),(meny),30,20,"Ry+"
+createbtn5,(menx+200),(meny),30,20,"Rz-"
+createbtn6,(menx+230),(meny),30,20,"Rz+"
+createbtn7,(menx+200),(meny+20),60,20,"shade"
+createbtn9,menx,(meny),70,20,"QUIT"
+
+//Init position object
+M1=M4*M4*M6*M6*M6*M6*M1
+dispobjM1,2,shade //display object
+
+
+loop:
+c=key(0)
+c==1 => bsr rotxP
+c==2 => bsr rotxM
+c==3 => bsr rotyP
+c==4 => bsr rotyM
+c==5 => bsr rotzP
+c==6 => bsr rotzM
+c==7 => bsr chgshade
+c==9 => goto exit
+goto loop
+
+exit:
+end
+
+chgshade:
+shade ==1 =>goto chgshadeOn
+shade=1
+bsr displaY
+rts
+chgshadeOn:
+shade=3
+bsr displaY
+rts
+
+
+
+rotxP:
+M1=M4*M1
+bsr displaY
+rts
+
+rotxM:
+M4(2,1)=-M4(2,1) //just reversing the rotation 
+M4(1,2)=-M4(1,2)
+M1=M4*M1
+M4(2,1)=-M4(2,1)//back to M4
+M4(1,2)=-M4(1,2)
+bsr displaY
+rts
+
+rotyP:
+M1=M5*M1
+bsr displaY
+rts
+
+rotyM:
+M5(2,3)=-M5(2,3) //just reversing the rotation 
+M5(3,2)=-M5(3,2)
+M1=M5*M1
+M5(2,3)=-M5(2,3)//back to M5
+M5(3,2)=-M5(3,2)
+bsr displaY
+rts
+
+rotzP:
+M1=M6*M1
+bsr displaY
+rts
+
+rotzM:
+M6(1,3)=-M6(1,3) //just reversing the rotation 
+M6(3,1)=-M6(3,1)
+M1=M6*M1
+M6(1,3)=-M6(1,3) //back to M6 
+M6(3,1)=-M6(3,1)
+bsr displaY
+rts
+
+displaY:
+action 0 //clear gfx screen
+dispobjM1,2,shade
+rts
+
+
+// --------------------------- Fractales --------------------------
+
+
+
+fractale:
+defM1,1,N
+defM2,1,N
+c=centre
+a=largeur
+xmin=Re(c)-2*a
+xmax=Re(c)+a
+ymin=Im(c)-a
+ymax=Im(c)+a
+
+fillM1,xmin,xmax
+fillM2,ymin,ymax
+
+gfxdim xmin,xmax,ymin,ymax,1
+
+x=xmin
+dx=(xmax-xmin)/(N-1)
+y=ymin
+dy=(ymax-ymin)/(N-1)
+print dy,"dy="
+
+mandelbrotM1,2,0,clrlimit
+color=0
+h=0
+k=1
+//test==0=> goto lpdspal
+//clrlimit=1 //pour afficher que color =0
+lpdspal:
+h=h+1
+line M1(1,h),M2(1,k),(M1(1,h)+dx),M2(1,k),(65+32*M0(h,k)/350)
+h<N=>goto lpdspal
+k=k+1
+h=0
+k<N=>goto lpdspal
+rts

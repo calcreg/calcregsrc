@@ -87,7 +87,6 @@ void LoadProg();
 int CompareVarNames(char* txt, int i1, int i2);
 void RemoveComments(char *txt);
 int PreProcesser(char *);
-int CountLoopsForWhile(char *txt);
 
 void Rprintf(float x);//write and enter
 void REPrintf(float x);//write nbr but don't enter
@@ -128,7 +127,7 @@ static float Rabs(float x);
 
 void LowPerformance();
 
-void DispGradVal(float val,float X,float Y, int mode); //mode 0 position text on X axes, and 0 position on Y axes
+void DispGradVal(float val,float X,float Y);
 void TracerAxis(int centerx,int centery,int width, int height);//color 0black 1red 2green 3blue
 void Tracer3DAxis();
 float Dx(float x, float y, float z);
@@ -178,7 +177,6 @@ float DimYmin=-5;
 float DimYmax=5;
 float IncX=0.05;
 float StepX=1;
-float GridMode=0; //mode 0 means by default, mode=1 means square grid appear all over 
 
 //3D plots
 float zp=150,yp=70,xp=60,zp0=15,yp0=7,xp0=6;//should be proportional to the 3D dimension box
@@ -2876,54 +2874,6 @@ int PreProcesser(char *mnemotext){
 	return PreproSignal;
 }
 
-int CountLoopsForWhile(char *prog){
-//this counts number of for or while, and counts next, should be equal.
-//The further trials where to locate exactely the maximum needed size for the LoopStack
-	int nbrloops,nlp,nbrnext;
-	char *p,*p1,*p2,*q,*prognext;
-	q=prog;prognext=prog;
-	nlp=0;nbrloops=0;nbrnext=0;
-LoopCLFW:
-	p1=strstr(prog,"for");
-	p2=strstr(prog,"while");
-	if (p1!=0 || p2 !=0){nbrloops++;
-		if (p1==0)p=p2;
-		if (p2==0)p=p1;
-		if (p1!=0 &&p2!=0 && p1<p2)p=p1;
-		if (p1!=0 &&p2!=0 && p1>p2)p=p2;
-	}else goto LoopCLFW2; //return nbrloops;
-	prog=p+1;
-	goto LoopCLFW;
-LoopCLFW2:
-//return nbrloops;
-	p1=strstr(prognext,"next");
-	if (p1!=0){nbrnext++;
-	}else {if(nbrloops!=nbrnext)return -1;else return nbrloops;}
-	prognext=p1+1;
-	goto LoopCLFW2;
-/*
-	p1=strstr(prog,"for");
-	p2=strstr(prog,"while");
-	if (p1!=0 || p2 !=0){
-//		if (p1<p2)p=p1;else p=p2; //on prend le plus proche des deux
-		if (p1==0)p=p2;
-		if (p2==0)p=p1;
-		if (p1!=0 &&p2!=0 && p1<p2)p=p1;
-		if (p1!=0 &&p2!=0 && p1>p2)p=p2;
-		q=strstr(q,"next");
-		if(q==0) return -1; //génération d'erreur
-		if (p<q) {nlp++;prog=p+1;if(nlp>nbrloops)nbrloops=nlp;PrintCmd("+");}
-			else {nlp--;prog=p+1; q=q+1;q=strstr(q,"next");PrintCmd("-");}
-		}else{PrintCmd("for fini\n");
-				while ( (q=strstr(q,"next")!=0)){nlp--;q=q+1;}
-				if (nlp!=0)PrintCmd("Error 'next' missing\n");
-				return nbrloops;}
-	//if(nlp<-1 || nlp>3)return -1;
-	if(nlp<0) return -1; //génération d'erreur
-	goto LoopCLFW;
-	return nbrloops;*/
-}
-
 
 void RemoveComments(char *txt){
 	int i,k;
@@ -3669,44 +3619,27 @@ void TracerAxis(int centerx,int centery,int width, int height){
 //	centery=0;
 //	height=(-DimYmin+DimYmax);
 //	width=(-DimXmin+DimXmax);
-
-if (GridMode != 0 ){//display full grid, not just graduations
-int clrgd=18;
-	if (StepX !=0){
-		for (k=0;k<(DimXmax-DimXmin)/StepX;k++){
-			Line(-k*StepX,0,-k*StepX,DimYmax,clrgd);Line(-k*StepX,0,-k*StepX,DimYmin,clrgd);
-			Line(k*StepX,0,k*StepX,DimYmax,clrgd);Line(k*StepX,0,k*StepX,DimYmin,clrgd);
-			}
-		}
-	if (StepX !=0){
-		for (k=0;k<(DimYmax-DimYmin)/StepX;k++){
-			Line(0,-k*StepX,DimXmax,-k*StepX,clrgd);Line(0,-k*StepX,DimXmin,-k*StepX,clrgd);
-			Line(0,k*StepX,DimXmax,k*StepX,clrgd);Line(0,k*StepX,DimXmin,k*StepX,clrgd);
-			}
-		}
-}
-
 	Line(DimXmin,0,DimXmax,0,color);
 	Line(0,DimYmin,0,DimYmax,color);
 	if (StepX !=0){
 		for (k=0;k<(DimXmax-DimXmin)/StepX;k++){
-			if (k!=0&&-k*StepX>DimXmin)DispGradVal(-k*StepX,-k*StepX-10*(DimXmax-DimXmin)/DrawZoneW,-5*(DimYmax-DimYmin)/DrawZoneH,0);
-			if (k!=0&&k*StepX<DimXmax)DispGradVal(k*StepX,k*StepX-10*(DimXmax-DimXmin)/DrawZoneW,-5*(DimYmax-DimYmin)/DrawZoneH,0);
+			if (k!=0&&-k*StepX>DimXmin)DispGradVal(-k*StepX,-k*StepX-10*(DimXmax-DimXmin)/DrawZoneW,-5*(DimYmax-DimYmin)/DrawZoneH);
+			if (k!=0&&k*StepX<DimXmax)DispGradVal(k*StepX,k*StepX-10*(DimXmax-DimXmin)/DrawZoneW,-5*(DimYmax-DimYmin)/DrawZoneH);
 			Line(-k*StepX,0,-k*StepX,5*(DimYmax-DimYmin)/DrawZoneH,color);
 			Line(k*StepX,0,k*StepX,5*(DimYmax-DimYmin)/DrawZoneH,color);
 			}
 		}
 	if (StepX !=0){
 		for (k=0;k<(DimYmax-DimYmin)/StepX;k++){
-			if (k!=0&&-k*StepX>DimYmin)DispGradVal(-k*StepX,-35*(DimXmax-DimXmin)/DrawZoneW,-k*StepX+3*(DimYmax-DimYmin)/DrawZoneH,1);
-			if (k!=0&&k*StepX<DimYmax)DispGradVal(k*StepX,-35*(DimXmax-DimXmin)/DrawZoneW,k*StepX+3*(DimYmax-DimYmin)/DrawZoneH,1);
+			if (k!=0&&-k*StepX>DimYmin)DispGradVal(-k*StepX,-35*(DimXmax-DimXmin)/DrawZoneW,-k*StepX+3*(DimYmax-DimYmin)/DrawZoneH);
+			if (k!=0&&k*StepX<DimYmax)DispGradVal(k*StepX,-35*(DimXmax-DimXmin)/DrawZoneW,k*StepX+3*(DimYmax-DimYmin)/DrawZoneH);
 			Line(0,-k*StepX,5*(DimXmax-DimXmin)/DrawZoneW,-k*StepX,color);
 			Line(0,k*StepX,5*(DimXmax-DimXmin)/DrawZoneW,k*StepX,color);
 			}
 		}
 	}
 
-void DispGradVal(float val,float X,float Y, int mode){ //mode == 0 on X, 1 positioning text on Y axes
+void DispGradVal(float val,float X,float Y){
 	RECT prc;
 	char textdsp[10];
 	sprintf(textdsp,"%.2f",val);
@@ -3717,17 +3650,7 @@ void DispGradVal(float val,float X,float Y, int mode){ //mode == 0 on X, 1 posit
 	prc.bottom = prc.top+15;
 	if (prc.left+tsize*10<DrawZoneX+DrawZoneW)prc.right = prc.left+tsize*10;
 	else prc.right=DrawZoneX+DrawZoneW;
-	if (StepX !=0){
-	if (mode == 0){
-	if (val<0) {tsize--;}
-	int p =(int)( ((float)tsize*10+10)/(DrawZoneW/(DimXmax-DimXmin)*StepX))  ;
-	float k;
-	if ( p!=0) k= ((float) ((int)(val/StepX))/ (float)p) ; else k=1.5;
-	//sprintf(s,"val=%.2f, p=%d, k=%f\n",val,p,k);
-	//PrintCmd(s);
-	if (k == (float)(int)k)  DrawText(hDC, textdsp, -1, &prc, DT_SINGLELINE |DT_VCENTER);
-	}else  DrawText(hDC, textdsp, -1, &prc, DT_SINGLELINE |DT_VCENTER);
-	}
+	DrawText(hDC, textdsp, -1, &prc, DT_SINGLELINE |DT_VCENTER);
 }
 	
 void Line(float x1, float y1, float x2, float y2,float color){

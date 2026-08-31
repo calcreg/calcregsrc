@@ -1,0 +1,43 @@
+//#COMPLEXEON
+action0
+clrlimit=50
+c=-1.001+i*0.005
+
+xmin=-10
+xmax=10
+ymin=-10
+ymax=10
+gfxdim xmin,xmax,ymin,ymax,1
+
+x=xmin
+dx=0.1
+y=ymin
+dy=0.1
+loop:
+x=x+dx
+bsr calculate
+bsr display
+x<xmax=>goto loop
+x=xmin
+y=y+dy
+y<ymax=>goto loop
+end
+
+
+display:
+line x,y,(x+0.1),y,couleur
+rts
+
+calculate:
+z=x+i*y
+couleur=0
+lpfr:
+z=z*z+c
+couleur=couleur+1
+couleur>clrlimit=> goto initclr
+mod(z)<2=>goto lpfr
+rts
+
+initclr:
+couleur=0
+rts

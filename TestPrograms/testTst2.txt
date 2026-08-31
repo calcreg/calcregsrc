@@ -1,0 +1,12 @@
+//clscmd
+defM0,1,5
+fillM0,0,0
+M0(1,1)=1
+a=0
+M0(1,1)==1=>goto UN
+//a==1=>goto UN
+print 0
+end
+UN:
+print1
+end
